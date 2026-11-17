@@ -1,6 +1,21 @@
 @echo off
+setlocal enabledelayedexpansion
+
+cd /d "%~dp0"
+
+set "NOPAUSE="
+for %%a in (%*) do (
+    if /i "%%~a"=="/nopause" set "NOPAUSE=1"
+)
+
 set "FW=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319"
 set "WPF=%FW%\WPF"
+
+if not exist "%FW%\csc.exe" (
+    echo [ERRO] Compilador csc.exe nao encontrado no diretorio framework.
+    if "%NOPAUSE%"=="" pause
+    exit /b 1
+)
 
 taskkill /F /IM TOTVSHub.exe >nul 2>&1
 
@@ -10,6 +25,7 @@ if exist "totvs_white.ico" set "ICO_ARG=/win32icon:totvs_white.ico"
 set "MANIFEST_ARG="
 if exist "app.manifest" set "MANIFEST_ARG=/win32manifest:app.manifest"
 
+echo [COMPILANDO] Compilando TOTVSHub.exe via C# (.NET Framework 4.8)...
 "%FW%\csc.exe" /nologo /target:winexe /out:TOTVSHub.exe %ICO_ARG% %MANIFEST_ARG% ^
   /reference:System.dll ^
   /reference:System.Core.dll ^
@@ -36,9 +52,20 @@ if exist "app.manifest" set "MANIFEST_ARG=/win32manifest:app.manifest"
   Views\MainWindow.Settings.cs ^
   Views\MainWindow.IniEditor.cs
 
-if %errorlevel%==0 (
-    echo [SUCESSO] TOTVSHub.exe gerado com sucesso!
-) else (
+if !errorlevel! neq 0 (
+    echo.
     echo [ERRO] Falha na compilacao.
+    if "%NOPAUSE%"=="" pause
+    exit /b 1
 )
-pause
+
+if not exist "TOTVSHub.exe" (
+    echo.
+    echo [ERRO] Executavel TOTVSHub.exe nao foi gerado.
+    if "%NOPAUSE%"=="" pause
+    exit /b 1
+)
+
+echo [SUCESSO] TOTVSHub.exe gerado com sucesso!
+if "%NOPAUSE%"=="" pause
+exit /b 0

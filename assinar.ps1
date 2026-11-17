@@ -8,6 +8,10 @@ Write-Host "========================================================" -Foregroun
 Write-Host "   TOTVSHub - Assinador Digital Authenticode (Windows)  " -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
 
+if ($TargetExe -eq "TOTVSHub.exe" -and (Test-Path "Dist_Protected\TOTVSHub.exe")) {
+    $TargetExe = "Dist_Protected\TOTVSHub.exe"
+}
+
 if (-not (Test-Path $TargetExe)) {
     if (Test-Path "Dist_Protected\TOTVSHub.exe") {
         $TargetExe = "Dist_Protected\TOTVSHub.exe"
@@ -60,4 +64,4 @@ if ($result.Status -eq "Valid") {
 }
 
 Write-Host ""
-Write-Host "Verifique nas Propriedades do arquivo TOTVSHub.exe a nova aba 'Assinaturas Digitais'!" -ForegroundColor Cyan
+Write-Host "Verifique nas Propriedades do arquivo $TargetExe a nova aba 'Assinaturas Digitais'!" -ForegroundColor Cyan
