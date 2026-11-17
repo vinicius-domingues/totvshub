@@ -1,7 +1,8 @@
 @echo off
 setlocal enabledelayedexpansion
 
-cd /d "%~dp0"
+set "ROOT=%~dp0.."
+pushd "%ROOT%"
 
 set "NOPAUSE="
 for %%a in (%*) do (
@@ -52,6 +53,7 @@ if "!ISCC!"=="" (
 
 if "!ISCC!"=="" (
     echo [ERRO] Compilador Inno Setup nao encontrado.
+    popd
     if "%NOPAUSE%"=="" pause
     exit /b 1
 )
@@ -62,11 +64,12 @@ echo.
 
 if not exist "Output" mkdir "Output"
 
-"!ISCC!" installer.iss
+"!ISCC!" "%~dp0installer.iss"
 
 if !errorlevel! neq 0 (
     echo.
     echo [ERRO] Falha ao compilar o instalador Inno Setup.
+    popd
     if "%NOPAUSE%"=="" pause
     exit /b 1
 )
@@ -74,6 +77,7 @@ if !errorlevel! neq 0 (
 if not exist "Output\TOTVSHub_Setup_v2.4.0.exe" (
     echo.
     echo [ERRO] Arquivo Output\TOTVSHub_Setup_v2.4.0.exe nao foi encontrado apos a compilacao.
+    popd
     if "%NOPAUSE%"=="" pause
     exit /b 1
 )
@@ -87,7 +91,10 @@ echo.
 echo [ASSINANDO] Assinando instalador com carimbo de tempo...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0assinar.ps1" -TargetExe "Output\TOTVSHub_Setup_v2.4.0.exe"
 
-if !errorlevel! neq 0 (
+set "SIGN_ERR=!errorlevel!"
+popd
+
+if !SIGN_ERR! neq 0 (
     echo.
     echo [ERRO] Falha ao assinar digitalmente o instalador.
     if "%NOPAUSE%"=="" pause

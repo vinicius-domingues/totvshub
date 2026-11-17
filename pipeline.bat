@@ -13,11 +13,11 @@ echo         TOTVSHub - Pipeline de Build Automatizado
 echo ========================================================
 echo.
 echo Etapas do pipeline:
-echo   1. Compilacao (compilar.bat)
-echo   2. Ofuscacao de codigo (ofuscar.bat)
-echo   3. Assinatura Authenticode (assinar.bat)
-echo   4. Geracao e assinatura do instalador (gerar_instalador.bat)
-echo   5. Geracao de notas de release e checksums (gerar_release.bat)
+echo   1. Compilacao (scripts\compilar.bat)
+echo   2. Ofuscacao de codigo (scripts\ofuscar.bat)
+echo   3. Assinatura Authenticode (scripts\assinar.bat)
+echo   4. Geracao e assinatura do instalador (scripts\gerar_instalador.bat)
+echo   5. Geracao de notas de release e checksums (scripts\gerar_release.bat)
 echo ========================================================
 echo.
 
@@ -25,7 +25,7 @@ echo.
 :: ETAPA 1: COMPILACAO
 :: -----------------------------------------------------------------------------
 echo [ETAPA 1/5] Iniciando compilacao do executavel C#...
-call "%~dp0compilar.bat" /nopause
+call "%~dp0scripts\compilar.bat" /nopause
 if !errorlevel! neq 0 (
     echo.
     echo [FALHA NO PIPELINE] Erro na Etapa 1: Falha ao compilar TOTVSHub.exe.
@@ -43,7 +43,7 @@ echo.
 :: ETAPA 2: OFUSCACAO
 :: -----------------------------------------------------------------------------
 echo [ETAPA 2/5] Ofuscando codigo e aplicando protecao anti-reversa...
-call "%~dp0ofuscar.bat" /nopause
+call "%~dp0scripts\ofuscar.bat" /nopause
 if !errorlevel! neq 0 (
     echo.
     echo [FALHA NO PIPELINE] Erro na Etapa 2: Falha durante ofuscacao via Obfuscar.
@@ -61,7 +61,7 @@ echo.
 :: ETAPA 3: ASSINATURA DO EXECUTAVEL
 :: -----------------------------------------------------------------------------
 echo [ETAPA 3/5] Assinando executavel protegido com carimbo de tempo...
-call "%~dp0assinar.bat" /nopause
+call "%~dp0scripts\assinar.bat" /nopause
 if !errorlevel! neq 0 (
     echo.
     echo [FALHA NO PIPELINE] Erro na Etapa 3: Falha ao assinar digitalmente o executavel.
@@ -79,7 +79,7 @@ echo.
 :: ETAPA 4: GERACAO E ASSINATURA DO INSTALADOR
 :: -----------------------------------------------------------------------------
 echo [ETAPA 4/5] Compilando e assinando instalador Inno Setup...
-call "%~dp0gerar_instalador.bat" /nopause
+call "%~dp0scripts\gerar_instalador.bat" /nopause
 if !errorlevel! neq 0 (
     echo.
     echo [FALHA NO PIPELINE] Erro na Etapa 4: Falha na geracao ou assinatura do instalador.
@@ -97,7 +97,7 @@ echo.
 :: ETAPA 5: GERACAO DE RELEASE NOTES E CHECKSUMS
 :: -----------------------------------------------------------------------------
 echo [ETAPA 5/5] Gerando hashes SHA-256 e documento de release...
-call "%~dp0gerar_release.bat" /nopause
+call "%~dp0scripts\gerar_release.bat" /nopause
 if !errorlevel! neq 0 (
     echo.
     echo [FALHA NO PIPELINE] Erro na Etapa 5: Falha na geracao de release notes.

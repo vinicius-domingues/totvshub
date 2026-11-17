@@ -4,12 +4,14 @@ Write-Host '========================================================' -Foregroun
 Write-Host '   TOTVSHub - Gerador de Release e Checksum SHA-256    ' -ForegroundColor Cyan
 Write-Host '========================================================' -ForegroundColor Cyan
 
-$portableExe = Join-Path $PSScriptRoot 'Dist_Protected\TOTVSHub.exe'
+$rootDir = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+
+$portableExe = Join-Path $rootDir 'Dist_Protected\TOTVSHub.exe'
 if (-not (Test-Path $portableExe)) {
-    $portableExe = Join-Path $PSScriptRoot 'TOTVSHub.exe'
+    $portableExe = Join-Path $rootDir 'TOTVSHub.exe'
 }
 
-$setupExe = Join-Path $PSScriptRoot 'Output\TOTVSHub_Setup_v2.4.0.exe'
+$setupExe = Join-Path $rootDir 'Output\TOTVSHub_Setup_v2.4.0.exe'
 
 $lines = @(
 '# TOTVSHub - Release Oficial v2.4.0',
@@ -58,8 +60,8 @@ $lines += @(
 '  - **Sanitização de URLs**: Validação estrita de protocolos `http://` e `https://` antes de qualquer execução externa via shell.',
 '  - **Proteção contra Path Traversal**: Validação de caminhos canônicos absolutos ao navegar no explorer e carregar pastas de logs.',
 '  - **Application Manifest Integrado**: Nível de privilégio formalizado (`asInvoker`), prevenção de virtualização UAC e suporte nativo a PerMonitorV2 DPI.',
-'- **Identidade Visual**:',
-'  - Símbolo oficial TOTVS vetorizado com fundo transparente e ícone de sistema com stroke azul escuro de alto contraste.',
+'- **Identidade Visual**:
+  - Símbolo oficial TOTVS vetorizado com fundo transparente e ícone de sistema com stroke azul escuro de alto contraste.',
 '',
 '---',
 '',
@@ -87,7 +89,7 @@ $lines += @(
 '```'
 )
 
-$releasePath = Join-Path $PSScriptRoot 'RELEASE_NOTES.md'
+$releasePath = Join-Path $rootDir 'RELEASE_NOTES.md'
 [System.IO.File]::WriteAllLines($releasePath, $lines, [System.Text.Encoding]::UTF8)
 
 Write-Host ''

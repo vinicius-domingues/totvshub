@@ -7,7 +7,7 @@
 #define MyAppURL "https://github.com/vinicius-domingues/totvshub"
 #define MyAppExeName "TOTVSHub.exe"
 
-#if FileExists("Dist_Protected\TOTVSHub.exe")
+#if FileExists("..\Dist_Protected\TOTVSHub.exe")
   #define SourceExe "Dist_Protected\TOTVSHub.exe"
 #else
   #define SourceExe "TOTVSHub.exe"
@@ -22,14 +22,16 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
+SourceDir=..
+OutputDir=Output
 DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
 OutputBaseFilename=TOTVSHub_Setup_v{#MyAppVersion}
-SetupIconFile=totvs_white.ico
+SetupIconFile=assets\totvs_white.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
@@ -41,9 +43,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#SourceExe}"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
-Source: "totvs_white.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "totvs_white.svg"; DestDir: "{app}"; Flags: ignoreversion
-Source: "app.manifest"; DestDir: "{app}"; Flags: ignoreversion
+Source: "assets\totvs_white.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "assets\totvs_white.svg"; DestDir: "{app}"; Flags: ignoreversion
+Source: "assets\app.manifest"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\totvs_white.ico"
