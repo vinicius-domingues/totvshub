@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -33,14 +33,12 @@ namespace TOTVSHub
             rootGrid.RowDefinitions.Add(rowLoader);
             rootGrid.RowDefinitions.Add(rowBody);
 
-            // Esquerda do TopBar: Logo branca TOTVS do AppData + TOTVSHub
             StackPanel titleLeft = CreateBrandTitleHeader();
 
             Border topBar = BuildTopWindowBar(titleLeft, null);
             Grid.SetRow(topBar, 0);
             rootGrid.Children.Add(topBar);
 
-            // ================= BARRA DE FILTRO E ACOES =================
             Border toolbar = new Border();
             toolbar.Padding = new Thickness(20, 14, 20, 10);
             toolbar.Background = UiTheme.BgWindow;
@@ -124,7 +122,6 @@ namespace TOTVSHub
                 RenderizarCards();
             };
 
-            // Alternador de Modo de Visualização na Home (Cards 2 por linha vs Lista)
             Border homeToggleGroup = new Border();
             homeToggleGroup.Background = UiTheme.BgHeader;
             homeToggleGroup.BorderBrush = UiTheme.BorderSubtle;
@@ -231,7 +228,6 @@ namespace TOTVSHub
             Grid.SetRow(toolbar, 1);
             rootGrid.Children.Add(toolbar);
 
-            // ================= TRILHO DE LOADING HORIZONTAL =================
             _loadingTrackGrid = new Grid();
             _loadingTrackGrid.Height = 3;
             _loadingTrackGrid.Background = UiTheme.BorderSubtle;
@@ -261,7 +257,6 @@ namespace TOTVSHub
             Grid.SetRow(_loadingTrackGrid, 2);
             rootGrid.Children.Add(_loadingTrackGrid);
 
-            // ================= CONTAINER DE AMBIENTES (MODO CARDS 2 POR LINHA OU LISTA) =================
             ScrollViewer scroll = new ScrollViewer();
             scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
             scroll.Padding = new Thickness(20, 4, 20, 18);
@@ -343,9 +338,6 @@ namespace TOTVSHub
             _loadingBeamTransform.BeginAnimation(TranslateTransform.XProperty, slide);
         }
 
-        // =====================================================================
-        // RENDERIZACAO DOS CARDS (LISTA EM NORMAL, GRID DE CARDS EM TELA CHEIA)
-        // =====================================================================
         private void AtualizarBotaoOcultos()
         {
             if (_btnToggleHiddenView == null) return;
@@ -382,7 +374,6 @@ namespace TOTVSHub
 
             _cardsContainer.Children.Clear();
 
-            // Animacao vetorial enquanto a primeira varredura nao conclui
             if (!_isInitialScanCompleted)
             {
                 _cardsContainer.Children.Add(UiTheme.CreateVectorLoadingScreen(_cachedSvgPath));
@@ -456,7 +447,7 @@ namespace TOTVSHub
 
             if (!_homeCardMode)
             {
-                // ================= MODO LISTA: LARGURA TOTAL EMPILHADA =================
+
                 foreach (var item in listaAmbientesParaExibir)
                 {
                     Border cardUi = CriarCardAmbiente(item.Item1, item.Item2);
@@ -465,7 +456,7 @@ namespace TOTVSHub
             }
             else
             {
-                // ================= MODO CARDS: GRADE DINAMICA MASONRY (2 POR LINHA) =================
+
                 Grid gridContainer = _cardsContainer as Grid;
                 if (gridContainer != null)
                 {
@@ -473,7 +464,7 @@ namespace TOTVSHub
                     gridContainer.ColumnDefinitions.Clear();
 
                     double availW = _cardsScrollViewer.ActualWidth > 0 ? _cardsScrollViewer.ActualWidth : ActualWidth;
-                    // Se a tela for muito estreita (< 780px), usa 1 coluna; caso contrario, 2 colunas
+
                     int numCols = availW < 780 ? 1 : 2;
 
                     List<StackPanel> colPanels = new List<StackPanel>();
@@ -501,7 +492,6 @@ namespace TOTVSHub
                         bool isHidden = item.Item2;
                         Border cardUi = CriarCardAmbiente(amb, isHidden);
 
-                        // Estimativa de altura para equilibrar o preenchimento sem deixar buracos
                         string nText;
                         bool hasNote = _cardNotes.TryGetValue(amb.AppDir, out nText) && !string.IsNullOrWhiteSpace(nText);
                         double estimatedHeight = 110 + (hasNote ? 48 : 0);
@@ -582,7 +572,6 @@ namespace TOTVSHub
             cardGrid.ColumnDefinitions.Add(colInfo);
             cardGrid.ColumnDefinitions.Add(colRightActions);
 
-            // ================= COLUNA 0 (ESQUERDA): LAPIS E OLHO CENTRALIZADOS VERTICALMENTE + STATUS ABAIXO =================
             StackPanel leftToolsColumn = new StackPanel();
             leftToolsColumn.Orientation = Orientation.Vertical;
             leftToolsColumn.VerticalAlignment = VerticalAlignment.Center;
@@ -615,7 +604,6 @@ namespace TOTVSHub
                 RenderizarCards();
             };
 
-            // Icone de comentario ao lado direito do ocultar
             Button btnNote = UiTheme.CreateFramelessIconButton(
                 UiTheme.CreateCommentBubbleIcon(UiTheme.TextSecondary, 15),
                 "Adicionar ou editar anotação deste ambiente");
@@ -627,7 +615,6 @@ namespace TOTVSHub
             toolsIconsRow.Children.Add(btnNote);
             leftToolsColumn.Children.Add(toolsIconsRow);
 
-            // Status abaixo do configurar, ocultar e anotação
             Border statusBadge = new Border();
             statusBadge.CornerRadius = new CornerRadius(10);
             statusBadge.Padding = new Thickness(8, 3, 8, 3);
@@ -662,7 +649,6 @@ namespace TOTVSHub
 
             leftToolsColumn.Children.Add(statusBadge);
 
-            // Tag opcional do usuario do processo (PID) abaixo do status
             Border userBadge = new Border();
             userBadge.Background = UiTheme.BrushFromHex("#0C4A6E");
             userBadge.BorderBrush = UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex);
@@ -685,7 +671,6 @@ namespace TOTVSHub
             Grid.SetColumn(leftToolsColumn, 0);
             cardGrid.Children.Add(leftToolsColumn);
 
-            // ================= COLUNA 1 (CENTRO): NOME DO AMBIENTE AZUL E METADADOS PADRAO =================
             StackPanel infoColumn = new StackPanel();
             infoColumn.VerticalAlignment = VerticalAlignment.Center;
             infoColumn.Margin = new Thickness(0, 0, 12, 0);
@@ -693,7 +678,6 @@ namespace TOTVSHub
             WrapPanel titleWrap = new WrapPanel();
             titleWrap.VerticalAlignment = VerticalAlignment.Center;
 
-            // Nome do ambiente no mesmo tom de azul (#0284C7)
             TextBlock lblEnvName = new TextBlock();
             lblEnvName.Text = amb.NomeIni;
             lblEnvName.Foreground = UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex);
@@ -713,7 +697,6 @@ namespace TOTVSHub
             lblPath.Margin = new Thickness(0, 3, 0, 6);
             infoColumn.Children.Add(lblPath);
 
-            // Tags de facil visualizacao: Portas + SpecialKey, DBAlias e DBPort como padrao (REST apenas se existir)
             WrapPanel metaWrap = new WrapPanel();
             metaWrap.Children.Add(CreateMetaPill("WebApp", !string.IsNullOrEmpty(amb.WebAppPort) ? amb.WebAppPort : "-"));
             metaWrap.Children.Add(CreateMetaPill("TCP", !string.IsNullOrEmpty(amb.TcpPort) ? amb.TcpPort : "-"));
@@ -734,7 +717,6 @@ namespace TOTVSHub
             Grid.SetColumn(infoColumn, 1);
             cardGrid.Children.Add(infoColumn);
 
-            // ================= COLUNA 2 (DIREITA): ACESSOS EMPILHADOS E ICONES DE CONTROLE EMPILHADOS =================
             StackPanel rightActionsColumn = new StackPanel();
             rightActionsColumn.Orientation = Orientation.Horizontal;
             rightActionsColumn.VerticalAlignment = VerticalAlignment.Center;
@@ -745,7 +727,6 @@ namespace TOTVSHub
             accessButtonsStack.VerticalAlignment = VerticalAlignment.Center;
             accessButtonsStack.Margin = new Thickness(0, 0, 8, 0);
 
-            // Botao 'Protheus' (Web link com globo, nome a esquerda e seta diagonal a direita, padronizado com WebServices)
             Button btnWeb = UiTheme.CreateWebLinkButton("Protheus", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
             btnWeb.ToolTip = !string.IsNullOrEmpty(amb.WebAppPort)
                 ? string.Format("Abrir http://localhost:{0}", amb.WebAppPort)
@@ -756,7 +737,6 @@ namespace TOTVSHub
             amb.BtnWeb = btnWeb;
             accessButtonsStack.Children.Add(btnWeb);
 
-            // Botao 'REST' apenas se houver RestPort configurado
             if (!string.IsNullOrEmpty(amb.RestPort))
             {
                 Button btnRest = UiTheme.CreateWebLinkButton("REST", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
@@ -770,7 +750,6 @@ namespace TOTVSHub
                 amb.BtnRest = null;
             }
 
-            // Botao 'WebServices' se houver no .ini e nao estiver duplicado em _customLinks
             bool hasCustomWs = _customLinks.Any(l => string.Equals(l.Label, "WebServices", StringComparison.OrdinalIgnoreCase));
             if (!string.IsNullOrEmpty(amb.WebServicesPort) && !hasCustomWs)
             {
@@ -785,7 +764,6 @@ namespace TOTVSHub
                 amb.BtnWebServices = null;
             }
 
-            // Botoes personalizados gerados pelas formulas configuradas pelo usuario (apenas se houver a chave no .ini)
             amb.CustomButtons.Clear();
             foreach (CustomLinkButton linkDef in _customLinks)
             {
@@ -852,7 +830,6 @@ namespace TOTVSHub
             Grid.SetColumn(rightActionsColumn, 2);
             cardGrid.Children.Add(rightActionsColumn);
 
-            // ================= LINHA 1: BANNER DE NOTA / COMENTARIO DO CARD (SE HOUVER) =================
             string noteText;
             if (_cardNotes.TryGetValue(amb.AppDir, out noteText) && !string.IsNullOrWhiteSpace(noteText))
             {
@@ -1135,9 +1112,6 @@ namespace TOTVSHub
             }
         }
 
-        // =====================================================================
-        // RESOLUCAO DE FORMULAS DE LINKS PERSONALIZADOS E NAVEGADOR
-        // =====================================================================
         private string ResolverFormulaLink(AmbienteInfo amb, string formula)
         {
             if (amb == null || string.IsNullOrWhiteSpace(formula))
@@ -1357,9 +1331,6 @@ namespace TOTVSHub
             }
         }
 
-        // =====================================================================
-        // CONTROLE DE PROCESSOS E SERVICOS DO WINDOWS (INICIAR / REINICIAR / PARAR)
-        // =====================================================================
         private void IniciarPorLinhaDeComandoOuServico(AmbienteInfo amb)
         {
             bool startedService = false;
@@ -1398,7 +1369,7 @@ namespace TOTVSHub
                 }
                 catch (System.ComponentModel.Win32Exception)
                 {
-                    // Se o usuario recusar a elevacao UAC, tenta abrir sem modo admin
+
                     try
                     {
                         ProcessStartInfo fallback = new ProcessStartInfo();

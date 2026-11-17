@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -13,9 +13,7 @@ namespace TOTVSHub
 {
     public partial class MainWindow : Window
     {
-        // =====================================================================
-        // DESCOBERTA ASSINCRONA DE AMBIENTES E DETECCAO DE PID/SERVICOS/USUARIO
-        // =====================================================================
+
         private void SelecionarPastaBase()
         {
             OpenFileDialog dlg = new OpenFileDialog();
@@ -509,9 +507,6 @@ namespace TOTVSHub
             });
         }
 
-        // =====================================================================
-        // MOTOR DINAMICO DE ALERTAS (TITULO CURTO: "Duplicidade em <chave>")
-        // =====================================================================
         private void RecalcularAlertas()
         {
             _alertasAtivos.Clear();

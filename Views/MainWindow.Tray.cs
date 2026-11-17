@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
@@ -8,9 +8,7 @@ namespace TOTVSHub
 {
     public partial class MainWindow : Window
     {
-        // =====================================================================
-        // BANDEJA DO WINDOWS (SYSTEM TRAY)
-        // =====================================================================
+
         private class DarkTrayRenderer : System.Windows.Forms.ToolStripProfessionalRenderer
         {
             protected override void OnRenderMenuItemBackground(System.Windows.Forms.ToolStripItemRenderEventArgs e)
@@ -47,7 +45,7 @@ namespace TOTVSHub
 
         private void InicializarBandejaWindows()
         {
-            // Limpa icones fantasmas da bandeja do Windows antes de registrar o novo icone
+
             RefreshSystemTrayArea();
 
             _trayMenu = new System.Windows.Forms.ContextMenuStrip();
@@ -75,10 +73,8 @@ namespace TOTVSHub
                 }
             };
 
-            // Escuta chamadas de nova instancia para restaurar janela sem duplicar na bandeja
             InicializarSinalInstanciaUnica();
 
-            // Garante o descarte completo do icone da bandeja em qualquer encerramento do processo
             AppDomain.CurrentDomain.ProcessExit += delegate { DescartarBandeja(); };
             if (Application.Current != null)
             {
@@ -130,7 +126,6 @@ namespace TOTVSHub
             catch { }
         }
 
-        // Remove icones orfaos de processos encerrados passando mensagem de mouse sobre a barra de notificacao
         private static void SendMouseMoveAcrossWindow(IntPtr hWnd)
         {
             if (hWnd == IntPtr.Zero) return;
@@ -142,7 +137,7 @@ namespace TOTVSHub
                     for (int y = 1; y < rect.Bottom; y += 8)
                     {
                         IntPtr lParam = (IntPtr)((y << 16) | (x & 0xFFFF));
-                        NativeWin32.PostMessage(hWnd, 0x0200 /* WM_MOUSEMOVE */, IntPtr.Zero, lParam);
+                        NativeWin32.PostMessage(hWnd, 0x0200 , IntPtr.Zero, lParam);
                     }
                 }
             }
@@ -192,7 +187,6 @@ namespace TOTVSHub
 
             _trayMenu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
-            // Facilitador: Ambientes Ativos com atalhos de Protheus, REST e Parar
             var basesAtivas = _ambientes.Where(a => a.State == EnvRunState.Active).ToList();
             if (basesAtivas.Count > 0)
             {
@@ -256,7 +250,6 @@ namespace TOTVSHub
                 _trayMenu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
             }
 
-            // Submenu com todas as bases registradas
             var protheusMenu = new System.Windows.Forms.ToolStripMenuItem("Todos os Ambientes");
             protheusMenu.ForeColor = Color.White;
             var basesComPorta = _ambientes

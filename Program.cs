@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Threading;
 using System.Windows;
@@ -36,8 +36,7 @@ namespace TOTVSHub
 
             if (!isFirstInstance)
             {
-                // Já existe uma instância do TOTVSHub em execução!
-                // Sinaliza a instância existente para restaurar a janela e trazer para o foco
+
                 try
                 {
                     EventWaitHandle showSignal;
@@ -51,14 +50,13 @@ namespace TOTVSHub
                         IntPtr hWnd = NativeWin32.FindWindow(null, "TOTVSHub");
                         if (hWnd != IntPtr.Zero)
                         {
-                            NativeWin32.ShowWindow(hWnd, 9); // SW_RESTORE
+                            NativeWin32.ShowWindow(hWnd, 9);
                             NativeWin32.SetForegroundWindow(hWnd);
                         }
                     }
                 }
                 catch { }
 
-                // Encerra imediatamente sem duplicar processo nem ícone na bandeja
                 return;
             }
 

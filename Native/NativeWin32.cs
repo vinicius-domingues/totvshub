@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
@@ -116,7 +116,6 @@ namespace TOTVSHub
         {
             if (pid <= 0) return null;
 
-            // 1. Tentativa rapida nativa via Token do Processo
             IntPtr hProc = IntPtr.Zero;
             IntPtr hToken = IntPtr.Zero;
             try
@@ -142,7 +141,6 @@ namespace TOTVSHub
                 if (hProc != IntPtr.Zero) CloseHandle(hProc);
             }
 
-            // 2. Fallback via tasklist /v /fi "PID eq <pid>" /fo csv /nh
             try
             {
                 ProcessStartInfo psi = new ProcessStartInfo();

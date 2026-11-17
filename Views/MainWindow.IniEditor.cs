@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -13,9 +13,7 @@ namespace TOTVSHub
 {
     public partial class MainWindow : Window
     {
-        // =====================================================================
-        // TELA INTEIRA: EDITOR DE APPSERVER.INI
-        // =====================================================================
+
         private void ShowIniEditorView(AmbienteInfo amb)
         {
             _isInDashboardView = false;
@@ -119,7 +117,6 @@ namespace TOTVSHub
             searchRowGrid.Children.Add(searchBoxBorder);
             Grid.SetColumn(searchBoxBorder, 0);
 
-            // Toggle de Modo de Exibicao das Secoes: Modo Cards (Grid) vs Modo Lista
             StackPanel viewTogglePanel = new StackPanel();
             viewTogglePanel.Orientation = Orientation.Horizontal;
             viewTogglePanel.VerticalAlignment = VerticalAlignment.Center;
@@ -166,11 +163,9 @@ namespace TOTVSHub
             scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
             scroll.Padding = new Thickness(20, 4, 20, 16);
 
-            // Container para Modo Cards (Grade Masonry em 3 colunas)
             Grid masonryGrid = new Grid();
             masonryGrid.HorizontalAlignment = HorizontalAlignment.Stretch;
 
-            // Container para Modo Lista (Largura total empilhada)
             StackPanel sectionsStack = new StackPanel();
             sectionsStack.HorizontalAlignment = HorizontalAlignment.Stretch;
 
@@ -210,14 +205,13 @@ namespace TOTVSHub
             btnViewCards.Click += delegate { switchLayoutMode(true); };
             btnViewList.Click += delegate { switchLayoutMode(false); };
 
-            // Determina numero ideal de colunas (padrao 3 colunas; 2 se < 1100px; 1 se < 680px)
             Func<int> getColumnCount = delegate
             {
                 double avail = scroll.ActualWidth > 0 ? scroll.ActualWidth : root.ActualWidth;
                 if (avail <= 0) avail = 1200;
                 if (avail < 720) return 1;
                 if (avail < 1120) return 2;
-                return 3; // 3 colunas solicitadas
+                return 3;
             };
 
             int lastColumnCount = getColumnCount();
@@ -255,7 +249,7 @@ namespace TOTVSHub
                     List<IniEntry> entriesToShow = new List<IniEntry>();
                     foreach (IniEntry entry in sec.Entries)
                     {
-                        // Respeita a configuracao "Ver comentarios" (padrao desmarcado)
+
                         if (entry.IsPureComment && !_showIniComments)
                             continue;
 
@@ -285,7 +279,7 @@ namespace TOTVSHub
 
                 if (!_iniCardMode)
                 {
-                    // ================= MODO LISTA: LARGURA TOTAL EMPILHADA =================
+
                     bool restRenderedList = false;
                     foreach (KeyValuePair<IniSection, List<IniEntry>> item in allMatched)
                     {
@@ -306,9 +300,6 @@ namespace TOTVSHub
                     return;
                 }
 
-                // ================= MODO CARDS (GRADE MASONRY MULTI-COLUNAS) =================
-                // 3 colunas (ou responsivo se janela estreita), empilhando cards de cima para baixo
-                // na coluna que tiver a menor altura acumulada para evitar qualquer buraco vazio
                 int numCols = getColumnCount();
                 List<StackPanel> columnPanels = new List<StackPanel>();
                 List<double> columnHeights = new List<double>();
@@ -321,7 +312,7 @@ namespace TOTVSHub
 
                     StackPanel colPanel = new StackPanel();
                     colPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
-                    // Espaçamento horizontal entre colunas: margem direita em todas exceto a última
+
                     colPanel.Margin = new Thickness(0, 0, c < numCols - 1 ? 14 : 0, 0);
 
                     Grid.SetColumn(colPanel, c);
@@ -346,14 +337,14 @@ namespace TOTVSHub
                             Border restGroup = BuildRestGroupContainer(amb, sections, restMatched, renderIniSections);
                             restGroup.Margin = new Thickness(0, 0, 0, 14);
                             cardElement = restGroup;
-                            // Altura estimada do grupo REST
+
                             int totalEntries = 0;
                             foreach (var ri in restMatched) totalEntries += ri.Value.Count;
                             estimatedHeight = 65 + (restMatched.Count * 50) + (totalEntries * 42);
                         }
                         else
                         {
-                            continue; // Ja foi renderizado dentro do restGroup
+                            continue;
                         }
                     }
                     else
@@ -361,13 +352,13 @@ namespace TOTVSHub
                         Border secCard = BuildIniSectionCard(amb, sections, item.Key, item.Value, renderIniSections);
                         secCard.Margin = new Thickness(0, 0, 0, 14);
                         cardElement = secCard;
-                        // Altura estimada baseada no cabeçalho + linhas exibidas
+
                         estimatedHeight = 52 + (item.Value.Count * 42);
                     }
 
                     if (cardElement != null)
                     {
-                        // Encontra a coluna que atualmente está mais vazia (menor altura acumulada)
+
                         int bestCol = 0;
                         double minH = columnHeights[0];
                         for (int c = 1; c < numCols; c++)
@@ -629,7 +620,6 @@ namespace TOTVSHub
             sec.BtnToggleSection = btnToggleSec;
             secBtns.Children.Add(btnToggleSec);
 
-            // Secoes protegidas ([environment], [topconnect], [drivers], [tcp], [general], [webapp]) NAO possuem botao Excluir
             if (!isProtectedSection)
             {
                 Button btnDelSec = UiTheme.CreateActionButton("🗑 Excluir", "#7F1D1D", "#DC2626");
@@ -684,7 +674,7 @@ namespace TOTVSHub
 
             if (isProtectedSection)
             {
-                // Secao protegida: nome somente leitura (nao editavel)
+
                 TextBlock lblSecName = new TextBlock();
                 lblSecName.Text = sec.Name;
                 lblSecName.Foreground = UiTheme.AccentLightBlue;
@@ -763,9 +753,6 @@ namespace TOTVSHub
             return card;
         }
 
-        // =====================================================================
-        // ITEM 8: AGRUPAMENTO VISUAL DAS SECOES REST E ATIVAR/INATIVAR VIA [ONSTART]>jobs
-        // =====================================================================
         private HashSet<string> IdentifyRestSectionNames(List<IniSection> allSections)
         {
             HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -882,7 +869,7 @@ namespace TOTVSHub
 
             if (!ativar)
             {
-                // Inativar REST: NAO comenta [HTTPV11]/[HTTPREST]/[HTTPURI]/[HTTPJOB], vai em [ONSTART]>jobs
+
                 if (onStartSec == null) return;
 
                 List<IniEntry> activeJobsEntries = onStartSec.Entries.Where(e =>
@@ -909,19 +896,19 @@ namespace TOTVSHub
 
                     if (remaining.Count == 0)
                     {
-                        // Apenas HTTPJOB na linha: comenta a linha (;jobs=HTTPJOB)
+
                         entry.IsCommented = true;
                     }
                     else
                     {
-                        // Tinha mais jobs separados por virgula: mantem a linha ativa apenas com os outros jobs
+
                         entry.Value = string.Join(",", remaining);
                     }
                 }
             }
             else
             {
-                // Ativar REST: garante [ONSTART] ativo e jobName na tag jobs
+
                 if (onStartSec == null)
                 {
                     onStartSec = new IniSection();
@@ -970,7 +957,6 @@ namespace TOTVSHub
 
                     activeJobs.Value = string.Join(",", currentJobs);
 
-                    // Se havia uma linha separada ;jobs=HTTPJOB comentada, remove para nao duplicar
                     foreach (IniEntry cEntry in commentedJobs)
                     {
                         List<string> cList = (cEntry.Value ?? "")
@@ -1100,9 +1086,6 @@ namespace TOTVSHub
             return groupBorder;
         }
 
-        // =====================================================================
-        // ITEM 12: AVISO EM TEMPO REAL DE PORTA/CHAVE MONITORADA DUPLICADA (SEM IMPEDIR)
-        // =====================================================================
         private string VerificarConflitoValorIni(AmbienteInfo currentAmb, string secName, string keyName, string candidateValue)
         {
             string val = (candidateValue ?? "").Trim();
@@ -1315,7 +1298,6 @@ namespace TOTVSHub
             Grid.SetColumn(eqLbl, 2);
             rowGrid.Children.Add(eqLbl);
 
-            // Valor com icone de pasta para ConsoleFile, StartPath, RootPath, RPOCustom, SourcePath
             StackPanel valContainer = new StackPanel();
             valContainer.Margin = new Thickness(0, 0, 8, 0);
             valContainer.VerticalAlignment = VerticalAlignment.Center;
@@ -1672,7 +1654,6 @@ namespace TOTVSHub
                     }
                 }
 
-                // Gravação atômica: escreve primeiro em arquivo temporário com GUID único
                 tmpPath = Path.Combine(dir, string.Format("appserver.ini.tmp.{0:N}", Guid.NewGuid()));
                 File.WriteAllText(tmpPath, sb.ToString(), Encoding.Default);
 
@@ -1684,14 +1665,13 @@ namespace TOTVSHub
                         try { File.Copy(iniPath, backupPath, true); } catch { }
                     }
 
-                    // File.Replace garante substituição atômica sem risco de corrupção ou arquivo em branco
                     try
                     {
                         File.Replace(tmpPath, iniPath, null, true);
                     }
                     catch
                     {
-                        // Fallback seguro caso File.Replace seja bloqueado pelo SO
+
                         File.Copy(tmpPath, iniPath, true);
                         try { File.Delete(tmpPath); } catch { }
                     }

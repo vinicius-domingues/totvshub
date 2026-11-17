@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,7 +19,6 @@ namespace TOTVSHub
         public const string AppVersion = "v2.4.0";
         public const string DefaultUpdateDriveUrl = "https://drive.google.com";
 
-        // Tom azul unico padronizado para todos os botoes azuis e toggles
         public const string PrimaryBlueHex = "#0284C7";
         public const string PrimaryBlueHoverHex = "#0EA5E9";
         public static readonly Brush PrimaryBlueBrush = BrushFromHex(PrimaryBlueHex);
@@ -119,7 +118,7 @@ namespace TOTVSHub
                 chrome.GlassFrameThickness = new Thickness(0);
                 WindowChrome.SetWindowChrome(win, chrome);
             }
-            // Quando maximizado, ResizeBorderThickness = 0 permite arrastar pela borda superior sem interceptar como resize
+
             chrome.ResizeBorderThickness = isMaximized ? new Thickness(0) : new Thickness(6);
             chrome.CornerRadius = isMaximized ? new CornerRadius(0) : new CornerRadius(12);
         }
@@ -144,7 +143,6 @@ namespace TOTVSHub
             return TotvsLogo.CreateTotvsWindowImageSource(cachedSvgPath);
         }
 
-        // Toggle Switch moderno padronizado com o mesmo tom azul (#0284C7)
         public static UIElement CreateModernToggleSwitch(bool initialState, string onLabel, string offLabel, Action<bool> onChanged)
         {
             bool state = initialState;
@@ -208,7 +206,6 @@ namespace TOTVSHub
             return container;
         }
 
-        // Animacao Vetorial de Loading para primeira varredura
         public static UIElement CreateVectorLoadingScreen(string cachedSvgPath)
         {
             Border wrapper = new Border();
@@ -404,7 +401,6 @@ namespace TOTVSHub
             return bell;
         }
 
-        // Icone de Lapis (Configurar card - sem fundo)
         public static UIElement CreatePencilIcon(Brush strokeBrush)
         {
             System.Windows.Shapes.Path pencil = new System.Windows.Shapes.Path();
@@ -421,7 +417,6 @@ namespace TOTVSHub
             return pencil;
         }
 
-        // Icone de Olho (Ocultar card - sem fundo)
         public static UIElement CreateEyeIcon(Brush strokeBrush)
         {
             System.Windows.Shapes.Path eye = new System.Windows.Shapes.Path();
@@ -436,7 +431,6 @@ namespace TOTVSHub
             return eye;
         }
 
-        // Icone de Olho Cortado (Desocultar card - sem fundo)
         public static UIElement CreateEyeOffIcon(Brush strokeBrush)
         {
             System.Windows.Shapes.Path eyeOff = new System.Windows.Shapes.Path();
@@ -453,7 +447,6 @@ namespace TOTVSHub
             return eyeOff;
         }
 
-        // Icone vetorial de Pasta
         public static UIElement CreateFolderIcon(Brush fillBrush, double size)
         {
             System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
@@ -466,7 +459,6 @@ namespace TOTVSHub
             return icon;
         }
 
-        // Icone vetorial de Lupa
         public static UIElement CreateSearchIcon()
         {
             System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
@@ -481,7 +473,6 @@ namespace TOTVSHub
             return icon;
         }
 
-        // Icone de Play (Comecar video / Iniciar)
         public static UIElement CreatePlayIcon(Brush fillOrStrokeBrush, double size = 14)
         {
             System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
@@ -498,7 +489,6 @@ namespace TOTVSHub
             return icon;
         }
 
-        // Icone de X (Parar)
         public static UIElement CreateStopXIcon(Brush strokeBrush, double size = 14)
         {
             System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
@@ -516,7 +506,6 @@ namespace TOTVSHub
             return icon;
         }
 
-        // Icone de Reiniciar padrao (Seta circular)
         public static UIElement CreateRestartIcon(Brush strokeBrush, double size = 14)
         {
             System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
@@ -534,7 +523,6 @@ namespace TOTVSHub
             return icon;
         }
 
-        // Icone de Balao de Comentario (Anotacao do card)
         public static UIElement CreateCommentBubbleIcon(Brush strokeBrush, double size = 16)
         {
             System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
@@ -552,7 +540,6 @@ namespace TOTVSHub
             return icon;
         }
 
-        // Icone Worldwide / Globo (Links web)
         public static UIElement CreateGlobeIcon(Brush strokeBrush, double size = 12)
         {
             System.Windows.Shapes.Path globe = new System.Windows.Shapes.Path();
@@ -566,7 +553,6 @@ namespace TOTVSHub
             return globe;
         }
 
-        // Icone de Seta Diagonal Superior Direita (Links externos / web)
         public static UIElement CreateDiagonalArrowIcon(Brush strokeBrush, double size = 10)
         {
             System.Windows.Shapes.Path arrow = new System.Windows.Shapes.Path();
@@ -583,7 +569,6 @@ namespace TOTVSHub
             return arrow;
         }
 
-        // Icone de 4 blocos (Modo Cards / Grade)
         public static UIElement CreateGridCardIcon(Brush strokeBrush, double size = 14)
         {
             System.Windows.Shapes.Path p = new System.Windows.Shapes.Path();
@@ -597,7 +582,6 @@ namespace TOTVSHub
             return p;
         }
 
-        // Icone de Linhas / Lista
         public static UIElement CreateListIcon(Brush strokeBrush, double size = 14)
         {
             System.Windows.Shapes.Path p = new System.Windows.Shapes.Path();
@@ -615,8 +599,6 @@ namespace TOTVSHub
 
         public const double WebButtonWidth = 128;
 
-        // Conteudo visual para botoes de links web: [Globo] [Label] ........ [↗]
-        // Seta diagonal sempre alinhada a direita do botao; Globo e Label alinhados a esquerda
         public static UIElement CreateWebLinkContent(string label)
         {
             DockPanel dock = new DockPanel();
@@ -654,7 +636,6 @@ namespace TOTVSHub
             return dock;
         }
 
-        // Cria botao de link web padronizado na largura do maior item (WebServices = 128px)
         public static Button CreateWebLinkButton(string label, string normalHex, string hoverHex)
         {
             Button btn = CreateActionButton(CreateWebLinkContent(label), normalHex, hoverHex);
@@ -665,18 +646,17 @@ namespace TOTVSHub
             return btn;
         }
 
-        // Icone de maximizar (1 janela) e restaurar (aba dupla sobreposta)
         public static UIElement CreateWindowStateGlyph(bool isMaximized, Brush strokeBrush)
         {
             System.Windows.Shapes.Path p = new System.Windows.Shapes.Path();
             if (isMaximized)
             {
-                // Aba dupla (duas janelas sobrepostas para restaurar da tela cheia)
+
                 p.Data = Geometry.Parse("M 6,8 L 16,8 L 16,18 L 6,18 Z M 9,8 L 9,5 L 19,5 L 19,15 L 16,15");
             }
             else
             {
-                // Janela unica para maximizar
+
                 p.Data = Geometry.Parse("M 5,5 L 19,5 L 19,19 L 5,19 Z");
             }
             p.Stroke = strokeBrush;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -24,10 +24,10 @@ namespace TOTVSHub
         private int _browserDelaySeconds = 4;
         private bool _ignoreOldFolders = true;
         private bool _showProcessUser = true;
-        private bool _showIniComments = false; // Padrao desmarcado
-        private bool _ignoreSameSubfolderConflicts = true; // Desconsiderar duplicidade entre ambientes da mesma subpasta (padrao ativado)
-        private bool _iniCardMode = true; // Padrao: modo card para secoes
-        private bool _homeCardMode = false; // Modo de visualizacao na Home (false = lista, true = cards em 2 colunas)
+        private bool _showIniComments = false;
+        private bool _ignoreSameSubfolderConflicts = true;
+        private bool _iniCardMode = true;
+        private bool _homeCardMode = false;
         private string _updateDriveUrl = UiTheme.DefaultUpdateDriveUrl;
 
         private readonly string _appDataDir;
@@ -53,13 +53,11 @@ namespace TOTVSHub
         private List<ConflictRule> _conflictRules = new List<ConflictRule>();
         private List<CustomLinkButton> _customLinks = new List<CustomLinkButton>();
 
-        // Secoes protegidas que nao podem ser excluidas nem ter o nome editado
         private static readonly HashSet<string> ProtectedIniSections = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "environment", "topconnect", "drivers", "tcp", "general", "webapp"
         };
 
-        // Tags que recebem icone de pasta para abrir o seletor pre-posicionado
         private static readonly HashSet<string> PathTagKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "ConsoleFile", "StartPath", "RootPath", "RPOCustom", "SourcePath"
@@ -73,7 +71,6 @@ namespace TOTVSHub
         private bool _isInDashboardView = true;
         private DateTime _lastUpdatedTime = DateTime.Now;
 
-        // Estado para arraste fluido em tela cheia entre monitores
         private bool _isDraggingFromMaximized = false;
         private Point _maxDragStartPoint;
         private double _maxDragRatioX = 0.5;
@@ -117,7 +114,6 @@ namespace TOTVSHub
             if (!Directory.Exists(_appDataDir))
                 Directory.CreateDirectory(_appDataDir);
 
-            // Carrega/copia a logo oficial totvs_white.svg para AppData automaticamente
             _cachedSvgPath = TotvsLogo.EnsureTotvsWhiteSvgInAppData(_appDataDir);
 
             _configPath = Path.Combine(_appDataDir, "config.txt");
@@ -422,7 +418,7 @@ namespace TOTVSHub
             }
             else
             {
-                _iniCardMode = true; // Padrao ativado
+                _iniCardMode = true;
             }
 
             if (File.Exists(_homeCardModePrefPath))
@@ -432,7 +428,7 @@ namespace TOTVSHub
             }
             else
             {
-                _homeCardMode = false; // Padrao lista
+                _homeCardMode = false;
             }
 
             if (File.Exists(_driveUrlPrefPath))
@@ -669,7 +665,7 @@ namespace TOTVSHub
 
             titleBar.PreviewMouseLeftButtonDown += delegate(object s, MouseButtonEventArgs e)
             {
-                // Ignora cliques em botoes do topo
+
                 DependencyObject dep = e.OriginalSource as DependencyObject;
                 while (dep != null && dep != titleBar)
                 {
@@ -751,7 +747,6 @@ namespace TOTVSHub
             rightControls.VerticalAlignment = VerticalAlignment.Center;
             DockPanel.SetDock(rightControls, Dock.Right);
 
-            // Sempre garante o Sino + Sanduiche padronizados na mesma posicao em todas as telas
             StackPanel standardNavIcons = CreateStandardTopRightIcons();
             if (rightExtraControls != null)
             {
@@ -769,7 +764,6 @@ namespace TOTVSHub
             btnMin.ToolTip = "Minimizar";
             btnMin.Click += delegate { WindowState = WindowState.Minimized; };
 
-            // Botao Maximizar / Tirar da Tela Cheia (icone de aba dupla quando maximizado)
             Button btnMax = UiTheme.CreateWindowButton(
                 UiTheme.CreateWindowStateGlyph(WindowState == WindowState.Maximized, UiTheme.TextSecondary),
                 UiTheme.NeutralBtnHoverHex);

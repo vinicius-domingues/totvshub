@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -11,9 +11,7 @@ namespace TOTVSHub
 {
     public partial class MainWindow : Window
     {
-        // =====================================================================
-        // CADASTRO DE DIRETORIO INICIAL (ONBOARDING QUANDO C:\bases NAO EXISTE)
-        // =====================================================================
+
         private void ShowOnboardingView()
         {
             _isInDashboardView = false;
@@ -46,7 +44,6 @@ namespace TOTVSHub
             StackPanel stack = new StackPanel();
             stack.HorizontalAlignment = HorizontalAlignment.Stretch;
 
-            // Logo oficial TOTVS sem fundo (transparente)
             UIElement logoIcon = TotvsLogo.CreateTotvsWhiteSvgLogo(_cachedSvgPath, 52);
             FrameworkElement fe = logoIcon as FrameworkElement;
             if (fe != null)
@@ -231,8 +228,6 @@ namespace TOTVSHub
             }
             catch { }
 
-            // Exibe imediatamente a tela de dashboard com a animacao vetorial (CreateVectorLoadingScreen)
-            // e dispara a primeira varredura antes de exibir os cards
             ShowDashboardView();
             CarregarAmbientesAsync(false);
         }
