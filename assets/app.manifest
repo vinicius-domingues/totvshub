@@ -5,8 +5,8 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <!-- Execução com nível padrão (asInvoker), evitando UAC Virtualization indevida -->
-        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+        <!-- Execucao com privilegios de Administrador para controle total de servicos e processos Protheus -->
+        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>

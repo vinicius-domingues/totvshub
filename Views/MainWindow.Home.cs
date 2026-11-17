@@ -1331,10 +1331,48 @@ namespace TOTVSHub
             }
         }
 
-        private void IniciarPorLinhaDeComandoOuServico(AmbienteInfo amb)
+        private static void ExecutarComandoSilencioso(string fileName, string args, bool tentarElevadoSeFalhar)
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = fileName;
+                psi.Arguments = args;
+                psi.CreateNoWindow = true;
+                psi.UseShellExecute = false;
+                using (Process p = Process.Start(psi))
+                {
+                    if (p != null)
+                        p.WaitForExit(3000);
+                }
+            }
+            catch
+            {
+                if (tentarElevadoSeFalhar)
+                {
+                    try
+                    {
+                        ProcessStartInfo psiElevated = new ProcessStartInfo();
+                        psiElevated.FileName = fileName;
+                        psiElevated.Arguments = args;
+                        psiElevated.Verb = "runas";
+                        psiElevated.UseShellExecute = true;
+                        psiElevated.WindowStyle = ProcessWindowStyle.Hidden;
+                        using (Process p = Process.Start(psiElevated))
+                        {
+                            if (p != null)
+                                p.WaitForExit(3000);
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
+
+        private void IniciarPorLinhaDeComandoOuServico(AmbienteInfo amb, bool preferService = true)
         {
             bool startedService = false;
-            if (amb.IsServiceRegistered && !string.IsNullOrEmpty(amb.ServiceName))
+            if (preferService && amb.IsServiceRegistered && !string.IsNullOrEmpty(amb.ServiceName))
             {
                 try
                 {
@@ -1352,7 +1390,12 @@ namespace TOTVSHub
                         }
                     }
                 }
-                catch { }
+                catch
+                {
+                    ExecutarComandoSilencioso("net.exe", string.Format("start \"{0}\"", amb.ServiceName), true);
+                    Thread.Sleep(1000);
+                    startedService = true;
+                }
             }
 
             if (!startedService && File.Exists(amb.ExePath))
@@ -1369,7 +1412,6 @@ namespace TOTVSHub
                 }
                 catch (System.ComponentModel.Win32Exception)
                 {
-
                     try
                     {
                         ProcessStartInfo fallback = new ProcessStartInfo();
@@ -1387,20 +1429,27 @@ namespace TOTVSHub
 
         private void PararPorPidOuServico(AmbienteInfo amb)
         {
-            if (amb.RunningAsService && !string.IsNullOrEmpty(amb.ServiceName))
+            if (!string.IsNullOrEmpty(amb.ServiceName))
             {
                 try
                 {
                     using (ServiceController sc = new ServiceController(amb.ServiceName))
                     {
-                        if (sc.Status != ServiceControllerStatus.Stopped && sc.Status != ServiceControllerStatus.StopPending)
+                        if (sc.Status != ServiceControllerStatus.Stopped)
                         {
-                            sc.Stop();
-                            sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(8));
+                            if (sc.Status != ServiceControllerStatus.StopPending)
+                            {
+                                sc.Stop();
+                            }
+                            sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(6));
                         }
                     }
                 }
-                catch { }
+                catch
+                {
+                    ExecutarComandoSilencioso("net.exe", string.Format("stop \"{0}\" /y", amb.ServiceName), true);
+                    ExecutarComandoSilencioso("sc.exe", string.Format("stop \"{0}\"", amb.ServiceName), true);
+                }
             }
 
             if (amb.Pid > 0)
@@ -1412,11 +1461,93 @@ namespace TOTVSHub
                         if (!p.HasExited)
                         {
                             p.Kill();
-                            p.WaitForExit(4000);
+                            p.WaitForExit(3000);
+                        }
+                    }
+                }
+                catch
+                {
+                    ExecutarComandoSilencioso("taskkill.exe", string.Format("/F /T /PID {0}", amb.Pid), true);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(amb.ExePath) && File.Exists(amb.ExePath))
+            {
+                string targetExeNorm = NormalizePath(amb.ExePath);
+                try
+                {
+                    foreach (Process p in Process.GetProcesses())
+                    {
+                        try
+                        {
+                            if (p.ProcessName.IndexOf("appserver", StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                string pPath = NativeWin32.GetProcessImagePathSafe(p.Id);
+                                if (string.IsNullOrEmpty(pPath))
+                                {
+                                    try { pPath = p.MainModule.FileName; } catch { }
+                                }
+                                if (!string.IsNullOrEmpty(pPath) && string.Equals(NormalizePath(pPath), targetExeNorm, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    try
+                                    {
+                                        if (!p.HasExited)
+                                        {
+                                            p.Kill();
+                                            p.WaitForExit(2000);
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        ExecutarComandoSilencioso("taskkill.exe", string.Format("/F /T /PID {0}", p.Id), true);
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+                        finally
+                        {
+                            p.Dispose();
                         }
                     }
                 }
                 catch { }
+            }
+
+            int waited = 0;
+            while (waited < 5000)
+            {
+                bool anyAlive = false;
+                if (amb.Pid > 0)
+                {
+                    try
+                    {
+                        using (Process p = Process.GetProcessById(amb.Pid))
+                        {
+                            if (!p.HasExited) anyAlive = true;
+                        }
+                    }
+                    catch { }
+                }
+
+                if (!anyAlive && !string.IsNullOrEmpty(amb.ServiceName))
+                {
+                    try
+                    {
+                        using (ServiceController sc = new ServiceController(amb.ServiceName))
+                        {
+                            if (sc.Status != ServiceControllerStatus.Stopped)
+                                anyAlive = true;
+                        }
+                    }
+                    catch { }
+                }
+
+                if (!anyAlive)
+                    break;
+
+                Thread.Sleep(250);
+                waited += 250;
             }
         }
 
@@ -1440,8 +1571,8 @@ namespace TOTVSHub
             {
                 try
                 {
-                    IniciarPorLinhaDeComandoOuServico(amb);
-                    Thread.Sleep(1200);
+                    IniciarPorLinhaDeComandoOuServico(amb, amb.IsServiceRegistered);
+                    Thread.Sleep(1500);
                     SincronizarEstadoProcessosEServicos(_ambientes.ToList(), fetchUser);
                 }
                 finally
@@ -1473,7 +1604,7 @@ namespace TOTVSHub
                 try
                 {
                     PararPorPidOuServico(amb);
-                    Thread.Sleep(900);
+                    Thread.Sleep(800);
                 }
                 finally
                 {
@@ -1497,21 +1628,24 @@ namespace TOTVSHub
             amb.State = EnvRunState.Initializing;
             AtualizarResumoEVisualCards();
             bool fetchUser = _showProcessUser;
+            bool wasService = amb.RunningAsService && !string.IsNullOrEmpty(amb.ServiceName);
 
             ThreadPool.QueueUserWorkItem(delegate
             {
                 try
                 {
                     PararPorPidOuServico(amb);
-                    Thread.Sleep(1000);
-                    IniciarPorLinhaDeComandoOuServico(amb);
-                    Thread.Sleep(1200);
+                    Thread.Sleep(1500);
+                    IniciarPorLinhaDeComandoOuServico(amb, wasService);
+                    Thread.Sleep(2000);
+                    SincronizarEstadoProcessosEServicos(_ambientes.ToList(), fetchUser);
                 }
                 finally
                 {
                     Dispatcher.BeginInvoke(new Action(delegate
                     {
-                        amb.State = EnvRunState.Stopped;
+                        if (amb.State == EnvRunState.Initializing)
+                            amb.State = EnvRunState.Stopped;
                         SincronizarEstadoProcessosEServicos(new List<AmbienteInfo> { amb }, fetchUser);
                         AtualizarResumoEVisualCards();
                     }));
