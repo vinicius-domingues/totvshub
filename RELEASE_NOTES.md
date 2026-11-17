@@ -2,13 +2,16 @@
 
 ## 🛡️ Verificação de Integridade (SHA-256)
 ```text
-Arquivo: TOTVSHub.exe
-SHA-256: 947A7A5AE1710F5384CC1563CF61A6034A118CF02649746881E4167097CDAA2E
+Instalador: TOTVSHub_Setup_v2.4.0.exe
+SHA-256:    A213986540EF7AC77EFB4959CC7D71C8B3396DC8BE287684B2C3D61BB18AACD4
+
+Portátil:   TOTVSHub.exe
+SHA-256:    947A7A5AE1710F5384CC1563CF61A6034A118CF02649746881E4167097CDAA2E
 ```
 
 Para verificar no PowerShell:
 ```powershell
-Get-FileHash .\TOTVSHub.exe -Algorithm SHA256
+Get-FileHash .\TOTVSHub_Setup_v2.4.0.exe -Algorithm SHA256
 ```
 
 ---
@@ -20,6 +23,8 @@ Get-FileHash .\TOTVSHub.exe -Algorithm SHA256
 - **Alternador de Visualização na Home**:
   - Novo botão de organização ao lado de "Ocultos" para alternar os cards de ambientes em 2 colunas dinâmicas ou lista corrida.
 - **Segurança e Hardening de Código**:
+  - **Código Protegido contra Engenharia Reversa**: Ofuscado com achatamento de fluxo e criptografia de strings via Obfuscar.
+  - **Assinatura Digital Authenticode**: Carimbo de tempo RFC 3161 DigiCert garantindo procedência e integridade.
   - **Gravação Atômica de Arquivos**: O `appserver.ini` é gravado via swap temporário e cópia de segurança (`.bak`), impossibilitando corrupção em quedas de energia.
   - **Sanitização de URLs**: Validação estrita de protocolos `http://` e `https://` antes de qualquer execução externa via shell.
   - **Proteção contra Path Traversal**: Validação de caminhos canônicos absolutos ao navegar no explorer e carregar pastas de logs.
@@ -34,18 +39,20 @@ Get-FileHash .\TOTVSHub.exe -Algorithm SHA256
 ```text
 🚀 Lançamento Oficial do TOTVSHub v2.4.0: Produtividade e Segurança para Administradores TOTVS Protheus!
 
-Quem gerencia múltiplos ambientes AppServer conhece o desafio: portas duplicadas, chaves concorrentes no appserver.ini e alternância manual entre consoles e serviços do Windows.
+Quem gerencia múltiplos ambientes AppServer conhece a rotina: portas concorrentes, chaves espalhadas no appserver.ini e alternância manual entre consoles e serviços do Windows.
 
-O TOTVSHub foi desenvolvido para simplificar essa rotina com segurança e eficiência:
-🔹 Monitoramento em tempo real de serviços e consoles Protheus com identificação de PID;
-🔹 Editor visual de appserver.ini com layout responsivo em Cards (Masonry) ou Lista;
-🔹 Gravação atômica segura contra corrupção de arquivos de configuração;
-🔹 Detecção automática de conflitos de portas e chaves monitoradas;
-🔹 Atalhos web diretos para Protheus WebApp, REST e WebServices;
-🔹 100% nativo para Windows 10 e 11, sem instaladores pesados ou dependências externas.
+O TOTVSHub foi desenvolvido para simplificar essa operação com foco em segurança, rapidez e visual limpo:
 
-📦 Baixe a versão oficial e confira a integridade SHA-256 no GitHub:
-[Link do Repositório ou Release no GitHub]
+🔹 Monitoramento em tempo real de serviços e consoles Protheus com identificação do PID;
+🔹 Editor visual de appserver.ini: layout em Cards Dinâmicos (Masonry) ou Lista tradicional;
+🔹 Alternador de exibição na tela inicial (Grid vs. Lista);
+🔹 Gravação atômica segura: prevenção física contra corrupção do .ini em quedas de energia;
+🔹 Sanitização e validação de URLs contra execução maliciosa de comandos;
+🔹 Instalador oficial com assistente e atalhos, ou executável portátil protegido;
+🔹 100% nativo para Windows 10 e 11, sem dependências pesadas.
 
-#TOTVS #Protheus #ERP #Dev #DotNet #SoftwareEngineering #SysAdmin #Tech
+📦 Baixe a versão oficial (com integridade SHA-256 verificável):
+https://github.com/vinicius-domingues/totvshub/releases/tag/v2.4.0
+
+#TOTVS #Protheus #ERP #Dev #DotNet #SoftwareEngineering #SysAdmin #OpenSource #Tech
 ```

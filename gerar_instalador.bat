@@ -20,17 +20,7 @@ if "!ISCC!"=="" (
 )
 
 if "!ISCC!"=="" (
-    echo [AVISO] O compilador Inno Setup ainda nao esta instalado no sistema.
-    echo.
-    echo Foi encontrado o arquivo baixado em Downloads:
-    echo   %USERPROFILE%\Downloads\innosetup-7.1.1-x64.exe
-    echo.
-    echo Deseja abrir a instalacao do Inno Setup agora? (S/N)
-    set /p RESP="> "
-    if /i "!RESP!"=="S" (
-        start "" "%USERPROFILE%\Downloads\innosetup-7.1.1-x64.exe"
-        echo Instalador aberto na tela. Conclua a instalacao e execute este script novamente!
-    )
+    echo [ERRO] Compilador Inno Setup nao encontrado.
     pause
     exit /b 1
 )
