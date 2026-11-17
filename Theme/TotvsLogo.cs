@@ -156,32 +156,16 @@ fill=""#ffffff"" stroke=""none"">
             logoPath.Data = BuildTotvsLogoGeometry(cachedSvgPath);
             logoPath.Fill = Brushes.White;
             logoPath.Stretch = Stretch.Uniform;
+            logoPath.Width = targetSize;
+            logoPath.Height = targetSize;
             logoPath.VerticalAlignment = VerticalAlignment.Center;
             logoPath.HorizontalAlignment = HorizontalAlignment.Center;
 
-            if (UiTheme.IsDark)
-            {
-                logoPath.Width = targetSize;
-                logoPath.Height = targetSize;
-                return logoPath;
-            }
-            else
-            {
-                // No tema claro, envolve o logo branco (#FFFFFF) em um badge escuro elegante para manter o logo 100% branco e visivel
-                Border darkBadge = new Border();
-                darkBadge.Width = targetSize + 8;
-                darkBadge.Height = targetSize + 8;
-                darkBadge.CornerRadius = new CornerRadius((targetSize + 8) * 0.24);
-                darkBadge.Background = UiTheme.BrushFromHex("#0F172A");
-                darkBadge.VerticalAlignment = VerticalAlignment.Center;
-                logoPath.Width = targetSize - 2;
-                logoPath.Height = targetSize - 2;
-                darkBadge.Child = logoPath;
-                return darkBadge;
-            }
+            return logoPath;
         }
 
         // Renderiza o icone oficial em BitmapSource WPF (para Window.Icon, .ico e Bandeja do Windows)
+        // Icone branco com contorno (stroke) azul escuro elegante para perfeito contraste mesmo em fundo branco
         public static BitmapSource RenderTotvsIconBitmapSource(string cachedSvgPath, int size)
         {
             Grid root = new Grid();
@@ -189,12 +173,19 @@ fill=""#ffffff"" stroke=""none"">
             root.Height = size;
             root.Background = Brushes.Transparent;
 
+            // Stroke azul escuro proporcional ao tamanho do ícone
+            double strokeThickness = Math.Max(1.5, size * 0.045);
+            Brush darkBlueBrush = (SolidColorBrush)(new BrushConverter().ConvertFrom("#0B1E38"));
+
             System.Windows.Shapes.Path logoPath = new System.Windows.Shapes.Path();
             logoPath.Data = BuildTotvsLogoGeometry(cachedSvgPath);
             logoPath.Fill = Brushes.White;
+            logoPath.Stroke = darkBlueBrush;
+            logoPath.StrokeThickness = strokeThickness;
+            logoPath.StrokeLineJoin = PenLineJoin.Round;
             logoPath.Stretch = Stretch.Uniform;
-            logoPath.Width = size * 0.90;
-            logoPath.Height = size * 0.90;
+            logoPath.Width = size * 0.88;
+            logoPath.Height = size * 0.88;
             logoPath.HorizontalAlignment = HorizontalAlignment.Center;
             logoPath.VerticalAlignment = VerticalAlignment.Center;
 

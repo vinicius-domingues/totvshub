@@ -324,10 +324,21 @@ namespace TOTVSHub
             try
             {
                 string url = string.IsNullOrWhiteSpace(_updateDriveUrl) ? UiTheme.DefaultUpdateDriveUrl : _updateDriveUrl.Trim();
-                ProcessStartInfo psi = new ProcessStartInfo();
-                psi.FileName = url;
-                psi.UseShellExecute = true;
-                Process.Start(psi);
+                if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                    !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                {
+                    url = "https://" + url;
+                }
+
+                Uri uriResult;
+                if (Uri.TryCreate(url, UriKind.Absolute, out uriResult) &&
+                    (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
+                {
+                    ProcessStartInfo psi = new ProcessStartInfo();
+                    psi.FileName = uriResult.AbsoluteUri;
+                    psi.UseShellExecute = true;
+                    Process.Start(psi);
+                }
             }
             catch (Exception ex)
             {

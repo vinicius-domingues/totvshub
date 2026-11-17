@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.ServiceProcess;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
@@ -123,6 +124,60 @@ namespace TOTVSHub
                 RenderizarCards();
             };
 
+            // Alternador de Modo de Visualização na Home (Cards 2 por linha vs Lista)
+            Border homeToggleGroup = new Border();
+            homeToggleGroup.Background = UiTheme.BgHeader;
+            homeToggleGroup.BorderBrush = UiTheme.BorderSubtle;
+            homeToggleGroup.BorderThickness = new Thickness(1);
+            homeToggleGroup.CornerRadius = new CornerRadius(8);
+            homeToggleGroup.Padding = new Thickness(2);
+            homeToggleGroup.Margin = new Thickness(0, 0, 10, 0);
+
+            StackPanel homeToggleBtns = new StackPanel();
+            homeToggleBtns.Orientation = Orientation.Horizontal;
+
+            _btnViewCardsHome = new Button();
+            _btnViewCardsHome.ToolTip = "Modo Cards (2 por linha)";
+            _btnViewCardsHome.Padding = new Thickness(8, 6, 8, 6);
+            _btnViewCardsHome.Cursor = System.Windows.Input.Cursors.Hand;
+            _btnViewCardsHome.BorderThickness = new Thickness(0);
+
+            _btnViewListHome = new Button();
+            _btnViewListHome.ToolTip = "Modo Lista (Largura total)";
+            _btnViewListHome.Padding = new Thickness(8, 6, 8, 6);
+            _btnViewListHome.Cursor = System.Windows.Input.Cursors.Hand;
+            _btnViewListHome.BorderThickness = new Thickness(0);
+
+            homeToggleBtns.Children.Add(_btnViewCardsHome);
+            homeToggleBtns.Children.Add(_btnViewListHome);
+            homeToggleGroup.Child = homeToggleBtns;
+
+            Action updateHomeViewToggleVisual = delegate
+            {
+                _btnViewCardsHome.Background = _homeCardMode ? UiTheme.PrimaryBlueBrush : Brushes.Transparent;
+                _btnViewCardsHome.Content = UiTheme.CreateGridCardIcon(_homeCardMode ? Brushes.White : UiTheme.TextSecondary, 15);
+
+                _btnViewListHome.Background = !_homeCardMode ? UiTheme.PrimaryBlueBrush : Brushes.Transparent;
+                _btnViewListHome.Content = UiTheme.CreateListIcon(!_homeCardMode ? Brushes.White : UiTheme.TextSecondary, 15);
+            };
+            updateHomeViewToggleVisual();
+
+            Action<bool> switchHomeView = delegate(bool cardMode)
+            {
+                if (_homeCardMode == cardMode) return;
+                _homeCardMode = cardMode;
+                try
+                {
+                    File.WriteAllText(_homeCardModePrefPath, _homeCardMode ? "1" : "0", Encoding.UTF8);
+                }
+                catch { }
+                updateHomeViewToggleVisual();
+                RenderizarCards();
+            };
+
+            _btnViewCardsHome.Click += delegate { switchHomeView(true); };
+            _btnViewListHome.Click += delegate { switchHomeView(false); };
+
             _refreshIconPath = UiTheme.CreateThinRefreshIcon(UiTheme.AccentLightBlue);
             Button btnReload = UiTheme.CreateFramelessIconButton(
                 _refreshIconPath,
@@ -134,6 +189,7 @@ namespace TOTVSHub
             };
 
             rightTools.Children.Add(_btnToggleHiddenView);
+            rightTools.Children.Add(homeToggleGroup);
             rightTools.Children.Add(btnReload);
             Grid.SetColumn(rightTools, 2);
             toolGrid.Children.Add(rightTools);
@@ -205,18 +261,36 @@ namespace TOTVSHub
             Grid.SetRow(_loadingTrackGrid, 2);
             rootGrid.Children.Add(_loadingTrackGrid);
 
-            // ================= CONTAINER DE AMBIENTES (SEMPRE MODO LISTA) =================
+            // ================= CONTAINER DE AMBIENTES (MODO CARDS 2 POR LINHA OU LISTA) =================
             ScrollViewer scroll = new ScrollViewer();
             scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
             scroll.Padding = new Thickness(20, 4, 20, 18);
             _cardsScrollViewer = scroll;
 
-            StackPanel sp = new StackPanel();
-            _cardsContainer = sp;
+            if (_homeCardMode)
+            {
+                Grid homeGrid = new Grid();
+                homeGrid.HorizontalAlignment = HorizontalAlignment.Stretch;
+                _cardsContainer = homeGrid;
+            }
+            else
+            {
+                StackPanel sp = new StackPanel();
+                sp.HorizontalAlignment = HorizontalAlignment.Stretch;
+                _cardsContainer = sp;
+            }
 
             scroll.Content = _cardsContainer;
             Grid.SetRow(scroll, 3);
             rootGrid.Children.Add(scroll);
+
+            scroll.SizeChanged += delegate
+            {
+                if (_homeCardMode && _cardsContainer is Grid)
+                {
+                    AtualizarColunasGridMaximizado();
+                }
+            };
 
             _pageHost.Content = rootGrid;
             RenderizarCards();
@@ -224,7 +298,10 @@ namespace TOTVSHub
 
         private void AtualizarColunasGridMaximizado()
         {
-            // Sempre mantido em modo de lista (StackPanel)
+            if (_homeCardMode)
+            {
+                RenderizarCards();
+            }
         }
 
         private void GirarIconeAtualizacao1x()
@@ -278,16 +355,31 @@ namespace TOTVSHub
 
         private void RenderizarCards()
         {
-            if (_cardsContainer == null) return;
-
-            if (_cardsScrollViewer != null && !(_cardsContainer is StackPanel))
-            {
-                StackPanel spNew = new StackPanel();
-                _cardsContainer = spNew;
-                _cardsScrollViewer.Content = _cardsContainer;
-            }
+            if (_cardsScrollViewer == null) return;
 
             AtualizarBotaoOcultos();
+
+            if (_homeCardMode)
+            {
+                if (!(_cardsContainer is Grid))
+                {
+                    Grid homeGrid = new Grid();
+                    homeGrid.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    _cardsContainer = homeGrid;
+                    _cardsScrollViewer.Content = _cardsContainer;
+                }
+            }
+            else
+            {
+                if (!(_cardsContainer is StackPanel))
+                {
+                    StackPanel spNew = new StackPanel();
+                    spNew.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    _cardsContainer = spNew;
+                    _cardsScrollViewer.Content = _cardsContainer;
+                }
+            }
+
             _cardsContainer.Children.Clear();
 
             // Animacao vetorial enquanto a primeira varredura nao conclui
@@ -302,7 +394,7 @@ namespace TOTVSHub
                 ? _searchBox.Text.Trim().ToLowerInvariant()
                 : "";
 
-            int visiveis = 0;
+            List<Tuple<AmbienteInfo, bool>> listaAmbientesParaExibir = new List<Tuple<AmbienteInfo, bool>>();
 
             foreach (AmbienteInfo amb in _ambientes)
             {
@@ -331,12 +423,10 @@ namespace TOTVSHub
                     if (!match) continue;
                 }
 
-                visiveis++;
-                Border cardUi = CriarCardAmbiente(amb, isHidden);
-                _cardsContainer.Children.Add(cardUi);
+                listaAmbientesParaExibir.Add(new Tuple<AmbienteInfo, bool>(amb, isHidden));
             }
 
-            if (visiveis == 0)
+            if (listaAmbientesParaExibir.Count == 0)
             {
                 Border emptyBox = new Border();
                 emptyBox.Background = UiTheme.BgCard;
@@ -360,6 +450,77 @@ namespace TOTVSHub
                 emptyBox.Child = emptyTxt;
 
                 _cardsContainer.Children.Add(emptyBox);
+                AtualizarResumoEVisualCards();
+                return;
+            }
+
+            if (!_homeCardMode)
+            {
+                // ================= MODO LISTA: LARGURA TOTAL EMPILHADA =================
+                foreach (var item in listaAmbientesParaExibir)
+                {
+                    Border cardUi = CriarCardAmbiente(item.Item1, item.Item2);
+                    _cardsContainer.Children.Add(cardUi);
+                }
+            }
+            else
+            {
+                // ================= MODO CARDS: GRADE DINAMICA MASONRY (2 POR LINHA) =================
+                Grid gridContainer = _cardsContainer as Grid;
+                if (gridContainer != null)
+                {
+                    gridContainer.Children.Clear();
+                    gridContainer.ColumnDefinitions.Clear();
+
+                    double availW = _cardsScrollViewer.ActualWidth > 0 ? _cardsScrollViewer.ActualWidth : ActualWidth;
+                    // Se a tela for muito estreita (< 780px), usa 1 coluna; caso contrario, 2 colunas
+                    int numCols = availW < 780 ? 1 : 2;
+
+                    List<StackPanel> colPanels = new List<StackPanel>();
+                    List<double> colHeights = new List<double>();
+
+                    for (int c = 0; c < numCols; c++)
+                    {
+                        ColumnDefinition cd = new ColumnDefinition();
+                        cd.Width = new GridLength(1, GridUnitType.Star);
+                        gridContainer.ColumnDefinitions.Add(cd);
+
+                        StackPanel colStack = new StackPanel();
+                        colStack.HorizontalAlignment = HorizontalAlignment.Stretch;
+                        colStack.Margin = new Thickness(0, 0, c < numCols - 1 ? 14 : 0, 0);
+
+                        Grid.SetColumn(colStack, c);
+                        gridContainer.Children.Add(colStack);
+                        colPanels.Add(colStack);
+                        colHeights.Add(0.0);
+                    }
+
+                    foreach (var item in listaAmbientesParaExibir)
+                    {
+                        AmbienteInfo amb = item.Item1;
+                        bool isHidden = item.Item2;
+                        Border cardUi = CriarCardAmbiente(amb, isHidden);
+
+                        // Estimativa de altura para equilibrar o preenchimento sem deixar buracos
+                        string nText;
+                        bool hasNote = _cardNotes.TryGetValue(amb.AppDir, out nText) && !string.IsNullOrWhiteSpace(nText);
+                        double estimatedHeight = 110 + (hasNote ? 48 : 0);
+
+                        int bestCol = 0;
+                        double minH = colHeights[0];
+                        for (int c = 1; c < numCols; c++)
+                        {
+                            if (colHeights[c] < minH)
+                            {
+                                minH = colHeights[c];
+                                bestCol = c;
+                            }
+                        }
+
+                        colPanels[bestCol].Children.Add(cardUi);
+                        colHeights[bestCol] += estimatedHeight;
+                    }
+                }
             }
 
             AtualizarResumoEVisualCards();
@@ -1084,6 +1245,19 @@ namespace TOTVSHub
 
         private void AbrirUrlNoNavegador(string url, int delaySeconds)
         {
+            if (string.IsNullOrWhiteSpace(url)) return;
+            url = url.Trim();
+            if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                url = "http://" + url;
+            }
+
+            Uri uriResult;
+            bool isSafe = Uri.TryCreate(url, UriKind.Absolute, out uriResult)
+                && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
+            if (!isSafe) return;
+
             ThreadPool.QueueUserWorkItem(delegate
             {
                 if (delaySeconds > 0)
@@ -1091,7 +1265,7 @@ namespace TOTVSHub
                 try
                 {
                     ProcessStartInfo psi = new ProcessStartInfo();
-                    psi.FileName = url;
+                    psi.FileName = uriResult.AbsoluteUri;
                     psi.UseShellExecute = true;
                     Process.Start(psi);
                 }

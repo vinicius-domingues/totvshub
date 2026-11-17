@@ -583,6 +583,36 @@ namespace TOTVSHub
             return arrow;
         }
 
+        // Icone de 4 blocos (Modo Cards / Grade)
+        public static UIElement CreateGridCardIcon(Brush strokeBrush, double size = 14)
+        {
+            System.Windows.Shapes.Path p = new System.Windows.Shapes.Path();
+            p.Data = Geometry.Parse("M 2,2 L 8,2 L 8,8 L 2,8 Z M 11,2 L 17,2 L 17,8 L 11,8 Z M 2,11 L 8,11 L 8,17 L 2,17 Z M 11,11 L 17,11 L 17,17 L 11,17 Z");
+            p.Stroke = strokeBrush;
+            p.StrokeThickness = 1.6;
+            p.Width = size;
+            p.Height = size;
+            p.Stretch = Stretch.Uniform;
+            p.VerticalAlignment = VerticalAlignment.Center;
+            return p;
+        }
+
+        // Icone de Linhas / Lista
+        public static UIElement CreateListIcon(Brush strokeBrush, double size = 14)
+        {
+            System.Windows.Shapes.Path p = new System.Windows.Shapes.Path();
+            p.Data = Geometry.Parse("M 2,4 L 17,4 M 2,9.5 L 17,9.5 M 2,15 L 17,15");
+            p.Stroke = strokeBrush;
+            p.StrokeThickness = 1.8;
+            p.StrokeStartLineCap = PenLineCap.Round;
+            p.StrokeEndLineCap = PenLineCap.Round;
+            p.Width = size;
+            p.Height = size;
+            p.Stretch = Stretch.Uniform;
+            p.VerticalAlignment = VerticalAlignment.Center;
+            return p;
+        }
+
         public const double WebButtonWidth = 128;
 
         // Conteudo visual para botoes de links web: [Globo] [Label] ........ [↗]

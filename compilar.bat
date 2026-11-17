@@ -7,7 +7,10 @@ taskkill /F /IM TOTVSHub.exe >nul 2>&1
 set "ICO_ARG="
 if exist "totvs_white.ico" set "ICO_ARG=/win32icon:totvs_white.ico"
 
-"%FW%\csc.exe" /nologo /target:winexe /out:TOTVSHub.exe %ICO_ARG% ^
+set "MANIFEST_ARG="
+if exist "app.manifest" set "MANIFEST_ARG=/win32manifest:app.manifest"
+
+"%FW%\csc.exe" /nologo /target:winexe /out:TOTVSHub.exe %ICO_ARG% %MANIFEST_ARG% ^
   /reference:System.dll ^
   /reference:System.Core.dll ^
   /reference:System.Drawing.dll ^

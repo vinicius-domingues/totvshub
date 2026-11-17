@@ -466,6 +466,7 @@ namespace TOTVSHub
 
             TextBox txtNewBtnLabel;
             FrameworkElement boxNewBtnLabel = CreateTextSettingBoxContainer("Digite aqui", out txtNewBtnLabel);
+            txtNewBtnLabel.Text = "Digite aqui";
             addColName.Children.Add(boxNewBtnLabel);
             Grid.SetColumn(addColName, 0);
             addLinkGrid.Children.Add(addColName);
@@ -500,7 +501,7 @@ namespace TOTVSHub
 
                 tempLinks.Add(new CustomLinkButton(lbl, form, false));
                 renderUserLinks();
-                txtNewBtnLabel.Text = "";
+                txtNewBtnLabel.Text = "Digite aqui";
                 txtNewBtnFormula.Text = "";
             };
             Grid.SetColumn(btnAddLink, 2);
@@ -526,7 +527,7 @@ namespace TOTVSHub
             ContentControl addBtnHost = new ContentControl();
             Action updateAddPreview = delegate
             {
-                string previewText = !string.IsNullOrWhiteSpace(txtNewBtnLabel.Text) ? txtNewBtnLabel.Text.Trim() : "Novo Botão";
+                string previewText = !string.IsNullOrWhiteSpace(txtNewBtnLabel.Text) ? txtNewBtnLabel.Text.Trim() : "Digite aqui";
                 Button btnPreview = UiTheme.CreateWebLinkButton(previewText, UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
                 btnPreview.ToolTip = "Prévia de como este botão aparecerá no card";
                 addBtnHost.Content = btnPreview;

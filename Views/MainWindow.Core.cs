@@ -26,6 +26,8 @@ namespace TOTVSHub
         private bool _showProcessUser = true;
         private bool _showIniComments = false; // Padrao desmarcado
         private bool _ignoreSameSubfolderConflicts = true; // Desconsiderar duplicidade entre ambientes da mesma subpasta (padrao ativado)
+        private bool _iniCardMode = true; // Padrao: modo card para secoes
+        private bool _homeCardMode = false; // Modo de visualizacao na Home (false = lista, true = cards em 2 colunas)
         private string _updateDriveUrl = UiTheme.DefaultUpdateDriveUrl;
 
         private readonly string _appDataDir;
@@ -40,6 +42,8 @@ namespace TOTVSHub
         private readonly string _showUserPrefPath;
         private readonly string _showCommentsPrefPath;
         private readonly string _ignoreSameSubfolderPrefPath;
+        private readonly string _iniCardModePrefPath;
+        private readonly string _homeCardModePrefPath;
         private readonly string _rulesPrefPath;
         private readonly string _customLinksPrefPath;
         private readonly string _driveUrlPrefPath;
@@ -87,6 +91,8 @@ namespace TOTVSHub
         private TextBlock _lastUpdateLabel;
         private TextBlock _statsLabel;
         private Button _btnToggleHiddenView;
+        private Button _btnViewCardsHome;
+        private Button _btnViewListHome;
         private Border _alertBadge;
         private TextBlock _alertCountText;
         private System.Windows.Shapes.Path _refreshIconPath;
@@ -124,6 +130,8 @@ namespace TOTVSHub
             _showUserPrefPath = Path.Combine(_appDataDir, "show_pid_user.txt");
             _showCommentsPrefPath = Path.Combine(_appDataDir, "show_ini_comments.txt");
             _ignoreSameSubfolderPrefPath = Path.Combine(_appDataDir, "ignore_same_subfolder.txt");
+            _iniCardModePrefPath = Path.Combine(_appDataDir, "ini_card_mode.txt");
+            _homeCardModePrefPath = Path.Combine(_appDataDir, "home_card_mode.txt");
             _rulesPrefPath = Path.Combine(_appDataDir, "alert_rules.txt");
             _customLinksPrefPath = Path.Combine(_appDataDir, "custom_links.txt");
             _driveUrlPrefPath = Path.Combine(_appDataDir, "drive_url.txt");
@@ -405,6 +413,26 @@ namespace TOTVSHub
             else
             {
                 _ignoreSameSubfolderConflicts = true;
+            }
+
+            if (File.Exists(_iniCardModePrefPath))
+            {
+                string mVal = File.ReadAllText(_iniCardModePrefPath, Encoding.UTF8).Trim();
+                _iniCardMode = !string.Equals(mVal, "0", StringComparison.OrdinalIgnoreCase);
+            }
+            else
+            {
+                _iniCardMode = true; // Padrao ativado
+            }
+
+            if (File.Exists(_homeCardModePrefPath))
+            {
+                string hVal = File.ReadAllText(_homeCardModePrefPath, Encoding.UTF8).Trim();
+                _homeCardMode = string.Equals(hVal, "1", StringComparison.OrdinalIgnoreCase);
+            }
+            else
+            {
+                _homeCardMode = false; // Padrao lista
             }
 
             if (File.Exists(_driveUrlPrefPath))

@@ -46,17 +46,19 @@ namespace TOTVSHub
             StackPanel stack = new StackPanel();
             stack.HorizontalAlignment = HorizontalAlignment.Stretch;
 
-            // Badge superior com a logo branca TOTVS
-            Border logoBadge = new Border();
-            logoBadge.Width = 68;
-            logoBadge.Height = 68;
-            logoBadge.CornerRadius = new CornerRadius(18);
-            logoBadge.Background = UiTheme.BrushFromHex("#0F172A");
-            logoBadge.BorderThickness = new Thickness(0);
-            logoBadge.HorizontalAlignment = HorizontalAlignment.Center;
-            logoBadge.Margin = new Thickness(0, 0, 0, 20);
-            logoBadge.Child = TotvsLogo.CreateTotvsWhiteSvgLogo(_cachedSvgPath, 38);
-            stack.Children.Add(logoBadge);
+            // Logo oficial TOTVS sem fundo (transparente)
+            UIElement logoIcon = TotvsLogo.CreateTotvsWhiteSvgLogo(_cachedSvgPath, 52);
+            FrameworkElement fe = logoIcon as FrameworkElement;
+            if (fe != null)
+            {
+                fe.HorizontalAlignment = HorizontalAlignment.Center;
+                fe.Margin = new Thickness(0, 0, 0, 20);
+                stack.Children.Add(fe);
+            }
+            else
+            {
+                stack.Children.Add(logoIcon);
+            }
 
             TextBlock lblTitle = new TextBlock();
             lblTitle.Text = "Qual pasta raíz guarda seus ambientes?";

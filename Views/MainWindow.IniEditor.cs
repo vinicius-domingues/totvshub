@@ -110,7 +110,54 @@ namespace TOTVSHub
             searchInner.Children.Add(filterBox);
             searchDock.Children.Add(searchInner);
             searchBoxBorder.Child = searchDock;
-            filterBar.Child = searchBoxBorder;
+            Grid searchRowGrid = new Grid();
+            ColumnDefinition srcColSearch = new ColumnDefinition(); srcColSearch.Width = new GridLength(1, GridUnitType.Star);
+            ColumnDefinition srcColViewToggle = new ColumnDefinition(); srcColViewToggle.Width = GridLength.Auto;
+            searchRowGrid.ColumnDefinitions.Add(srcColSearch);
+            searchRowGrid.ColumnDefinitions.Add(srcColViewToggle);
+
+            searchRowGrid.Children.Add(searchBoxBorder);
+            Grid.SetColumn(searchBoxBorder, 0);
+
+            // Toggle de Modo de Exibicao das Secoes: Modo Cards (Grid) vs Modo Lista
+            StackPanel viewTogglePanel = new StackPanel();
+            viewTogglePanel.Orientation = Orientation.Horizontal;
+            viewTogglePanel.VerticalAlignment = VerticalAlignment.Center;
+            viewTogglePanel.Margin = new Thickness(12, 0, 0, 0);
+
+            Border toggleGroup = new Border();
+            toggleGroup.Background = UiTheme.BgHeader;
+            toggleGroup.BorderBrush = UiTheme.BorderSubtle;
+            toggleGroup.BorderThickness = new Thickness(1);
+            toggleGroup.CornerRadius = new CornerRadius(8);
+            toggleGroup.Padding = new Thickness(2);
+
+            StackPanel toggleBtns = new StackPanel();
+            toggleBtns.Orientation = Orientation.Horizontal;
+
+            Button btnViewCards = new Button();
+            btnViewCards.Content = UiTheme.CreateGridCardIcon(UiTheme.TextPrimary, 15);
+            btnViewCards.ToolTip = "Modo Cards (Grade de Seções)";
+            btnViewCards.Padding = new Thickness(8, 6, 8, 6);
+            btnViewCards.Cursor = System.Windows.Input.Cursors.Hand;
+            btnViewCards.BorderThickness = new Thickness(0);
+
+            Button btnViewList = new Button();
+            btnViewList.Content = UiTheme.CreateListIcon(UiTheme.TextPrimary, 15);
+            btnViewList.ToolTip = "Modo Lista (Largura total)";
+            btnViewList.Padding = new Thickness(8, 6, 8, 6);
+            btnViewList.Cursor = System.Windows.Input.Cursors.Hand;
+            btnViewList.BorderThickness = new Thickness(0);
+
+            toggleBtns.Children.Add(btnViewCards);
+            toggleBtns.Children.Add(btnViewList);
+            toggleGroup.Child = toggleBtns;
+            viewTogglePanel.Children.Add(toggleGroup);
+
+            Grid.SetColumn(viewTogglePanel, 1);
+            searchRowGrid.Children.Add(viewTogglePanel);
+
+            filterBar.Child = searchRowGrid;
 
             Grid.SetRow(filterBar, 1);
             root.Children.Add(filterBar);
@@ -119,15 +166,81 @@ namespace TOTVSHub
             scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
             scroll.Padding = new Thickness(20, 4, 20, 16);
 
-            StackPanel sectionsContainer = new StackPanel();
-            scroll.Content = sectionsContainer;
+            // Container para Modo Cards (Grade Masonry em 3 colunas)
+            Grid masonryGrid = new Grid();
+            masonryGrid.HorizontalAlignment = HorizontalAlignment.Stretch;
+
+            // Container para Modo Lista (Largura total empilhada)
+            StackPanel sectionsStack = new StackPanel();
+            sectionsStack.HorizontalAlignment = HorizontalAlignment.Stretch;
+
+            scroll.Content = _iniCardMode ? (UIElement)masonryGrid : (UIElement)sectionsStack;
             Grid.SetRow(scroll, 2);
             root.Children.Add(scroll);
 
+            Action updateViewToggleVisual = delegate
+            {
+                btnViewCards.Background = _iniCardMode ? UiTheme.PrimaryBlueBrush : Brushes.Transparent;
+                btnViewCards.Content = UiTheme.CreateGridCardIcon(_iniCardMode ? Brushes.White : UiTheme.TextSecondary, 15);
+
+                btnViewList.Background = !_iniCardMode ? UiTheme.PrimaryBlueBrush : Brushes.Transparent;
+                btnViewList.Content = UiTheme.CreateListIcon(!_iniCardMode ? Brushes.White : UiTheme.TextSecondary, 15);
+            };
+            updateViewToggleVisual();
+
             Action renderIniSections = null;
+
+            Action<bool> switchLayoutMode = delegate(bool toCardMode)
+            {
+                if (_iniCardMode == toCardMode) return;
+                _iniCardMode = toCardMode;
+                try
+                {
+                    File.WriteAllText(_iniCardModePrefPath, _iniCardMode ? "1" : "0", Encoding.UTF8);
+                }
+                catch { }
+
+                updateViewToggleVisual();
+
+                scroll.Content = _iniCardMode ? (UIElement)masonryGrid : (UIElement)sectionsStack;
+                if (renderIniSections != null)
+                    renderIniSections();
+            };
+
+            btnViewCards.Click += delegate { switchLayoutMode(true); };
+            btnViewList.Click += delegate { switchLayoutMode(false); };
+
+            // Determina numero ideal de colunas (padrao 3 colunas; 2 se < 1100px; 1 se < 680px)
+            Func<int> getColumnCount = delegate
+            {
+                double avail = scroll.ActualWidth > 0 ? scroll.ActualWidth : root.ActualWidth;
+                if (avail <= 0) avail = 1200;
+                if (avail < 720) return 1;
+                if (avail < 1120) return 2;
+                return 3; // 3 colunas solicitadas
+            };
+
+            int lastColumnCount = getColumnCount();
+
+            scroll.SizeChanged += delegate
+            {
+                if (_iniCardMode)
+                {
+                    int cols = getColumnCount();
+                    if (cols != lastColumnCount)
+                    {
+                        lastColumnCount = cols;
+                        if (renderIniSections != null)
+                            renderIniSections();
+                    }
+                }
+            };
             renderIniSections = delegate
             {
-                sectionsContainer.Children.Clear();
+                masonryGrid.Children.Clear();
+                masonryGrid.ColumnDefinitions.Clear();
+                sectionsStack.Children.Clear();
+
                 string filter = (filterBox.Text ?? "").Trim().ToLowerInvariant();
 
                 HashSet<string> restSectionNames = IdentifyRestSectionNames(sections);
@@ -170,21 +283,104 @@ namespace TOTVSHub
                     }
                 }
 
+                if (!_iniCardMode)
+                {
+                    // ================= MODO LISTA: LARGURA TOTAL EMPILHADA =================
+                    bool restRenderedList = false;
+                    foreach (KeyValuePair<IniSection, List<IniEntry>> item in allMatched)
+                    {
+                        bool isRestSec = !string.IsNullOrEmpty(item.Key.Name) && restSectionNames.Contains(item.Key.Name.Trim());
+                        if (isRestSec)
+                        {
+                            if (!restRenderedList)
+                            {
+                                restRenderedList = true;
+                                sectionsStack.Children.Add(BuildRestGroupContainer(amb, sections, restMatched, renderIniSections));
+                            }
+                        }
+                        else
+                        {
+                            sectionsStack.Children.Add(BuildIniSectionCard(amb, sections, item.Key, item.Value, renderIniSections));
+                        }
+                    }
+                    return;
+                }
+
+                // ================= MODO CARDS (GRADE MASONRY MULTI-COLUNAS) =================
+                // 3 colunas (ou responsivo se janela estreita), empilhando cards de cima para baixo
+                // na coluna que tiver a menor altura acumulada para evitar qualquer buraco vazio
+                int numCols = getColumnCount();
+                List<StackPanel> columnPanels = new List<StackPanel>();
+                List<double> columnHeights = new List<double>();
+
+                for (int c = 0; c < numCols; c++)
+                {
+                    ColumnDefinition colDef = new ColumnDefinition();
+                    colDef.Width = new GridLength(1, GridUnitType.Star);
+                    masonryGrid.ColumnDefinitions.Add(colDef);
+
+                    StackPanel colPanel = new StackPanel();
+                    colPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    // Espaçamento horizontal entre colunas: margem direita em todas exceto a última
+                    colPanel.Margin = new Thickness(0, 0, c < numCols - 1 ? 14 : 0, 0);
+
+                    Grid.SetColumn(colPanel, c);
+                    masonryGrid.Children.Add(colPanel);
+                    columnPanels.Add(colPanel);
+                    columnHeights.Add(0.0);
+                }
+
                 bool restGroupRendered = false;
+
                 foreach (KeyValuePair<IniSection, List<IniEntry>> item in allMatched)
                 {
                     bool isRestSec = !string.IsNullOrEmpty(item.Key.Name) && restSectionNames.Contains(item.Key.Name.Trim());
+                    UIElement cardElement = null;
+                    double estimatedHeight = 0;
+
                     if (isRestSec)
                     {
                         if (!restGroupRendered)
                         {
                             restGroupRendered = true;
-                            sectionsContainer.Children.Add(BuildRestGroupContainer(amb, sections, restMatched, renderIniSections));
+                            Border restGroup = BuildRestGroupContainer(amb, sections, restMatched, renderIniSections);
+                            restGroup.Margin = new Thickness(0, 0, 0, 14);
+                            cardElement = restGroup;
+                            // Altura estimada do grupo REST
+                            int totalEntries = 0;
+                            foreach (var ri in restMatched) totalEntries += ri.Value.Count;
+                            estimatedHeight = 65 + (restMatched.Count * 50) + (totalEntries * 42);
+                        }
+                        else
+                        {
+                            continue; // Ja foi renderizado dentro do restGroup
                         }
                     }
                     else
                     {
-                        sectionsContainer.Children.Add(BuildIniSectionCard(amb, sections, item.Key, item.Value, renderIniSections));
+                        Border secCard = BuildIniSectionCard(amb, sections, item.Key, item.Value, renderIniSections);
+                        secCard.Margin = new Thickness(0, 0, 0, 14);
+                        cardElement = secCard;
+                        // Altura estimada baseada no cabeçalho + linhas exibidas
+                        estimatedHeight = 52 + (item.Value.Count * 42);
+                    }
+
+                    if (cardElement != null)
+                    {
+                        // Encontra a coluna que atualmente está mais vazia (menor altura acumulada)
+                        int bestCol = 0;
+                        double minH = columnHeights[0];
+                        for (int c = 1; c < numCols; c++)
+                        {
+                            if (columnHeights[c] < minH)
+                            {
+                                minH = columnHeights[c];
+                                bestCol = c;
+                            }
+                        }
+
+                        columnPanels[bestCol].Children.Add(cardElement);
+                        columnHeights[bestCol] += estimatedHeight;
                     }
                 }
             };
@@ -1072,7 +1268,7 @@ namespace TOTVSHub
 
             Grid rowGrid = new Grid();
             ColumnDefinition cPrefix = new ColumnDefinition(); cPrefix.Width = GridLength.Auto;
-            ColumnDefinition cKey = new ColumnDefinition(); cKey.Width = new GridLength(220);
+            ColumnDefinition cKey = new ColumnDefinition(); cKey.Width = new GridLength(140);
             ColumnDefinition cEq = new ColumnDefinition(); cEq.Width = GridLength.Auto;
             ColumnDefinition cVal = new ColumnDefinition(); cVal.Width = new GridLength(1, GridUnitType.Star);
             ColumnDefinition cBtns = new ColumnDefinition(); cBtns.Width = GridLength.Auto;
@@ -1312,8 +1508,18 @@ namespace TOTVSHub
             try
             {
                 string dir = ResolverDiretorioTagIni(amb, sec, rawVal);
-                if (Directory.Exists(dir))
-                    Process.Start("explorer.exe", dir);
+                if (!string.IsNullOrEmpty(dir))
+                {
+                    string canonical = Path.GetFullPath(dir);
+                    if (Directory.Exists(canonical))
+                    {
+                        ProcessStartInfo psi = new ProcessStartInfo();
+                        psi.FileName = "explorer.exe";
+                        psi.Arguments = string.Format("\"{0}\"", canonical);
+                        psi.UseShellExecute = true;
+                        Process.Start(psi);
+                    }
+                }
             }
             catch { }
         }
@@ -1425,11 +1631,14 @@ namespace TOTVSHub
 
         private bool GravarArquivoIni(string iniPath, List<IniSection> sections, bool criarCopia)
         {
+            string tmpPath = null;
             try
             {
-                if (criarCopia && File.Exists(iniPath))
+                string dir = Path.GetDirectoryName(iniPath);
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
                 {
-                    File.Copy(iniPath, iniPath + ".bak", true);
+                    StyledDialog.Info(this, "Diretório Inválido", "O diretório do arquivo .ini não existe.", iniPath);
+                    return false;
                 }
 
                 StringBuilder sb = new StringBuilder();
@@ -1463,13 +1672,48 @@ namespace TOTVSHub
                     }
                 }
 
-                File.WriteAllText(iniPath, sb.ToString(), Encoding.Default);
+                // Gravação atômica: escreve primeiro em arquivo temporário com GUID único
+                tmpPath = Path.Combine(dir, string.Format("appserver.ini.tmp.{0:N}", Guid.NewGuid()));
+                File.WriteAllText(tmpPath, sb.ToString(), Encoding.Default);
+
+                if (File.Exists(iniPath))
+                {
+                    string backupPath = iniPath + ".bak";
+                    if (criarCopia)
+                    {
+                        try { File.Copy(iniPath, backupPath, true); } catch { }
+                    }
+
+                    // File.Replace garante substituição atômica sem risco de corrupção ou arquivo em branco
+                    try
+                    {
+                        File.Replace(tmpPath, iniPath, null, true);
+                    }
+                    catch
+                    {
+                        // Fallback seguro caso File.Replace seja bloqueado pelo SO
+                        File.Copy(tmpPath, iniPath, true);
+                        try { File.Delete(tmpPath); } catch { }
+                    }
+                }
+                else
+                {
+                    File.Move(tmpPath, iniPath);
+                }
+
                 return true;
             }
             catch (Exception ex)
             {
-                StyledDialog.Info(this, "Erro ao Salvar", "Não foi possível gravar o arquivo .ini.", ex.Message);
+                StyledDialog.Info(this, "Erro ao Salvar", "Não foi possível gravar o arquivo .ini de forma segura.", ex.Message);
                 return false;
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(tmpPath) && File.Exists(tmpPath))
+                {
+                    try { File.Delete(tmpPath); } catch { }
+                }
             }
         }
     }
