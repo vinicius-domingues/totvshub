@@ -172,18 +172,27 @@ namespace TOTVSHub
             catch { }
         }
 
-        private string ObterValorChaveIni(AmbienteInfo info, string preferredSection, string keyName)
+        private string ObterValorSecaoExata(AmbienteInfo info, string sectionName, string keyName)
         {
             Dictionary<string, string> secDict;
             string val;
-            if (!string.IsNullOrEmpty(preferredSection) &&
-                info.IniSectionsMap.TryGetValue(preferredSection, out secDict) &&
+            if (!string.IsNullOrEmpty(sectionName) &&
+                info.IniSectionsMap.TryGetValue(sectionName, out secDict) &&
                 secDict.TryGetValue(keyName, out val) &&
                 !string.IsNullOrWhiteSpace(val))
             {
                 return val;
             }
+            return null;
+        }
 
+        private string ObterValorChaveIni(AmbienteInfo info, string preferredSection, string keyName)
+        {
+            string exact = ObterValorSecaoExata(info, preferredSection, keyName);
+            if (!string.IsNullOrWhiteSpace(exact))
+                return exact;
+
+            string val;
             foreach (KeyValuePair<string, Dictionary<string, string>> kv in info.IniSectionsMap)
             {
                 if (kv.Value.TryGetValue(keyName, out val) && !string.IsNullOrWhiteSpace(val))
@@ -194,15 +203,24 @@ namespace TOTVSHub
 
         private void AtualizarDadosIniAmbiente(AmbienteInfo info)
         {
-            DirectoryInfo di = new DirectoryInfo(info.AppDir);
-            if (di.Parent != null && di.Parent.Parent != null)
-                info.PastaBase = di.Parent.Parent.Name;
+            string subBase = ObterCaminhoSubpastaBase(info);
+            if (!string.IsNullOrEmpty(subBase))
+            {
+                info.PastaBase = Path.GetFileName(subBase.TrimEnd('\\', '/'));
+            }
             else
-                info.PastaBase = di.Name;
+            {
+                DirectoryInfo di = new DirectoryInfo(info.AppDir);
+                if (di.Parent != null && di.Parent.Parent != null)
+                    info.PastaBase = di.Parent.Parent.Name;
+                else
+                    info.PastaBase = di.Name;
+            }
 
             info.WebAppPort = null;
             info.TcpPort = null;
             info.RestPort = null;
+            info.WebServicesPort = null;
             info.SpecialKey = null;
             info.DBAlias = null;
             info.DBPort = null;
@@ -260,20 +278,66 @@ namespace TOTVSHub
                             else if (string.Equals(secaoAtual, "TCP", StringComparison.OrdinalIgnoreCase))
                                 info.TcpPort = val;
                             else if (string.Equals(secaoAtual, "HTTPREST", StringComparison.OrdinalIgnoreCase) ||
-                                     string.Equals(secaoAtual, "HTTP", StringComparison.OrdinalIgnoreCase) ||
                                      string.Equals(secaoAtual, "REST", StringComparison.OrdinalIgnoreCase))
                             {
                                 info.RestPort = val;
+                            }
+                            else if (string.Equals(secaoAtual, "WEBSERVICES", StringComparison.OrdinalIgnoreCase) ||
+                                     string.Equals(secaoAtual, "WEBSERVICE", StringComparison.OrdinalIgnoreCase) ||
+                                     string.Equals(secaoAtual, "WS", StringComparison.OrdinalIgnoreCase))
+                            {
+                                info.WebServicesPort = val;
                             }
                         }
                     }
                 }
             }
 
+            if (string.IsNullOrEmpty(info.WebServicesPort))
+            {
+                if (info.IniSectionsMap.ContainsKey("WEBSERVICES") ||
+                    info.IniSectionsMap.ContainsKey("WEBSERVICE") ||
+                    info.IniSectionsMap.ContainsKey("WS"))
+                {
+                    info.WebServicesPort = ObterValorSecaoExata(info, "WEBSERVICES", "Port")
+                                        ?? ObterValorSecaoExata(info, "WS", "Port")
+                                        ?? ObterValorSecaoExata(info, "HTTP", "Port");
+                }
+                else if (!string.IsNullOrEmpty(info.RestPort))
+                {
+                    info.WebServicesPort = ObterValorSecaoExata(info, "HTTP", "Port");
+                }
+            }
+
+            if (string.IsNullOrEmpty(info.RestPort))
+            {
+                string httpPort = ObterValorSecaoExata(info, "HTTP", "Port");
+                if (!string.IsNullOrEmpty(httpPort) && string.IsNullOrEmpty(info.WebServicesPort))
+                {
+                    info.RestPort = httpPort;
+                }
+            }
+
             info.NomeIni = !string.IsNullOrEmpty(primeiroBloco) ? primeiroBloco : info.PastaBase;
             info.SpecialKey = ObterValorChaveIni(info, info.NomeIni, "SpecialKey");
-            info.DBAlias = ObterValorChaveIni(info, info.NomeIni, "DBAlias");
-            info.DBPort = ObterValorChaveIni(info, "DBACCESS", "DBPort") ?? ObterValorChaveIni(info, "TOPCONNECT", "DBPort");
+
+            info.DBAlias = ObterValorSecaoExata(info, info.NomeIni, "DBAlias")
+                        ?? ObterValorSecaoExata(info, "ENVIRONMENT", "DBAlias")
+                        ?? ObterValorSecaoExata(info, "DBACCESS", "alias")
+                        ?? ObterValorSecaoExata(info, "DBACCESS", "DBAlias")
+                        ?? ObterValorSecaoExata(info, "TOPCONNECT", "alias")
+                        ?? ObterValorSecaoExata(info, "TOPCONNECT", "DBAlias")
+                        ?? ObterValorChaveIni(info, info.NomeIni, "DBAlias")
+                        ?? ObterValorChaveIni(info, "DBACCESS", "alias");
+
+            info.DBPort = ObterValorSecaoExata(info, "DBACCESS", "port")
+                       ?? ObterValorSecaoExata(info, "DBACCESS", "DBPort")
+                       ?? ObterValorSecaoExata(info, "TOPCONNECT", "port")
+                       ?? ObterValorSecaoExata(info, "TOPCONNECT", "DBPort")
+                       ?? ObterValorSecaoExata(info, info.NomeIni, "DBPort")
+                       ?? ObterValorSecaoExata(info, "ENVIRONMENT", "DBPort")
+                       ?? ObterValorChaveIni(info, "DBACCESS", "DBPort")
+                       ?? ObterValorChaveIni(info, "TOPCONNECT", "DBPort");
         }
 
         private class ServiceMatchInfo
@@ -471,12 +535,27 @@ namespace TOTVSHub
                                                   .GroupBy(a => a.NomeIni, StringComparer.OrdinalIgnoreCase)
                                                   .Where(g => g.Count() > 1))
                         {
-                            AlertaConflito al = new AlertaConflito();
-                            al.Titulo = string.Format("Duplicidade em [{0}]", grp.Key);
-                            al.Descricao = string.Format("{0} possuem a mesma primeira seção [{1}].",
-                                UiTheme.Pluralize(grp.Count(), "base", "bases"), grp.Key);
-                            al.Envolvidos = grp.ToList();
-                            _alertasAtivos.Add(al);
+                            if (_ignoreSameSubfolderConflicts)
+                            {
+                                var envGroups = grp.GroupBy(a => ObterCaminhoSubpastaBase(a), StringComparer.OrdinalIgnoreCase).ToList();
+                                if (envGroups.Count <= 1) continue;
+
+                                AlertaConflito al = new AlertaConflito();
+                                al.Titulo = string.Format("Duplicidade em [{0}]", grp.Key);
+                                al.Descricao = string.Format("{0} com pastas diferentes possuem a mesma primeira seção [{1}].",
+                                    UiTheme.Pluralize(envGroups.Count, "ambiente", "ambientes"), grp.Key);
+                                al.Envolvidos = envGroups.Select(g => g.First()).ToList();
+                                _alertasAtivos.Add(al);
+                            }
+                            else
+                            {
+                                AlertaConflito al = new AlertaConflito();
+                                al.Titulo = string.Format("Duplicidade em [{0}]", grp.Key);
+                                al.Descricao = string.Format("{0} possuem a mesma primeira seção [{1}].",
+                                    UiTheme.Pluralize(grp.Count(), "base", "bases"), grp.Key);
+                                al.Envolvidos = grp.ToList();
+                                _alertasAtivos.Add(al);
+                            }
                         }
                     }
                     else
@@ -486,12 +565,27 @@ namespace TOTVSHub
                             .ToList();
                         if (comSecao.Count > 1)
                         {
-                            AlertaConflito al = new AlertaConflito();
-                            al.Titulo = string.Format("Duplicidade em [{0}]", rule.SectionPattern);
-                            al.Descricao = string.Format("{0} possuem a seção [{1}].",
-                                UiTheme.Pluralize(comSecao.Count, "base", "bases"), rule.SectionPattern);
-                            al.Envolvidos = comSecao;
-                            _alertasAtivos.Add(al);
+                            if (_ignoreSameSubfolderConflicts)
+                            {
+                                var envGroups = comSecao.GroupBy(a => ObterCaminhoSubpastaBase(a), StringComparer.OrdinalIgnoreCase).ToList();
+                                if (envGroups.Count <= 1) continue;
+
+                                AlertaConflito al = new AlertaConflito();
+                                al.Titulo = string.Format("Duplicidade em [{0}]", rule.SectionPattern);
+                                al.Descricao = string.Format("{0} com pastas diferentes possuem a seção [{1}].",
+                                    UiTheme.Pluralize(envGroups.Count, "ambiente", "ambientes"), rule.SectionPattern);
+                                al.Envolvidos = envGroups.Select(g => g.First()).ToList();
+                                _alertasAtivos.Add(al);
+                            }
+                            else
+                            {
+                                AlertaConflito al = new AlertaConflito();
+                                al.Titulo = string.Format("Duplicidade em [{0}]", rule.SectionPattern);
+                                al.Descricao = string.Format("{0} possuem a seção [{1}].",
+                                    UiTheme.Pluralize(comSecao.Count, "base", "bases"), rule.SectionPattern);
+                                al.Envolvidos = comSecao;
+                                _alertasAtivos.Add(al);
+                            }
                         }
                     }
                 }
@@ -505,17 +599,23 @@ namespace TOTVSHub
                         if (string.IsNullOrEmpty(targetSection))
                             continue;
 
+                        string foundVal = null;
                         Dictionary<string, string> secDict;
                         if (amb.IniSectionsMap.TryGetValue(targetSection, out secDict))
                         {
-                            string foundVal;
-                            if (secDict.TryGetValue(rule.KeyName, out foundVal) && !string.IsNullOrWhiteSpace(foundVal))
-                            {
-                                if (!valueGroups.ContainsKey(foundVal))
-                                    valueGroups[foundVal] = new List<AmbienteInfo>();
-                                if (!valueGroups[foundVal].Contains(amb))
-                                    valueGroups[foundVal].Add(amb);
-                            }
+                            secDict.TryGetValue(rule.KeyName, out foundVal);
+                        }
+                        if (string.IsNullOrWhiteSpace(foundVal) && isEnvPlaceholder &&
+                            string.Equals(rule.KeyName, "DBAlias", StringComparison.OrdinalIgnoreCase))
+                        {
+                            foundVal = amb.DBAlias;
+                        }
+                        if (!string.IsNullOrWhiteSpace(foundVal))
+                        {
+                            if (!valueGroups.ContainsKey(foundVal))
+                                valueGroups[foundVal] = new List<AmbienteInfo>();
+                            if (!valueGroups[foundVal].Contains(amb))
+                                valueGroups[foundVal].Add(amb);
                         }
                     }
 
@@ -523,15 +623,33 @@ namespace TOTVSHub
                     {
                         if (kv.Value.Count > 1)
                         {
-                            AlertaConflito al = new AlertaConflito();
-                            al.Titulo = string.Format("Duplicidade em {0}", rule.KeyName);
-                            al.Descricao = string.Format("{0} possuem o mesmo valor \"{1}\" na tag [{2}] > {3}.",
-                                UiTheme.Pluralize(kv.Value.Count, "base", "bases"),
-                                kv.Key,
-                                rule.SectionPattern,
-                                rule.KeyName);
-                            al.Envolvidos = kv.Value;
-                            _alertasAtivos.Add(al);
+                            if (_ignoreSameSubfolderConflicts)
+                            {
+                                var envGroups = kv.Value.GroupBy(a => ObterCaminhoSubpastaBase(a), StringComparer.OrdinalIgnoreCase).ToList();
+                                if (envGroups.Count <= 1) continue;
+
+                                AlertaConflito al = new AlertaConflito();
+                                al.Titulo = string.Format("Duplicidade em {0}", rule.KeyName);
+                                al.Descricao = string.Format("{0} com pastas diferentes possuem o mesmo valor \"{1}\" na tag [{2}] > {3}.",
+                                    UiTheme.Pluralize(envGroups.Count, "ambiente", "ambientes"),
+                                    kv.Key,
+                                    rule.SectionPattern,
+                                    rule.KeyName);
+                                al.Envolvidos = envGroups.Select(g => g.First()).ToList();
+                                _alertasAtivos.Add(al);
+                            }
+                            else
+                            {
+                                AlertaConflito al = new AlertaConflito();
+                                al.Titulo = string.Format("Duplicidade em {0}", rule.KeyName);
+                                al.Descricao = string.Format("{0} possuem o mesmo valor \"{1}\" na tag [{2}] > {3}.",
+                                    UiTheme.Pluralize(kv.Value.Count, "base", "bases"),
+                                    kv.Key,
+                                    rule.SectionPattern,
+                                    rule.KeyName);
+                                al.Envolvidos = kv.Value;
+                                _alertasAtivos.Add(al);
+                            }
                         }
                     }
                 }

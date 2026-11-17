@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -42,25 +43,32 @@ namespace TOTVSHub
             btnBackArrow.Margin = new Thickness(0, 0, 12, 0);
             btnBackArrow.Click += delegate { ShowDashboardView(); };
 
-            StackPanel titleStack = new StackPanel();
-            titleStack.VerticalAlignment = VerticalAlignment.Center;
-
             TextBlock lblIniTitle = new TextBlock();
             lblIniTitle.Text = iniFileName;
             lblIniTitle.Foreground = UiTheme.TextPrimary;
             lblIniTitle.FontSize = 16;
             lblIniTitle.FontWeight = FontWeights.Bold;
+            lblIniTitle.VerticalAlignment = VerticalAlignment.Center;
+
+            Border pathPill = new Border();
+            pathPill.Background = UiTheme.TagBg;
+            pathPill.BorderBrush = UiTheme.BorderSubtle;
+            pathPill.BorderThickness = new Thickness(1);
+            pathPill.CornerRadius = new CornerRadius(5);
+            pathPill.Padding = new Thickness(8, 2, 8, 2);
+            pathPill.Margin = new Thickness(12, 0, 0, 0);
+            pathPill.VerticalAlignment = VerticalAlignment.Center;
 
             TextBlock lblIniPath = new TextBlock();
             lblIniPath.Text = amb.IniPath;
-            lblIniPath.Foreground = UiTheme.TextMuted;
+            lblIniPath.Foreground = UiTheme.TextSecondary;
             lblIniPath.FontSize = 11;
-
-            titleStack.Children.Add(lblIniTitle);
-            titleStack.Children.Add(lblIniPath);
+            lblIniPath.VerticalAlignment = VerticalAlignment.Center;
+            pathPill.Child = lblIniPath;
 
             topLeft.Children.Add(btnBackArrow);
-            topLeft.Children.Add(titleStack);
+            topLeft.Children.Add(lblIniTitle);
+            topLeft.Children.Add(pathPill);
 
             Border topBar = BuildTopWindowBar(topLeft, null);
             Grid.SetRow(topBar, 0);
@@ -122,6 +130,10 @@ namespace TOTVSHub
                 sectionsContainer.Children.Clear();
                 string filter = (filterBox.Text ?? "").Trim().ToLowerInvariant();
 
+                HashSet<string> restSectionNames = IdentifyRestSectionNames(sections);
+                List<KeyValuePair<IniSection, List<IniEntry>>> restMatched = new List<KeyValuePair<IniSection, List<IniEntry>>>();
+                List<KeyValuePair<IniSection, List<IniEntry>>> allMatched = new List<KeyValuePair<IniSection, List<IniEntry>>>();
+
                 foreach (IniSection sec in sections)
                 {
                     bool secMatches = string.IsNullOrEmpty(filter)
@@ -150,7 +162,30 @@ namespace TOTVSHub
                     if (!secMatches && entriesToShow.Count == 0)
                         continue;
 
-                    sectionsContainer.Children.Add(BuildIniSectionCard(amb, sections, sec, entriesToShow, renderIniSections));
+                    KeyValuePair<IniSection, List<IniEntry>> item = new KeyValuePair<IniSection, List<IniEntry>>(sec, entriesToShow);
+                    allMatched.Add(item);
+                    if (!string.IsNullOrEmpty(sec.Name) && restSectionNames.Contains(sec.Name.Trim()))
+                    {
+                        restMatched.Add(item);
+                    }
+                }
+
+                bool restGroupRendered = false;
+                foreach (KeyValuePair<IniSection, List<IniEntry>> item in allMatched)
+                {
+                    bool isRestSec = !string.IsNullOrEmpty(item.Key.Name) && restSectionNames.Contains(item.Key.Name.Trim());
+                    if (isRestSec)
+                    {
+                        if (!restGroupRendered)
+                        {
+                            restGroupRendered = true;
+                            sectionsContainer.Children.Add(BuildRestGroupContainer(amb, sections, restMatched, renderIniSections));
+                        }
+                    }
+                    else
+                    {
+                        sectionsContainer.Children.Add(BuildIniSectionCard(amb, sections, item.Key, item.Value, renderIniSections));
+                    }
                 }
             };
 
@@ -477,7 +512,11 @@ namespace TOTVSHub
                 txtSecName.VerticalAlignment = VerticalAlignment.Center;
                 txtSecName.Padding = new Thickness(6, 2, 6, 2);
                 txtSecName.Margin = new Thickness(3, 0, 3, 0);
-                txtSecName.TextChanged += delegate { sec.Name = txtSecName.Text.Trim(); };
+                txtSecName.TextChanged += delegate
+                {
+                    sec.Name = txtSecName.Text.Trim();
+                    AtualizarVisualIniSecao(sec, isProtectedSection);
+                };
                 sec.SectionNameBox = txtSecName;
                 nameStack.Children.Add(txtSecName);
             }
@@ -526,6 +565,452 @@ namespace TOTVSHub
 
             AtualizarVisualIniSecao(sec, isProtectedSection);
             return card;
+        }
+
+        // =====================================================================
+        // ITEM 8: AGRUPAMENTO VISUAL DAS SECOES REST E ATIVAR/INATIVAR VIA [ONSTART]>jobs
+        // =====================================================================
+        private HashSet<string> IdentifyRestSectionNames(List<IniSection> allSections)
+        {
+            HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "HTTPV11", "HTTPREST", "HTTPURI", "HTTPJOB"
+            };
+
+            foreach (IniSection s in allSections)
+            {
+                string sName = (s.Name ?? "").Trim();
+                if (string.IsNullOrEmpty(sName)) continue;
+
+                if (string.Equals(sName, "HTTPV11", StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (IniEntry e in s.Entries)
+                    {
+                        if (!e.IsPureComment && string.Equals(e.Key, "Sockets", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(e.Value))
+                        {
+                            foreach (string part in e.Value.Split(','))
+                            {
+                                string clean = part.Trim();
+                                if (!string.IsNullOrEmpty(clean)) names.Add(clean);
+                            }
+                        }
+                    }
+                }
+
+                foreach (IniEntry e in s.Entries)
+                {
+                    if (!e.IsPureComment && string.Equals(e.Key, "MAIN", StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals((e.Value ?? "").Trim(), "HTTP_START", StringComparison.OrdinalIgnoreCase))
+                    {
+                        names.Add(sName);
+                    }
+                }
+            }
+
+            List<string> snapshot = names.ToList();
+            foreach (IniSection s in allSections)
+            {
+                string sName = (s.Name ?? "").Trim();
+                if (string.IsNullOrEmpty(sName) || !snapshot.Contains(sName, StringComparer.OrdinalIgnoreCase)) continue;
+
+                foreach (IniEntry e in s.Entries)
+                {
+                    if (!e.IsPureComment && string.Equals(e.Key, "URIs", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(e.Value))
+                    {
+                        foreach (string part in e.Value.Split(','))
+                        {
+                            string clean = part.Trim();
+                            if (!string.IsNullOrEmpty(clean)) names.Add(clean);
+                        }
+                    }
+                }
+            }
+
+            return names;
+        }
+
+        private string ObterNomeJobRest(List<IniSection> allSections)
+        {
+            foreach (IniSection s in allSections)
+            {
+                string sName = (s.Name ?? "").Trim();
+                if (string.IsNullOrEmpty(sName)) continue;
+
+                foreach (IniEntry e in s.Entries)
+                {
+                    if (!e.IsPureComment && string.Equals(e.Key, "MAIN", StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals((e.Value ?? "").Trim(), "HTTP_START", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return sName;
+                    }
+                }
+            }
+            return "HTTPJOB";
+        }
+
+        private bool VerificarRestAtivoEmOnStart(List<IniSection> allSections, out string restJobName)
+        {
+            restJobName = ObterNomeJobRest(allSections);
+            foreach (IniSection s in allSections)
+            {
+                if (s.IsCommented) continue;
+                if (!string.Equals((s.Name ?? "").Trim(), "ONSTART", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                foreach (IniEntry e in s.Entries)
+                {
+                    if (e.IsPureComment || e.IsCommented) continue;
+                    if (string.Equals((e.Key ?? "").Trim(), "jobs", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string[] items = (e.Value ?? "").Split(',');
+                        foreach (string item in items)
+                        {
+                            string clean = item.Trim();
+                            if (string.Equals(clean, restJobName, StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(clean, "HTTPJOB", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        private void AlternarEstadoRestEmOnStart(List<IniSection> allSections, bool ativar)
+        {
+            string jobName = ObterNomeJobRest(allSections);
+            IniSection onStartSec = allSections.FirstOrDefault(s =>
+                string.Equals((s.Name ?? "").Trim(), "ONSTART", StringComparison.OrdinalIgnoreCase));
+
+            if (!ativar)
+            {
+                // Inativar REST: NAO comenta [HTTPV11]/[HTTPREST]/[HTTPURI]/[HTTPJOB], vai em [ONSTART]>jobs
+                if (onStartSec == null) return;
+
+                List<IniEntry> activeJobsEntries = onStartSec.Entries.Where(e =>
+                    !e.IsPureComment && !e.IsCommented &&
+                    string.Equals((e.Key ?? "").Trim(), "jobs", StringComparison.OrdinalIgnoreCase)).ToList();
+
+                foreach (IniEntry entry in activeJobsEntries)
+                {
+                    List<string> jobsList = (entry.Value ?? "")
+                        .Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(j => j.Trim())
+                        .Where(j => !string.IsNullOrEmpty(j))
+                        .ToList();
+
+                    bool hasRestJob = jobsList.Any(j =>
+                        string.Equals(j, jobName, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(j, "HTTPJOB", StringComparison.OrdinalIgnoreCase));
+
+                    if (!hasRestJob) continue;
+
+                    List<string> remaining = jobsList.Where(j =>
+                        !string.Equals(j, jobName, StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(j, "HTTPJOB", StringComparison.OrdinalIgnoreCase)).ToList();
+
+                    if (remaining.Count == 0)
+                    {
+                        // Apenas HTTPJOB na linha: comenta a linha (;jobs=HTTPJOB)
+                        entry.IsCommented = true;
+                    }
+                    else
+                    {
+                        // Tinha mais jobs separados por virgula: mantem a linha ativa apenas com os outros jobs
+                        entry.Value = string.Join(",", remaining);
+                    }
+                }
+            }
+            else
+            {
+                // Ativar REST: garante [ONSTART] ativo e jobName na tag jobs
+                if (onStartSec == null)
+                {
+                    onStartSec = new IniSection();
+                    onStartSec.Name = "ONSTART";
+                    onStartSec.IsCommented = false;
+
+                    IniEntry newJobEntry = new IniEntry();
+                    newJobEntry.IsPureComment = false;
+                    newJobEntry.IsCommented = false;
+                    newJobEntry.Key = "jobs";
+                    newJobEntry.Value = jobName;
+                    onStartSec.Entries.Add(newJobEntry);
+
+                    IniEntry refreshEntry = new IniEntry();
+                    refreshEntry.IsPureComment = false;
+                    refreshEntry.IsCommented = false;
+                    refreshEntry.Key = "RefreshRate";
+                    refreshEntry.Value = "120";
+                    onStartSec.Entries.Add(refreshEntry);
+
+                    allSections.Add(onStartSec);
+                    return;
+                }
+
+                if (onStartSec.IsCommented)
+                    onStartSec.IsCommented = false;
+
+                IniEntry activeJobs = onStartSec.Entries.FirstOrDefault(e =>
+                    !e.IsPureComment && !e.IsCommented &&
+                    string.Equals((e.Key ?? "").Trim(), "jobs", StringComparison.OrdinalIgnoreCase));
+
+                List<IniEntry> commentedJobs = onStartSec.Entries.Where(e =>
+                    !e.IsPureComment && e.IsCommented &&
+                    string.Equals((e.Key ?? "").Trim(), "jobs", StringComparison.OrdinalIgnoreCase)).ToList();
+
+                if (activeJobs != null)
+                {
+                    List<string> currentJobs = (activeJobs.Value ?? "")
+                        .Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(j => j.Trim())
+                        .Where(j => !string.IsNullOrEmpty(j))
+                        .ToList();
+
+                    if (!currentJobs.Any(j => string.Equals(j, jobName, StringComparison.OrdinalIgnoreCase)))
+                        currentJobs.Add(jobName);
+
+                    activeJobs.Value = string.Join(",", currentJobs);
+
+                    // Se havia uma linha separada ;jobs=HTTPJOB comentada, remove para nao duplicar
+                    foreach (IniEntry cEntry in commentedJobs)
+                    {
+                        List<string> cList = (cEntry.Value ?? "")
+                            .Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                            .Select(j => j.Trim())
+                            .Where(j => !string.IsNullOrEmpty(j))
+                            .ToList();
+                        if (cList.Count == 1 && (string.Equals(cList[0], jobName, StringComparison.OrdinalIgnoreCase) || string.Equals(cList[0], "HTTPJOB", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            onStartSec.Entries.Remove(cEntry);
+                        }
+                    }
+                }
+                else if (commentedJobs.Count > 0)
+                {
+                    IniEntry target = commentedJobs[0];
+                    target.IsCommented = false;
+                    List<string> currentJobs = (target.Value ?? "")
+                        .Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(j => j.Trim())
+                        .Where(j => !string.IsNullOrEmpty(j))
+                        .ToList();
+
+                    if (!currentJobs.Any(j => string.Equals(j, jobName, StringComparison.OrdinalIgnoreCase)))
+                        currentJobs.Add(jobName);
+
+                    target.Value = string.Join(",", currentJobs);
+                }
+                else
+                {
+                    IniEntry newJobEntry = new IniEntry();
+                    newJobEntry.IsPureComment = false;
+                    newJobEntry.IsCommented = false;
+                    newJobEntry.Key = "jobs";
+                    newJobEntry.Value = jobName;
+                    onStartSec.Entries.Insert(0, newJobEntry);
+                }
+            }
+        }
+
+        private Border BuildRestGroupContainer(
+            AmbienteInfo amb,
+            List<IniSection> allSections,
+            List<KeyValuePair<IniSection, List<IniEntry>>> restItems,
+            Action onRefreshList)
+        {
+            string restJobName;
+            bool isRestActive = VerificarRestAtivoEmOnStart(allSections, out restJobName);
+
+            Border groupBorder = new Border();
+            groupBorder.Background = UiTheme.BgSectionHeader;
+            groupBorder.BorderBrush = isRestActive
+                ? UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex)
+                : UiTheme.BorderSubtle;
+            groupBorder.BorderThickness = new Thickness(1.5);
+            groupBorder.CornerRadius = new CornerRadius(12);
+            groupBorder.Margin = new Thickness(0, 0, 0, 16);
+            groupBorder.Padding = new Thickness(14, 12, 14, 4);
+
+            StackPanel groupStack = new StackPanel();
+
+            DockPanel groupHeader = new DockPanel();
+            groupHeader.Margin = new Thickness(2, 0, 2, 12);
+
+            Button btnToggleRest = UiTheme.CreateActionButton(
+                isRestActive ? "Inativar REST" : "Ativar REST",
+                isRestActive ? "#B45309" : "#059669",
+                isRestActive ? "#D97706" : "#10B981");
+            btnToggleRest.Padding = new Thickness(12, 5, 12, 5);
+            btnToggleRest.FontSize = 11;
+            btnToggleRest.ToolTip = isRestActive
+                ? string.Format("Remove {0} da tag [ONSTART] > jobs sem comentar as seções REST", restJobName)
+                : string.Format("Adiciona/ativa {0} na tag [ONSTART] > jobs", restJobName);
+            DockPanel.SetDock(btnToggleRest, Dock.Right);
+            btnToggleRest.Click += delegate
+            {
+                AlternarEstadoRestEmOnStart(allSections, !isRestActive);
+                if (onRefreshList != null)
+                    onRefreshList();
+            };
+            groupHeader.Children.Add(btnToggleRest);
+
+            StackPanel titleStack = new StackPanel();
+            titleStack.Orientation = Orientation.Horizontal;
+            titleStack.VerticalAlignment = VerticalAlignment.Center;
+
+            TextBlock groupTitle = new TextBlock();
+            groupTitle.Text = "🌐 Configuração REST";
+            groupTitle.Foreground = UiTheme.TextPrimary;
+            groupTitle.FontSize = 14;
+            groupTitle.FontWeight = FontWeights.Bold;
+            groupTitle.VerticalAlignment = VerticalAlignment.Center;
+            titleStack.Children.Add(groupTitle);
+
+            Border statusBadge = new Border();
+            statusBadge.Background = isRestActive
+                ? UiTheme.BrushFromHex("#064E3B")
+                : UiTheme.BrushFromHex("#451A03");
+            statusBadge.BorderBrush = isRestActive
+                ? UiTheme.AccentGreen
+                : UiTheme.BrushFromHex("#92400E");
+            statusBadge.BorderThickness = new Thickness(1);
+            statusBadge.CornerRadius = new CornerRadius(5);
+            statusBadge.Padding = new Thickness(8, 2, 8, 2);
+            statusBadge.Margin = new Thickness(10, 0, 0, 0);
+            statusBadge.VerticalAlignment = VerticalAlignment.Center;
+
+            TextBlock statusTxt = new TextBlock();
+            statusTxt.Text = isRestActive
+                ? string.Format("REST ATIVO ([ONSTART] > jobs inclui {0})", restJobName)
+                : string.Format("REST INATIVO ({0} fora de [ONSTART] > jobs)", restJobName);
+            statusTxt.Foreground = isRestActive ? UiTheme.AccentGreen : UiTheme.AccentAmber;
+            statusTxt.FontSize = 10;
+            statusTxt.FontWeight = FontWeights.Bold;
+            statusBadge.Child = statusTxt;
+            titleStack.Children.Add(statusBadge);
+
+            groupHeader.Children.Add(titleStack);
+            groupStack.Children.Add(groupHeader);
+
+            foreach (KeyValuePair<IniSection, List<IniEntry>> item in restItems)
+            {
+                groupStack.Children.Add(BuildIniSectionCard(amb, allSections, item.Key, item.Value, onRefreshList));
+            }
+
+            groupBorder.Child = groupStack;
+            return groupBorder;
+        }
+
+        // =====================================================================
+        // ITEM 12: AVISO EM TEMPO REAL DE PORTA/CHAVE MONITORADA DUPLICADA (SEM IMPEDIR)
+        // =====================================================================
+        private string VerificarConflitoValorIni(AmbienteInfo currentAmb, string secName, string keyName, string candidateValue)
+        {
+            string val = (candidateValue ?? "").Trim();
+            string sName = (secName ?? "").Trim();
+            string kName = (keyName ?? "").Trim();
+            if (string.IsNullOrEmpty(val) || string.IsNullOrEmpty(sName) || string.IsNullOrEmpty(kName))
+                return null;
+
+            bool isWebAppPort = string.Equals(sName, "WEBAPP", StringComparison.OrdinalIgnoreCase) &&
+                                string.Equals(kName, "Port", StringComparison.OrdinalIgnoreCase);
+            bool isTcpPort = string.Equals(sName, "TCP", StringComparison.OrdinalIgnoreCase) &&
+                             string.Equals(kName, "Port", StringComparison.OrdinalIgnoreCase);
+            bool isRestPort = (string.Equals(sName, "HTTPREST", StringComparison.OrdinalIgnoreCase) ||
+                               string.Equals(sName, "HTTP", StringComparison.OrdinalIgnoreCase) ||
+                               string.Equals(sName, "REST", StringComparison.OrdinalIgnoreCase)) &&
+                              string.Equals(kName, "Port", StringComparison.OrdinalIgnoreCase);
+            bool isDbPort = (string.Equals(sName, "DBACCESS", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(sName, "TOPCONNECT", StringComparison.OrdinalIgnoreCase)) &&
+                            (string.Equals(kName, "Port", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(kName, "DBPort", StringComparison.OrdinalIgnoreCase));
+
+            List<ConflictRule> matchingRules = new List<ConflictRule>();
+            foreach (ConflictRule r in _conflictRules)
+            {
+                if (r.IsSelfSection) continue;
+                if (!string.Equals(r.KeyName, kName, StringComparison.OrdinalIgnoreCase)) continue;
+
+                bool isEnvPlaceholder = string.Equals(r.SectionPattern, "<ambiente>", StringComparison.OrdinalIgnoreCase);
+                if (isEnvPlaceholder && string.Equals(sName, currentAmb.NomeIni ?? "", StringComparison.OrdinalIgnoreCase))
+                {
+                    matchingRules.Add(r);
+                }
+                else if (!isEnvPlaceholder && string.Equals(r.SectionPattern, sName, StringComparison.OrdinalIgnoreCase))
+                {
+                    matchingRules.Add(r);
+                }
+            }
+
+            if (!isWebAppPort && !isTcpPort && !isRestPort && !isDbPort && matchingRules.Count == 0)
+                return null;
+
+            List<string> conflitos = new List<string>();
+            foreach (AmbienteInfo other in _ambientes)
+            {
+                if (other == null || other == currentAmb) continue;
+                if (string.Equals(other.AppDir, currentAmb.AppDir, StringComparison.OrdinalIgnoreCase)) continue;
+                if (_hiddenDirs.Contains(other.AppDir)) continue;
+                if (_ignoreSameSubfolderConflicts && string.Equals(ObterCaminhoSubpastaBase(other), ObterCaminhoSubpastaBase(currentAmb), StringComparison.OrdinalIgnoreCase)) continue;
+
+                bool matchOther = false;
+
+                if (isWebAppPort && string.Equals(other.WebAppPort, val, StringComparison.OrdinalIgnoreCase))
+                    matchOther = true;
+                else if (isTcpPort && string.Equals(other.TcpPort, val, StringComparison.OrdinalIgnoreCase))
+                    matchOther = true;
+                else if (isRestPort && string.Equals(other.RestPort, val, StringComparison.OrdinalIgnoreCase))
+                    matchOther = true;
+                else if (isDbPort && string.Equals(other.DBPort, val, StringComparison.OrdinalIgnoreCase))
+                    matchOther = true;
+
+                if (!matchOther && other.IniSectionsMap != null)
+                {
+                    Dictionary<string, string> otherSec;
+                    string otherVal;
+                    if (other.IniSectionsMap.TryGetValue(sName, out otherSec) &&
+                        otherSec.TryGetValue(kName, out otherVal) &&
+                        string.Equals((otherVal ?? "").Trim(), val, StringComparison.OrdinalIgnoreCase))
+                    {
+                        matchOther = true;
+                    }
+
+                    if (!matchOther)
+                    {
+                        foreach (ConflictRule r in matchingRules)
+                        {
+                            bool isEnvPlaceholder = string.Equals(r.SectionPattern, "<ambiente>", StringComparison.OrdinalIgnoreCase);
+                            string targetSec = isEnvPlaceholder ? other.NomeIni : r.SectionPattern;
+                            if (!string.IsNullOrEmpty(targetSec) &&
+                                other.IniSectionsMap.TryGetValue(targetSec, out otherSec) &&
+                                otherSec.TryGetValue(r.KeyName, out otherVal) &&
+                                string.Equals((otherVal ?? "").Trim(), val, StringComparison.OrdinalIgnoreCase))
+                            {
+                                matchOther = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (matchOther)
+                {
+                    string label = !string.IsNullOrEmpty(other.PastaBase) && !string.Equals(other.NomeIni, other.PastaBase, StringComparison.OrdinalIgnoreCase)
+                        ? string.Format("{0} ({1})", other.NomeIni, other.PastaBase)
+                        : (other.NomeIni ?? other.PastaBase);
+                    if (!conflitos.Contains(label, StringComparer.OrdinalIgnoreCase))
+                        conflitos.Add(label);
+                }
+            }
+
+            if (conflitos.Count > 0)
+            {
+                return "⚠ Porta/valor já utilizado em: " + string.Join(", ", conflitos);
+            }
+            return null;
         }
 
         private UIElement BuildIniEntryRow(AmbienteInfo amb, IniSection sec, IniEntry entry)
@@ -635,8 +1120,11 @@ namespace TOTVSHub
             rowGrid.Children.Add(eqLbl);
 
             // Valor com icone de pasta para ConsoleFile, StartPath, RootPath, RPOCustom, SourcePath
+            StackPanel valContainer = new StackPanel();
+            valContainer.Margin = new Thickness(0, 0, 8, 0);
+            valContainer.VerticalAlignment = VerticalAlignment.Center;
+
             DockPanel valDock = new DockPanel();
-            valDock.Margin = new Thickness(0, 0, 8, 0);
 
             TextBox valBox = new TextBox();
             valBox.Text = entry.Value;
@@ -648,8 +1136,44 @@ namespace TOTVSHub
             valBox.Padding = new Thickness(7, 4, 7, 4);
             valBox.FontSize = 12;
             valBox.VerticalAlignment = VerticalAlignment.Center;
-            valBox.TextChanged += delegate { entry.Value = valBox.Text; };
             entry.ValueBox = valBox;
+
+            TextBlock lblConflictWarn = new TextBlock();
+            lblConflictWarn.Foreground = UiTheme.AccentRed;
+            lblConflictWarn.FontSize = 11;
+            lblConflictWarn.FontWeight = FontWeights.SemiBold;
+            lblConflictWarn.Margin = new Thickness(2, 3, 0, 0);
+            lblConflictWarn.TextWrapping = TextWrapping.Wrap;
+            lblConflictWarn.Visibility = Visibility.Collapsed;
+
+            Action updateConflictState = delegate
+            {
+                string warnMsg = null;
+                if (!entry.IsCommented && !sec.IsCommented)
+                {
+                    warnMsg = VerificarConflitoValorIni(amb, sec.Name, entry.Key, valBox.Text);
+                }
+
+                if (!string.IsNullOrEmpty(warnMsg))
+                {
+                    valBox.BorderBrush = UiTheme.AccentRed;
+                    valBox.Background = UiTheme.BrushFromHex(UiTheme.IsDark ? "#2A1215" : "#FEF2F2");
+                    lblConflictWarn.Text = warnMsg;
+                    lblConflictWarn.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    valBox.BorderBrush = UiTheme.BorderSubtle;
+                    valBox.Background = UiTheme.BgCard;
+                    lblConflictWarn.Visibility = Visibility.Collapsed;
+                }
+            };
+
+            valBox.TextChanged += delegate
+            {
+                entry.Value = valBox.Text;
+                updateConflictState();
+            };
 
             Button btnPickPath = UiTheme.CreateActionButton(
                 UiTheme.CreateFolderIcon(UiTheme.AccentLightBlue, 14),
@@ -675,12 +1199,15 @@ namespace TOTVSHub
             {
                 entry.Key = keyBox.Text.Trim();
                 btnPickPath.Visibility = PathTagKeys.Contains(entry.Key ?? "") ? Visibility.Visible : Visibility.Collapsed;
+                updateConflictState();
             };
 
             valDock.Children.Add(btnPickPath);
             valDock.Children.Add(valBox);
-            Grid.SetColumn(valDock, 3);
-            rowGrid.Children.Add(valDock);
+            valContainer.Children.Add(valDock);
+            valContainer.Children.Add(lblConflictWarn);
+            Grid.SetColumn(valContainer, 3);
+            rowGrid.Children.Add(valContainer);
 
             StackPanel rowBtns = new StackPanel();
             rowBtns.Orientation = Orientation.Horizontal;
@@ -699,6 +1226,7 @@ namespace TOTVSHub
                     sec.IsCommented = false;
                 }
                 AtualizarVisualIniSecao(sec, ProtectedIniSections.Contains(sec.Name ?? ""));
+                updateConflictState();
             };
             entry.BtnToggleComment = btnComment;
 
@@ -716,8 +1244,10 @@ namespace TOTVSHub
             Grid.SetColumn(rowBtns, 4);
             rowGrid.Children.Add(rowBtns);
 
+            valBox.Tag = updateConflictState;
             rowBorder.Child = rowGrid;
             AtualizarVisualIniLinha(entry);
+            updateConflictState();
             return rowBorder;
         }
 
@@ -883,6 +1413,13 @@ namespace TOTVSHub
                 entry.KeyBox.Foreground = UiTheme.TextPrimary;
                 entry.ValueBox.Foreground = UiTheme.TextPrimary;
                 entry.BtnToggleComment.Background = UiTheme.BrushFromHex(UiTheme.NeutralBtnHex);
+            }
+
+            if (entry.ValueBox != null)
+            {
+                Action updateConflict = entry.ValueBox.Tag as Action;
+                if (updateConflict != null)
+                    updateConflict();
             }
         }
 

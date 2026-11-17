@@ -7,6 +7,9 @@ namespace TOTVSHub
 {
     public static class Program
     {
+        public const string SingleInstanceMutexName = "Global\\TOTVSHub_SingleInstance_Mutex_2026";
+        public const string BringToFrontSignalName = "Global\\TOTVSHub_Show_Signal_2026";
+
         [STAThread]
         public static void Main(string[] args)
         {
@@ -20,22 +23,60 @@ namespace TOTVSHub
                 return;
             }
 
+            bool isFirstInstance = false;
+            Mutex singleInstanceMutex = null;
             try
             {
-                EventWaitHandle existingSignal;
-                if (EventWaitHandle.TryOpenExisting("Global\\TOTVSHub_Overwrite_Signal_2026", out existingSignal))
+                singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out isFirstInstance);
+            }
+            catch
+            {
+                isFirstInstance = true;
+            }
+
+            if (!isFirstInstance)
+            {
+                // Já existe uma instância do TOTVSHub em execução!
+                // Sinaliza a instância existente para restaurar a janela e trazer para o foco
+                try
                 {
-                    existingSignal.Set();
-                    existingSignal.Close();
-                    Thread.Sleep(350);
+                    EventWaitHandle showSignal;
+                    if (EventWaitHandle.TryOpenExisting(BringToFrontSignalName, out showSignal))
+                    {
+                        showSignal.Set();
+                        showSignal.Close();
+                    }
+                    else
+                    {
+                        IntPtr hWnd = NativeWin32.FindWindow(null, "TOTVSHub");
+                        if (hWnd != IntPtr.Zero)
+                        {
+                            NativeWin32.ShowWindow(hWnd, 9); // SW_RESTORE
+                            NativeWin32.SetForegroundWindow(hWnd);
+                        }
+                    }
+                }
+                catch { }
+
+                // Encerra imediatamente sem duplicar processo nem ícone na bandeja
+                return;
+            }
+
+            try
+            {
+                Application app = new Application();
+                UiTheme.InstallCustomBlueScrollBar(app);
+                MainWindow win = new MainWindow();
+                app.Run(win);
+            }
+            finally
+            {
+                if (singleInstanceMutex != null)
+                {
+                    try { singleInstanceMutex.ReleaseMutex(); } catch { }
+                    singleInstanceMutex.Close();
                 }
             }
-            catch { }
-
-            Application app = new Application();
-            UiTheme.InstallCustomBlueScrollBar(app);
-            MainWindow win = new MainWindow();
-            app.Run(win);
         }
     }
 }

@@ -35,43 +35,7 @@ namespace TOTVSHub
             // Esquerda do TopBar: Logo branca TOTVS do AppData + TOTVSHub
             StackPanel titleLeft = CreateBrandTitleHeader();
 
-            // Direita do TopBar: Sino + Sanduiche 3 listras
-            StackPanel topIcons = new StackPanel();
-            topIcons.Orientation = Orientation.Horizontal;
-            topIcons.VerticalAlignment = VerticalAlignment.Center;
-            topIcons.Margin = new Thickness(0, 0, 8, 0);
-
-            Grid bellGrid = new Grid();
-            bellGrid.Children.Add(UiTheme.CreateThinBellIcon(UiTheme.TextPrimary));
-
-            _alertBadge = new Border();
-            _alertBadge.Background = _alertasAtivos.Count > 0 ? UiTheme.AccentRed : UiTheme.BrushFromHex("#475569");
-            _alertBadge.CornerRadius = new CornerRadius(7);
-            _alertBadge.Padding = new Thickness(4, 0, 4, 0);
-            _alertBadge.HorizontalAlignment = HorizontalAlignment.Right;
-            _alertBadge.VerticalAlignment = VerticalAlignment.Top;
-            _alertBadge.Margin = new Thickness(10, -4, -5, 0);
-
-            _alertCountText = new TextBlock();
-            _alertCountText.Text = _alertasAtivos.Count.ToString();
-            _alertCountText.Foreground = Brushes.White;
-            _alertCountText.FontSize = 9;
-            _alertCountText.FontWeight = FontWeights.Bold;
-            _alertBadge.Child = _alertCountText;
-            bellGrid.Children.Add(_alertBadge);
-
-            Button btnAlerts = UiTheme.CreateFramelessIconButton(bellGrid, "Alertas");
-            btnAlerts.Margin = new Thickness(0, 0, 10, 0);
-            btnAlerts.Click += delegate { AbrirCentralAlertas(); };
-            topIcons.Children.Add(btnAlerts);
-
-            Button btnSettings = UiTheme.CreateFramelessIconButton(
-                UiTheme.CreateHamburgerIcon(UiTheme.TextPrimary),
-                "Configurações");
-            btnSettings.Click += delegate { ShowSettingsView(); };
-            topIcons.Children.Add(btnSettings);
-
-            Border topBar = BuildTopWindowBar(titleLeft, topIcons);
+            Border topBar = BuildTopWindowBar(titleLeft, null);
             Grid.SetRow(topBar, 0);
             rootGrid.Children.Add(topBar);
 
@@ -241,24 +205,14 @@ namespace TOTVSHub
             Grid.SetRow(_loadingTrackGrid, 2);
             rootGrid.Children.Add(_loadingTrackGrid);
 
-            // ================= CONTAINER DE AMBIENTES (LISTA EM NORMAL, CARDS GRID EM TELA CHEIA) =================
+            // ================= CONTAINER DE AMBIENTES (SEMPRE MODO LISTA) =================
             ScrollViewer scroll = new ScrollViewer();
             scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
             scroll.Padding = new Thickness(20, 4, 20, 18);
             _cardsScrollViewer = scroll;
 
-            if (WindowState == WindowState.Maximized)
-            {
-                UniformGrid ug = new UniformGrid();
-                ug.Columns = ActualWidth >= 1750 ? 3 : 2;
-                ug.VerticalAlignment = VerticalAlignment.Top;
-                _cardsContainer = ug;
-            }
-            else
-            {
-                StackPanel sp = new StackPanel();
-                _cardsContainer = sp;
-            }
+            StackPanel sp = new StackPanel();
+            _cardsContainer = sp;
 
             scroll.Content = _cardsContainer;
             Grid.SetRow(scroll, 3);
@@ -270,13 +224,7 @@ namespace TOTVSHub
 
         private void AtualizarColunasGridMaximizado()
         {
-            UniformGrid ug = _cardsContainer as UniformGrid;
-            if (ug != null)
-            {
-                int cols = ActualWidth >= 1750 ? 3 : 2;
-                if (ug.Columns != cols)
-                    ug.Columns = cols;
-            }
+            // Sempre mantido em modo de lista (StackPanel)
         }
 
         private void GirarIconeAtualizacao1x()
@@ -332,36 +280,19 @@ namespace TOTVSHub
         {
             if (_cardsContainer == null) return;
 
-            bool isMaximized = (WindowState == WindowState.Maximized);
-            if (_cardsScrollViewer != null)
+            if (_cardsScrollViewer != null && !(_cardsContainer is StackPanel))
             {
-                if (isMaximized && !(_cardsContainer is UniformGrid))
-                {
-                    UniformGrid ugNew = new UniformGrid();
-                    ugNew.Columns = ActualWidth >= 1750 ? 3 : 2;
-                    ugNew.VerticalAlignment = VerticalAlignment.Top;
-                    _cardsContainer = ugNew;
-                    _cardsScrollViewer.Content = _cardsContainer;
-                }
-                else if (!isMaximized && !(_cardsContainer is StackPanel))
-                {
-                    StackPanel spNew = new StackPanel();
-                    _cardsContainer = spNew;
-                    _cardsScrollViewer.Content = _cardsContainer;
-                }
+                StackPanel spNew = new StackPanel();
+                _cardsContainer = spNew;
+                _cardsScrollViewer.Content = _cardsContainer;
             }
 
             AtualizarBotaoOcultos();
             _cardsContainer.Children.Clear();
 
-            if (isMaximized)
-                AtualizarColunasGridMaximizado();
-
             // Animacao vetorial enquanto a primeira varredura nao conclui
             if (!_isInitialScanCompleted)
             {
-                UniformGrid ug = _cardsContainer as UniformGrid;
-                if (ug != null) ug.Columns = 1;
                 _cardsContainer.Children.Add(UiTheme.CreateVectorLoadingScreen(_cachedSvgPath));
                 AtualizarResumoEVisualCards();
                 return;
@@ -390,6 +321,7 @@ namespace TOTVSHub
                               || (amb.WebAppPort != null && amb.WebAppPort.Contains(filtro))
                               || (amb.TcpPort != null && amb.TcpPort.Contains(filtro))
                               || (amb.RestPort != null && amb.RestPort.Contains(filtro))
+                              || (amb.WebServicesPort != null && amb.WebServicesPort.Contains(filtro))
                               || (amb.SpecialKey != null && amb.SpecialKey.ToLowerInvariant().Contains(filtro))
                               || (amb.DBAlias != null && amb.DBAlias.ToLowerInvariant().Contains(filtro))
                               || (amb.DBPort != null && amb.DBPort.Contains(filtro))
@@ -401,18 +333,11 @@ namespace TOTVSHub
 
                 visiveis++;
                 Border cardUi = CriarCardAmbiente(amb, isHidden);
-                if (isMaximized)
-                {
-                    cardUi.Margin = new Thickness(5, 0, 5, 10);
-                }
                 _cardsContainer.Children.Add(cardUi);
             }
 
             if (visiveis == 0)
             {
-                UniformGrid ug = _cardsContainer as UniformGrid;
-                if (ug != null) ug.Columns = 1;
-
                 Border emptyBox = new Border();
                 emptyBox.Background = UiTheme.BgCard;
                 emptyBox.BorderBrush = UiTheme.BorderSubtle;
@@ -529,11 +454,19 @@ namespace TOTVSHub
                 RenderizarCards();
             };
 
+            // Icone de comentario ao lado direito do ocultar
+            Button btnNote = UiTheme.CreateFramelessIconButton(
+                UiTheme.CreateCommentBubbleIcon(UiTheme.TextSecondary, 15),
+                "Adicionar ou editar anotação deste ambiente");
+            btnNote.Margin = new Thickness(4, 0, 0, 0);
+            btnNote.Click += delegate { EditarNotaCard(amb); };
+
             toolsIconsRow.Children.Add(btnConfig);
             toolsIconsRow.Children.Add(btnHide);
+            toolsIconsRow.Children.Add(btnNote);
             leftToolsColumn.Children.Add(toolsIconsRow);
 
-            // Status abaixo do configurar e ocultar
+            // Status abaixo do configurar, ocultar e anotação
             Border statusBadge = new Border();
             statusBadge.CornerRadius = new CornerRadius(10);
             statusBadge.Padding = new Thickness(8, 3, 8, 3);
@@ -567,11 +500,31 @@ namespace TOTVSHub
             amb.StatusText = statusTxt;
 
             leftToolsColumn.Children.Add(statusBadge);
+
+            // Tag opcional do usuario do processo (PID) abaixo do status
+            Border userBadge = new Border();
+            userBadge.Background = UiTheme.BrushFromHex("#0C4A6E");
+            userBadge.BorderBrush = UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex);
+            userBadge.BorderThickness = new Thickness(1);
+            userBadge.CornerRadius = new CornerRadius(5);
+            userBadge.Padding = new Thickness(7, 2, 7, 2);
+            userBadge.Margin = new Thickness(0, 4, 0, 0);
+            userBadge.HorizontalAlignment = HorizontalAlignment.Center;
+            userBadge.VerticalAlignment = VerticalAlignment.Center;
+            TextBlock userTxt = new TextBlock();
+            userTxt.Foreground = UiTheme.AccentLightBlue;
+            userTxt.FontSize = 11;
+            userTxt.FontWeight = FontWeights.Bold;
+            userBadge.Child = userTxt;
+            amb.UserTagBorder = userBadge;
+            amb.UserTagText = userTxt;
+            leftToolsColumn.Children.Add(userBadge);
+
             Grid.SetRow(leftToolsColumn, 0);
             Grid.SetColumn(leftToolsColumn, 0);
             cardGrid.Children.Add(leftToolsColumn);
 
-            // ================= COLUNA 1 (CENTRO): NOME DO AMBIENTE AZUL, PASTA, USUARIO PID E METADADOS PADRAO =================
+            // ================= COLUNA 1 (CENTRO): NOME DO AMBIENTE AZUL E METADADOS PADRAO =================
             StackPanel infoColumn = new StackPanel();
             infoColumn.VerticalAlignment = VerticalAlignment.Center;
             infoColumn.Margin = new Thickness(0, 0, 12, 0);
@@ -589,78 +542,6 @@ namespace TOTVSHub
             lblEnvName.VerticalAlignment = VerticalAlignment.Center;
             titleWrap.Children.Add(lblEnvName);
 
-            Border folderTag = new Border();
-            folderTag.Background = UiTheme.TagBg;
-            folderTag.BorderBrush = UiTheme.BorderSubtle;
-            folderTag.BorderThickness = new Thickness(1);
-            folderTag.CornerRadius = new CornerRadius(5);
-            folderTag.Padding = new Thickness(7, 2, 7, 2);
-            folderTag.Margin = new Thickness(0, 0, 6, 0);
-            folderTag.VerticalAlignment = VerticalAlignment.Center;
-            TextBlock folderTagTxt = new TextBlock();
-            folderTagTxt.Text = amb.PastaBase;
-            folderTagTxt.Foreground = UiTheme.TextSecondary;
-            folderTagTxt.FontSize = 11;
-            folderTagTxt.FontWeight = FontWeights.SemiBold;
-            folderTag.Child = folderTagTxt;
-            titleWrap.Children.Add(folderTag);
-
-            Border modeBadge = new Border();
-            modeBadge.Background = UiTheme.TagBg;
-            modeBadge.BorderBrush = UiTheme.BorderSubtle;
-            modeBadge.BorderThickness = new Thickness(1);
-            modeBadge.CornerRadius = new CornerRadius(5);
-            modeBadge.Padding = new Thickness(7, 2, 7, 2);
-            modeBadge.Margin = new Thickness(0, 0, 6, 0);
-            modeBadge.VerticalAlignment = VerticalAlignment.Center;
-            TextBlock modeTxt = new TextBlock();
-            modeTxt.Foreground = UiTheme.TextSecondary;
-            modeTxt.FontSize = 11;
-            modeTxt.FontWeight = FontWeights.SemiBold;
-            modeBadge.Child = modeTxt;
-            amb.ModeTagText = modeTxt;
-            titleWrap.Children.Add(modeBadge);
-
-            // Tag opcional do usuario do processo (PID)
-            Border userBadge = new Border();
-            userBadge.Background = UiTheme.BrushFromHex("#0C4A6E");
-            userBadge.BorderBrush = UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex);
-            userBadge.BorderThickness = new Thickness(1);
-            userBadge.CornerRadius = new CornerRadius(5);
-            userBadge.Padding = new Thickness(7, 2, 7, 2);
-            userBadge.Margin = new Thickness(0, 0, 6, 0);
-            userBadge.VerticalAlignment = VerticalAlignment.Center;
-            TextBlock userTxt = new TextBlock();
-            userTxt.Foreground = UiTheme.AccentLightBlue;
-            userTxt.FontSize = 11;
-            userTxt.FontWeight = FontWeights.Bold;
-            userBadge.Child = userTxt;
-            amb.UserTagBorder = userBadge;
-            amb.UserTagText = userTxt;
-            titleWrap.Children.Add(userBadge);
-
-            Button btnOpenExplorer = UiTheme.CreateFramelessIconButton(
-                UiTheme.CreateFolderIcon(UiTheme.TextSecondary, 13),
-                "Abrir diretório do AppServer no Explorer");
-            btnOpenExplorer.Padding = new Thickness(4, 2, 4, 2);
-            btnOpenExplorer.Click += delegate
-            {
-                try
-                {
-                    if (Directory.Exists(amb.AppDir))
-                        Process.Start("explorer.exe", amb.AppDir);
-                }
-                catch { }
-            };
-            titleWrap.Children.Add(btnOpenExplorer);
-
-            Button btnNote = UiTheme.CreateFramelessIconButton(
-                new TextBlock { Text = "📝", FontSize = 11, Foreground = UiTheme.TextSecondary },
-                "Adicionar ou editar anotação deste ambiente");
-            btnNote.Padding = new Thickness(4, 2, 4, 2);
-            btnNote.Click += delegate { EditarNotaCard(amb); };
-            titleWrap.Children.Add(btnNote);
-
             infoColumn.Children.Add(titleWrap);
 
             TextBlock lblPath = new TextBlock();
@@ -671,11 +552,18 @@ namespace TOTVSHub
             lblPath.Margin = new Thickness(0, 3, 0, 6);
             infoColumn.Children.Add(lblPath);
 
-            // Tags de facil visualizacao: Portas + SpecialKey, DBAlias e DBPort como padrao
+            // Tags de facil visualizacao: Portas + SpecialKey, DBAlias e DBPort como padrao (REST apenas se existir)
             WrapPanel metaWrap = new WrapPanel();
             metaWrap.Children.Add(CreateMetaPill("WebApp", !string.IsNullOrEmpty(amb.WebAppPort) ? amb.WebAppPort : "-"));
             metaWrap.Children.Add(CreateMetaPill("TCP", !string.IsNullOrEmpty(amb.TcpPort) ? amb.TcpPort : "-"));
-            metaWrap.Children.Add(CreateMetaPill("REST", !string.IsNullOrEmpty(amb.RestPort) ? amb.RestPort : "-"));
+            if (!string.IsNullOrEmpty(amb.RestPort))
+            {
+                metaWrap.Children.Add(CreateMetaPill("REST", amb.RestPort));
+            }
+            if (!string.IsNullOrEmpty(amb.WebServicesPort))
+            {
+                metaWrap.Children.Add(CreateMetaPill("WebServices", amb.WebServicesPort));
+            }
             metaWrap.Children.Add(CreateMetaPill("SpecialKey", !string.IsNullOrEmpty(amb.SpecialKey) ? amb.SpecialKey : "-"));
             metaWrap.Children.Add(CreateMetaPill("DBAlias", !string.IsNullOrEmpty(amb.DBAlias) ? amb.DBAlias : "-"));
             metaWrap.Children.Add(CreateMetaPill("DBPort", !string.IsNullOrEmpty(amb.DBPort) ? amb.DBPort : "-"));
@@ -685,19 +573,19 @@ namespace TOTVSHub
             Grid.SetColumn(infoColumn, 1);
             cardGrid.Children.Add(infoColumn);
 
-            // ================= COLUNA 2 (DIREITA): PROTHEUS, REST, BOTOES CUSTOMIZADOS E CONTROLE DE PROCESSO =================
+            // ================= COLUNA 2 (DIREITA): ACESSOS EMPILHADOS E ICONES DE CONTROLE EMPILHADOS =================
             StackPanel rightActionsColumn = new StackPanel();
-            rightActionsColumn.Orientation = Orientation.Vertical;
+            rightActionsColumn.Orientation = Orientation.Horizontal;
             rightActionsColumn.VerticalAlignment = VerticalAlignment.Center;
             rightActionsColumn.HorizontalAlignment = HorizontalAlignment.Right;
 
-            WrapPanel accessButtonsWrap = new WrapPanel();
-            accessButtonsWrap.HorizontalAlignment = HorizontalAlignment.Right;
-            accessButtonsWrap.Margin = new Thickness(0, 0, 0, 6);
+            StackPanel accessButtonsStack = new StackPanel();
+            accessButtonsStack.Orientation = Orientation.Vertical;
+            accessButtonsStack.VerticalAlignment = VerticalAlignment.Center;
+            accessButtonsStack.Margin = new Thickness(0, 0, 8, 0);
 
-            // Botao 'Protheus' (antigo 'Acessar') no mesmo tom de azul
-            Button btnWeb = UiTheme.CreateActionButton("Protheus", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
-            btnWeb.Margin = new Thickness(6, 0, 0, 4);
+            // Botao 'Protheus' (Web link com globo, nome a esquerda e seta diagonal a direita, padronizado com WebServices)
+            Button btnWeb = UiTheme.CreateWebLinkButton("Protheus", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
             btnWeb.ToolTip = !string.IsNullOrEmpty(amb.WebAppPort)
                 ? string.Format("Abrir http://localhost:{0}", amb.WebAppPort)
                 : "Porta WEBAPP não configurada no appserver.ini";
@@ -705,62 +593,99 @@ namespace TOTVSHub
                 btnWeb.Opacity = 0.50;
             btnWeb.Click += delegate { AbrirNavegador(amb); };
             amb.BtnWeb = btnWeb;
-            accessButtonsWrap.Children.Add(btnWeb);
+            accessButtonsStack.Children.Add(btnWeb);
 
-            // Botao 'REST' no mesmo tom de azul
-            Button btnRest = UiTheme.CreateActionButton("REST", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
-            btnRest.Margin = new Thickness(6, 0, 0, 4);
-            btnRest.ToolTip = !string.IsNullOrEmpty(amb.RestPort)
-                ? string.Format("Abrir http://localhost:{0}/rest", amb.RestPort)
-                : "Porta HTTPREST não configurada no appserver.ini";
-            if (string.IsNullOrEmpty(amb.RestPort))
-                btnRest.Opacity = 0.50;
-            btnRest.Click += delegate { AbrirRestNavegador(amb); };
-            amb.BtnRest = btnRest;
-            accessButtonsWrap.Children.Add(btnRest);
+            // Botao 'REST' apenas se houver RestPort configurado
+            if (!string.IsNullOrEmpty(amb.RestPort))
+            {
+                Button btnRest = UiTheme.CreateWebLinkButton("REST", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
+                btnRest.ToolTip = string.Format("Abrir http://localhost:{0}/rest", amb.RestPort);
+                btnRest.Click += delegate { AbrirRestNavegador(amb); };
+                amb.BtnRest = btnRest;
+                accessButtonsStack.Children.Add(btnRest);
+            }
+            else
+            {
+                amb.BtnRest = null;
+            }
 
-            // Botoes personalizados gerados pelas formulas configuradas pelo usuario
+            // Botao 'WebServices' se houver no .ini e nao estiver duplicado em _customLinks
+            bool hasCustomWs = _customLinks.Any(l => string.Equals(l.Label, "WebServices", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(amb.WebServicesPort) && !hasCustomWs)
+            {
+                Button btnWs = UiTheme.CreateWebLinkButton("WebServices", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
+                btnWs.ToolTip = string.Format("Abrir http://localhost:{0}/ws", amb.WebServicesPort);
+                btnWs.Click += delegate { AbrirWebServicesNavegador(amb); };
+                amb.BtnWebServices = btnWs;
+                accessButtonsStack.Children.Add(btnWs);
+            }
+            else
+            {
+                amb.BtnWebServices = null;
+            }
+
+            // Botoes personalizados gerados pelas formulas configuradas pelo usuario (apenas se houver a chave no .ini)
             amb.CustomButtons.Clear();
             foreach (CustomLinkButton linkDef in _customLinks)
             {
                 CustomLinkButton capturedDef = linkDef;
                 string resolvedUrl = ResolverFormulaLink(amb, capturedDef.Formula);
-                Button btnCustom = UiTheme.CreateActionButton(capturedDef.Label, UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
-                btnCustom.Margin = new Thickness(6, 0, 0, 4);
-                btnCustom.ToolTip = !string.IsNullOrEmpty(resolvedUrl)
-                    ? string.Format("Abrir {0}", resolvedUrl)
-                    : string.Format("Fórmula: {0} (chaves ausentes neste .ini)", capturedDef.Formula);
                 if (string.IsNullOrEmpty(resolvedUrl))
-                    btnCustom.Opacity = 0.50;
+                    continue;
+
+                Button btnCustom = UiTheme.CreateWebLinkButton(capturedDef.Label, UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
+                btnCustom.ToolTip = string.Format("Abrir {0}", resolvedUrl);
                 btnCustom.Click += delegate { AbrirLinkCustomizado(amb, capturedDef); };
                 amb.CustomButtons.Add(btnCustom);
-                accessButtonsWrap.Children.Add(btnCustom);
+                accessButtonsStack.Children.Add(btnCustom);
             }
 
-            rightActionsColumn.Children.Add(accessButtonsWrap);
+            rightActionsColumn.Children.Add(accessButtonsStack);
 
-            WrapPanel powerButtonsWrap = new WrapPanel();
-            powerButtonsWrap.HorizontalAlignment = HorizontalAlignment.Right;
+            StackPanel powerButtonsStack = new StackPanel();
+            powerButtonsStack.Orientation = Orientation.Vertical;
+            powerButtonsStack.VerticalAlignment = VerticalAlignment.Center;
 
-            Button btnStart = UiTheme.CreateActionButton("Iniciar", "#059669", "#10B981");
-            btnStart.Margin = new Thickness(6, 0, 0, 0);
+            Button btnStart = UiTheme.CreateActionButton(
+                UiTheme.CreatePlayIcon(Brushes.White, 13),
+                "#059669",
+                "#10B981");
+            btnStart.Width = 34;
+            btnStart.Height = 26;
+            btnStart.Padding = new Thickness(0);
+            btnStart.Margin = new Thickness(0, 2, 0, 2);
+            btnStart.ToolTip = "Iniciar";
             btnStart.Click += delegate { IniciarAmbienteAsync(amb, null); };
             amb.BtnStart = btnStart;
 
-            Button btnRestart = UiTheme.CreateActionButton("Reiniciar", "#D97706", "#F59E0B");
-            btnRestart.Margin = new Thickness(6, 0, 0, 0);
+            Button btnRestart = UiTheme.CreateActionButton(
+                UiTheme.CreateRestartIcon(Brushes.White, 13),
+                "#D97706",
+                "#F59E0B");
+            btnRestart.Width = 34;
+            btnRestart.Height = 26;
+            btnRestart.Padding = new Thickness(0);
+            btnRestart.Margin = new Thickness(0, 2, 0, 2);
+            btnRestart.ToolTip = "Reiniciar";
             btnRestart.Click += delegate { ReiniciarAmbienteAsync(amb); };
             amb.BtnRestart = btnRestart;
 
-            Button btnStop = UiTheme.CreateActionButton("Parar", "#DC2626", "#EF4444");
-            btnStop.Margin = new Thickness(6, 0, 0, 0);
+            Button btnStop = UiTheme.CreateActionButton(
+                UiTheme.CreateStopXIcon(Brushes.White, 13),
+                "#DC2626",
+                "#EF4444");
+            btnStop.Width = 34;
+            btnStop.Height = 26;
+            btnStop.Padding = new Thickness(0);
+            btnStop.Margin = new Thickness(0, 2, 0, 2);
+            btnStop.ToolTip = "Parar";
             btnStop.Click += delegate { EncerrarAmbienteAsync(amb); };
             amb.BtnStop = btnStop;
 
-            powerButtonsWrap.Children.Add(btnStart);
-            powerButtonsWrap.Children.Add(btnRestart);
-            powerButtonsWrap.Children.Add(btnStop);
-            rightActionsColumn.Children.Add(powerButtonsWrap);
+            powerButtonsStack.Children.Add(btnStart);
+            powerButtonsStack.Children.Add(btnRestart);
+            powerButtonsStack.Children.Add(btnStop);
+            rightActionsColumn.Children.Add(powerButtonsStack);
 
             Grid.SetRow(rightActionsColumn, 0);
             Grid.SetColumn(rightActionsColumn, 2);
@@ -906,26 +831,35 @@ namespace TOTVSHub
         {
             if (amb.CardBorder == null) return;
 
-            string modoBase = amb.IsServiceRegistered
-                ? string.Format("Serviço ({0})", amb.ServiceName)
-                : "Console";
+            if (amb.ModeTagText != null)
+            {
+                string modoBase = amb.IsServiceRegistered
+                    ? string.Format("Serviço ({0})", amb.ServiceName)
+                    : "Console";
 
-            if (amb.State == EnvRunState.Active && amb.Pid > 0)
-            {
-                string execMode = amb.RunningAsService ? "Serviço" : "Console";
-                amb.ModeTagText.Text = string.Format("{0}  •  PID {1}", execMode, amb.Pid);
-            }
-            else
-            {
-                amb.ModeTagText.Text = modoBase;
+                if (amb.State == EnvRunState.Active && amb.Pid > 0)
+                {
+                    string execMode = amb.RunningAsService ? "Serviço" : "Console";
+                    amb.ModeTagText.Text = string.Format("{0}  •  PID {1}", execMode, amb.Pid);
+                }
+                else
+                {
+                    amb.ModeTagText.Text = modoBase;
+                }
             }
 
             if (amb.UserTagBorder != null && amb.UserTagText != null)
             {
-                if (_showProcessUser && amb.State == EnvRunState.Active && !string.IsNullOrEmpty(amb.ProcessUser))
+                if (amb.State == EnvRunState.Active && (amb.Pid > 0 || !string.IsNullOrEmpty(amb.ProcessUser)))
                 {
-                    amb.UserTagText.Text = "👤 " + amb.ProcessUser;
-                    amb.UserTagBorder.Visibility = Visibility.Visible;
+                    string userInfo = "";
+                    if (_showProcessUser && !string.IsNullOrEmpty(amb.ProcessUser))
+                        userInfo = "👤 " + amb.ProcessUser;
+                    if (amb.Pid > 0)
+                        userInfo = string.IsNullOrEmpty(userInfo) ? "PID " + amb.Pid : userInfo + "  •  PID " + amb.Pid;
+
+                    amb.UserTagText.Text = userInfo;
+                    amb.UserTagBorder.Visibility = string.IsNullOrEmpty(userInfo) ? Visibility.Collapsed : Visibility.Visible;
                 }
                 else
                 {
@@ -940,14 +874,18 @@ namespace TOTVSHub
                 amb.StatusBadge.Background = UiTheme.BrushFromHex("#064E3B");
                 amb.StatusBadge.BorderBrush = UiTheme.AccentGreen;
                 amb.StatusDot.Background = UiTheme.AccentGreen;
-                amb.StatusText.Text = "Ativo";
+                amb.StatusText.Text = "RUNNING";
                 amb.StatusText.Foreground = UiTheme.AccentGreen;
 
-                amb.BtnStart.Visibility = Visibility.Collapsed;
+                amb.BtnStart.Visibility = Visibility.Visible;
                 amb.BtnRestart.Visibility = Visibility.Visible;
                 amb.BtnStop.Visibility = Visibility.Visible;
+                amb.BtnStart.IsEnabled = false;
+                amb.BtnStart.Opacity = 0.30;
                 amb.BtnRestart.IsEnabled = true;
+                amb.BtnRestart.Opacity = 1.0;
                 amb.BtnStop.IsEnabled = true;
+                amb.BtnStop.Opacity = 1.0;
             }
             else if (amb.State == EnvRunState.Initializing)
             {
@@ -956,13 +894,18 @@ namespace TOTVSHub
                 amb.StatusBadge.Background = UiTheme.BrushFromHex("#451A03");
                 amb.StatusBadge.BorderBrush = UiTheme.AccentAmber;
                 amb.StatusDot.Background = UiTheme.AccentAmber;
-                amb.StatusText.Text = "Iniciando...";
+                amb.StatusText.Text = "STARTING";
                 amb.StatusText.Foreground = UiTheme.AccentAmber;
 
                 amb.BtnStart.Visibility = Visibility.Visible;
+                amb.BtnRestart.Visibility = Visibility.Visible;
+                amb.BtnStop.Visibility = Visibility.Visible;
                 amb.BtnStart.IsEnabled = false;
-                amb.BtnRestart.Visibility = Visibility.Collapsed;
-                amb.BtnStop.Visibility = Visibility.Collapsed;
+                amb.BtnStart.Opacity = 0.30;
+                amb.BtnRestart.IsEnabled = false;
+                amb.BtnRestart.Opacity = 0.30;
+                amb.BtnStop.IsEnabled = false;
+                amb.BtnStop.Opacity = 0.30;
             }
             else if (amb.State == EnvRunState.Stopping)
             {
@@ -971,13 +914,18 @@ namespace TOTVSHub
                 amb.StatusBadge.Background = UiTheme.BrushFromHex("#451A03");
                 amb.StatusBadge.BorderBrush = UiTheme.AccentAmber;
                 amb.StatusDot.Background = UiTheme.AccentAmber;
-                amb.StatusText.Text = "Parando...";
+                amb.StatusText.Text = "STOPPING";
                 amb.StatusText.Foreground = UiTheme.AccentAmber;
 
-                amb.BtnStart.Visibility = Visibility.Collapsed;
-                amb.BtnRestart.Visibility = Visibility.Collapsed;
+                amb.BtnStart.Visibility = Visibility.Visible;
+                amb.BtnRestart.Visibility = Visibility.Visible;
                 amb.BtnStop.Visibility = Visibility.Visible;
+                amb.BtnStart.IsEnabled = false;
+                amb.BtnStart.Opacity = 0.30;
+                amb.BtnRestart.IsEnabled = false;
+                amb.BtnRestart.Opacity = 0.30;
                 amb.BtnStop.IsEnabled = false;
+                amb.BtnStop.Opacity = 0.30;
             }
             else
             {
@@ -986,13 +934,18 @@ namespace TOTVSHub
                 amb.StatusBadge.Background = UiTheme.TagBg;
                 amb.StatusBadge.BorderBrush = UiTheme.BorderSubtle;
                 amb.StatusDot.Background = UiTheme.TextMuted;
-                amb.StatusText.Text = "Parado";
+                amb.StatusText.Text = "STOPPED";
                 amb.StatusText.Foreground = UiTheme.TextSecondary;
 
                 amb.BtnStart.Visibility = Visibility.Visible;
+                amb.BtnRestart.Visibility = Visibility.Visible;
+                amb.BtnStop.Visibility = Visibility.Visible;
                 amb.BtnStart.IsEnabled = true;
-                amb.BtnRestart.Visibility = Visibility.Collapsed;
-                amb.BtnStop.Visibility = Visibility.Collapsed;
+                amb.BtnStart.Opacity = 1.0;
+                amb.BtnRestart.IsEnabled = false;
+                amb.BtnRestart.Opacity = 0.30;
+                amb.BtnStop.IsEnabled = false;
+                amb.BtnStop.Opacity = 0.30;
             }
         }
 
@@ -1070,9 +1023,22 @@ namespace TOTVSHub
                     {
                         secDict.TryGetValue(keyName, out val);
                     }
-                    if (string.IsNullOrWhiteSpace(val))
+                    if (string.IsNullOrWhiteSpace(val) && string.Equals(keyName, "Port", StringComparison.OrdinalIgnoreCase))
                     {
-                        val = ObterValorChaveIni(amb, secName, keyName);
+                        if (string.Equals(secName, "HTTPREST", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(secName, "REST", StringComparison.OrdinalIgnoreCase))
+                        {
+                            val = amb.RestPort;
+                        }
+                        else if (string.Equals(secName, "WEBSERVICES", StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(secName, "WS", StringComparison.OrdinalIgnoreCase))
+                        {
+                            val = amb.WebServicesPort;
+                        }
+                        else if (string.Equals(secName, "WEBAPP", StringComparison.OrdinalIgnoreCase))
+                        {
+                            val = amb.WebAppPort;
+                        }
                     }
                 }
                 else if (!string.IsNullOrEmpty(keyName))
@@ -1081,6 +1047,8 @@ namespace TOTVSHub
                         val = amb.WebAppPort;
                     else if (string.Equals(keyName, "RestPort", StringComparison.OrdinalIgnoreCase))
                         val = amb.RestPort;
+                    else if (string.Equals(keyName, "WebServicesPort", StringComparison.OrdinalIgnoreCase))
+                        val = amb.WebServicesPort;
                     else if (string.Equals(keyName, "TcpPort", StringComparison.OrdinalIgnoreCase))
                         val = amb.TcpPort;
                     else if (string.Equals(keyName, "SpecialKey", StringComparison.OrdinalIgnoreCase))
@@ -1171,6 +1139,26 @@ namespace TOTVSHub
             }
         }
 
+        private void AbrirWebServicesNavegador(AmbienteInfo amb)
+        {
+            if (string.IsNullOrEmpty(amb.WebServicesPort))
+            {
+                StyledDialog.Info(this, "Porta WebServices Ausente", "Este ambiente não possui porta configurada para WebServices.", amb.IniPath);
+                return;
+            }
+
+            string url = string.Format("http://localhost:{0}/ws", amb.WebServicesPort);
+            if (amb.State != EnvRunState.Active)
+            {
+                int delay = _browserDelaySeconds;
+                IniciarAmbienteAsync(amb, delegate { AbrirUrlNoNavegador(url, delay); });
+            }
+            else
+            {
+                AbrirUrlNoNavegador(url, 0);
+            }
+        }
+
         private void AbrirLinkCustomizado(AmbienteInfo amb, CustomLinkButton linkDef)
         {
             string url = ResolverFormulaLink(amb, linkDef.Formula);
@@ -1231,7 +1219,22 @@ namespace TOTVSHub
                     psi.Arguments = "-console";
                     psi.WorkingDirectory = amb.AppDir;
                     psi.UseShellExecute = true;
+                    psi.Verb = "runas";
                     Process.Start(psi);
+                }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                    // Se o usuario recusar a elevacao UAC, tenta abrir sem modo admin
+                    try
+                    {
+                        ProcessStartInfo fallback = new ProcessStartInfo();
+                        fallback.FileName = amb.ExePath;
+                        fallback.Arguments = "-console";
+                        fallback.WorkingDirectory = amb.AppDir;
+                        fallback.UseShellExecute = true;
+                        Process.Start(fallback);
+                    }
+                    catch { }
                 }
                 catch { }
             }

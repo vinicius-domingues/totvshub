@@ -25,6 +25,7 @@ namespace TOTVSHub
         private bool _ignoreOldFolders = true;
         private bool _showProcessUser = true;
         private bool _showIniComments = false; // Padrao desmarcado
+        private bool _ignoreSameSubfolderConflicts = true; // Desconsiderar duplicidade entre ambientes da mesma subpasta (padrao ativado)
         private string _updateDriveUrl = UiTheme.DefaultUpdateDriveUrl;
 
         private readonly string _appDataDir;
@@ -38,6 +39,7 @@ namespace TOTVSHub
         private readonly string _ignoreOldPrefPath;
         private readonly string _showUserPrefPath;
         private readonly string _showCommentsPrefPath;
+        private readonly string _ignoreSameSubfolderPrefPath;
         private readonly string _rulesPrefPath;
         private readonly string _customLinksPrefPath;
         private readonly string _driveUrlPrefPath;
@@ -121,6 +123,7 @@ namespace TOTVSHub
             _ignoreOldPrefPath = Path.Combine(_appDataDir, "ignore_old.txt");
             _showUserPrefPath = Path.Combine(_appDataDir, "show_pid_user.txt");
             _showCommentsPrefPath = Path.Combine(_appDataDir, "show_ini_comments.txt");
+            _ignoreSameSubfolderPrefPath = Path.Combine(_appDataDir, "ignore_same_subfolder.txt");
             _rulesPrefPath = Path.Combine(_appDataDir, "alert_rules.txt");
             _customLinksPrefPath = Path.Combine(_appDataDir, "custom_links.txt");
             _driveUrlPrefPath = Path.Combine(_appDataDir, "drive_url.txt");
@@ -204,6 +207,39 @@ namespace TOTVSHub
             if (source != null)
             {
                 source.AddHook(NativeWin32.MultiMonitorWndProc);
+            }
+        }
+
+        public string ObterCaminhoSubpastaBase(AmbienteInfo amb)
+        {
+            if (amb == null || string.IsNullOrWhiteSpace(amb.AppDir)) return "";
+            try
+            {
+                string normAppDir = NormalizePath(amb.AppDir);
+                string normRoot = NormalizePath(_rootPath);
+
+                if (!string.IsNullOrEmpty(normRoot) && normAppDir.StartsWith(normRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    string rel = normAppDir.Substring(normRoot.Length).TrimStart('\\', '/');
+                    int firstSep = rel.IndexOfAny(new char[] { '\\', '/' });
+                    if (firstSep > 0)
+                    {
+                        string subName = rel.Substring(0, firstSep);
+                        return Path.Combine(normRoot, subName);
+                    }
+                    return Path.Combine(normRoot, rel);
+                }
+
+                DirectoryInfo di = new DirectoryInfo(amb.AppDir);
+                if (di.Parent != null && di.Parent.Parent != null)
+                    return di.Parent.Parent.FullName;
+                if (di.Parent != null)
+                    return di.Parent.FullName;
+                return di.FullName;
+            }
+            catch
+            {
+                return amb.PastaBase ?? amb.AppDir;
             }
         }
 
@@ -359,6 +395,16 @@ namespace TOTVSHub
             {
                 string cVal = File.ReadAllText(_showCommentsPrefPath, Encoding.UTF8).Trim();
                 _showIniComments = string.Equals(cVal, "1", StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (File.Exists(_ignoreSameSubfolderPrefPath))
+            {
+                string sVal = File.ReadAllText(_ignoreSameSubfolderPrefPath, Encoding.UTF8).Trim();
+                _ignoreSameSubfolderConflicts = !string.Equals(sVal, "0", StringComparison.OrdinalIgnoreCase);
+            }
+            else
+            {
+                _ignoreSameSubfolderConflicts = true;
             }
 
             if (File.Exists(_driveUrlPrefPath))
@@ -544,13 +590,54 @@ namespace TOTVSHub
             }
         }
 
-        private Border BuildTopWindowBar(UIElement leftContent, UIElement rightExtraControls)
+        private StackPanel CreateStandardTopRightIcons()
+        {
+            StackPanel topIcons = new StackPanel();
+            topIcons.Orientation = Orientation.Horizontal;
+            topIcons.VerticalAlignment = VerticalAlignment.Center;
+            topIcons.Margin = new Thickness(0, 0, 8, 0);
+
+            Grid bellGrid = new Grid();
+            bellGrid.Children.Add(UiTheme.CreateThinBellIcon(UiTheme.TextPrimary));
+
+            _alertBadge = new Border();
+            _alertBadge.Background = _alertasAtivos.Count > 0 ? UiTheme.AccentRed : UiTheme.BrushFromHex("#475569");
+            _alertBadge.CornerRadius = new CornerRadius(7);
+            _alertBadge.Padding = new Thickness(4, 0, 4, 0);
+            _alertBadge.HorizontalAlignment = HorizontalAlignment.Right;
+            _alertBadge.VerticalAlignment = VerticalAlignment.Top;
+            _alertBadge.Margin = new Thickness(10, -4, -5, 0);
+
+            _alertCountText = new TextBlock();
+            _alertCountText.Text = _alertasAtivos.Count.ToString();
+            _alertCountText.Foreground = Brushes.White;
+            _alertCountText.FontSize = 9;
+            _alertCountText.FontWeight = FontWeights.Bold;
+            _alertBadge.Child = _alertCountText;
+            bellGrid.Children.Add(_alertBadge);
+
+            Button btnAlerts = UiTheme.CreateFramelessIconButton(bellGrid, "Alertas");
+            btnAlerts.Margin = new Thickness(0, 0, 10, 0);
+            btnAlerts.Click += delegate { AbrirCentralAlertas(); };
+            topIcons.Children.Add(btnAlerts);
+
+            Button btnSettings = UiTheme.CreateFramelessIconButton(
+                UiTheme.CreateHamburgerIcon(UiTheme.TextPrimary),
+                "Configurações");
+            btnSettings.Click += delegate { ShowSettingsView(); };
+            topIcons.Children.Add(btnSettings);
+
+            return topIcons;
+        }
+
+        private Border BuildTopWindowBar(UIElement leftContent, UIElement rightExtraControls = null)
         {
             Border titleBar = new Border();
             titleBar.Background = UiTheme.BgHeader;
             titleBar.BorderBrush = UiTheme.BorderSubtle;
             titleBar.BorderThickness = new Thickness(0, 0, 0, 1);
-            titleBar.Padding = new Thickness(20, 11, 14, 11);
+            titleBar.Height = 52;
+            titleBar.Padding = new Thickness(20, 0, 14, 0);
 
             titleBar.PreviewMouseLeftButtonDown += delegate(object s, MouseButtonEventArgs e)
             {
@@ -629,16 +716,26 @@ namespace TOTVSHub
             };
 
             DockPanel titleDock = new DockPanel();
+            titleDock.VerticalAlignment = VerticalAlignment.Center;
 
             StackPanel rightControls = new StackPanel();
             rightControls.Orientation = Orientation.Horizontal;
             rightControls.VerticalAlignment = VerticalAlignment.Center;
             DockPanel.SetDock(rightControls, Dock.Right);
 
+            // Sempre garante o Sino + Sanduiche padronizados na mesma posicao em todas as telas
+            StackPanel standardNavIcons = CreateStandardTopRightIcons();
             if (rightExtraControls != null)
             {
-                rightControls.Children.Add(rightExtraControls);
+                Panel extraPanel = rightExtraControls as Panel;
+                bool alreadyHasBellAndHamburger = (extraPanel != null && extraPanel.Children.Count == 2 &&
+                    extraPanel.Children[0] is Button && extraPanel.Children[1] is Button);
+                if (!alreadyHasBellAndHamburger)
+                {
+                    rightControls.Children.Add(rightExtraControls);
+                }
             }
+            rightControls.Children.Add(standardNavIcons);
 
             Button btnMin = UiTheme.CreateWindowButton("—", UiTheme.NeutralBtnHoverHex);
             btnMin.ToolTip = "Minimizar";
@@ -671,6 +768,10 @@ namespace TOTVSHub
             rightControls.Children.Add(btnClose);
             titleDock.Children.Add(rightControls);
 
+            if (leftContent is FrameworkElement)
+            {
+                ((FrameworkElement)leftContent).VerticalAlignment = VerticalAlignment.Center;
+            }
             titleDock.Children.Add(leftContent);
             titleBar.Child = titleDock;
             return titleBar;

@@ -481,6 +481,160 @@ namespace TOTVSHub
             return icon;
         }
 
+        // Icone de Play (Comecar video / Iniciar)
+        public static UIElement CreatePlayIcon(Brush fillOrStrokeBrush, double size = 14)
+        {
+            System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
+            icon.Data = Geometry.Parse("M 6,4 L 19,12 L 6,20 Z");
+            icon.Fill = fillOrStrokeBrush;
+            icon.Stroke = fillOrStrokeBrush;
+            icon.StrokeThickness = 1.4;
+            icon.StrokeLineJoin = PenLineJoin.Round;
+            icon.Width = size;
+            icon.Height = size;
+            icon.Stretch = Stretch.Uniform;
+            icon.VerticalAlignment = VerticalAlignment.Center;
+            icon.HorizontalAlignment = HorizontalAlignment.Center;
+            return icon;
+        }
+
+        // Icone de X (Parar)
+        public static UIElement CreateStopXIcon(Brush strokeBrush, double size = 14)
+        {
+            System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
+            icon.Data = Geometry.Parse("M 6,6 L 18,18 M 18,6 L 6,18");
+            icon.Stroke = strokeBrush;
+            icon.StrokeThickness = 2.2;
+            icon.StrokeStartLineCap = PenLineCap.Round;
+            icon.StrokeEndLineCap = PenLineCap.Round;
+            icon.StrokeLineJoin = PenLineJoin.Round;
+            icon.Width = size;
+            icon.Height = size;
+            icon.Stretch = Stretch.Uniform;
+            icon.VerticalAlignment = VerticalAlignment.Center;
+            icon.HorizontalAlignment = HorizontalAlignment.Center;
+            return icon;
+        }
+
+        // Icone de Reiniciar padrao (Seta circular)
+        public static UIElement CreateRestartIcon(Brush strokeBrush, double size = 14)
+        {
+            System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
+            icon.Data = Geometry.Parse("M 20,11 A 8,8 0 1 0 17.6,17.6 M 20,4 L 20,11 L 13,11");
+            icon.Stroke = strokeBrush;
+            icon.StrokeThickness = 2.0;
+            icon.StrokeStartLineCap = PenLineCap.Round;
+            icon.StrokeEndLineCap = PenLineCap.Round;
+            icon.StrokeLineJoin = PenLineJoin.Round;
+            icon.Width = size;
+            icon.Height = size;
+            icon.Stretch = Stretch.Uniform;
+            icon.VerticalAlignment = VerticalAlignment.Center;
+            icon.HorizontalAlignment = HorizontalAlignment.Center;
+            return icon;
+        }
+
+        // Icone de Balao de Comentario (Anotacao do card)
+        public static UIElement CreateCommentBubbleIcon(Brush strokeBrush, double size = 16)
+        {
+            System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
+            icon.Data = Geometry.Parse("M 21,15 A 2,2 0 0 1 19,17 L 7,17 L 3,21 L 3,5 A 2,2 0 0 1 5,3 L 19,3 A 2,2 0 0 1 21,5 Z");
+            icon.Stroke = strokeBrush;
+            icon.StrokeThickness = 1.8;
+            icon.StrokeStartLineCap = PenLineCap.Round;
+            icon.StrokeEndLineCap = PenLineCap.Round;
+            icon.StrokeLineJoin = PenLineJoin.Round;
+            icon.Width = size;
+            icon.Height = size;
+            icon.Stretch = Stretch.Uniform;
+            icon.VerticalAlignment = VerticalAlignment.Center;
+            icon.HorizontalAlignment = HorizontalAlignment.Center;
+            return icon;
+        }
+
+        // Icone Worldwide / Globo (Links web)
+        public static UIElement CreateGlobeIcon(Brush strokeBrush, double size = 12)
+        {
+            System.Windows.Shapes.Path globe = new System.Windows.Shapes.Path();
+            globe.Data = Geometry.Parse("M 12,2 A 10,10 0 1 0 12,22 A 10,10 0 1 0 12,2 Z M 2,12 L 22,12 M 12,2 A 15,10 0 0 1 12,22 A 15,10 0 0 1 12,2 Z");
+            globe.Stroke = strokeBrush;
+            globe.StrokeThickness = 1.5;
+            globe.Width = size;
+            globe.Height = size;
+            globe.Stretch = Stretch.Uniform;
+            globe.VerticalAlignment = VerticalAlignment.Center;
+            return globe;
+        }
+
+        // Icone de Seta Diagonal Superior Direita (Links externos / web)
+        public static UIElement CreateDiagonalArrowIcon(Brush strokeBrush, double size = 10)
+        {
+            System.Windows.Shapes.Path arrow = new System.Windows.Shapes.Path();
+            arrow.Data = Geometry.Parse("M 7,17 L 17,7 M 8,7 L 17,7 L 17,16");
+            arrow.Stroke = strokeBrush;
+            arrow.StrokeThickness = 1.8;
+            arrow.StrokeStartLineCap = PenLineCap.Round;
+            arrow.StrokeEndLineCap = PenLineCap.Round;
+            arrow.StrokeLineJoin = PenLineJoin.Round;
+            arrow.Width = size;
+            arrow.Height = size;
+            arrow.Stretch = Stretch.Uniform;
+            arrow.VerticalAlignment = VerticalAlignment.Center;
+            return arrow;
+        }
+
+        public const double WebButtonWidth = 128;
+
+        // Conteudo visual para botoes de links web: [Globo] [Label] ........ [↗]
+        // Seta diagonal sempre alinhada a direita do botao; Globo e Label alinhados a esquerda
+        public static UIElement CreateWebLinkContent(string label)
+        {
+            DockPanel dock = new DockPanel();
+            dock.LastChildFill = true;
+            dock.VerticalAlignment = VerticalAlignment.Center;
+            dock.HorizontalAlignment = HorizontalAlignment.Stretch;
+
+            FrameworkElement arrow = (FrameworkElement)CreateDiagonalArrowIcon(Brushes.White, 10);
+            arrow.Margin = new Thickness(6, 0, 0, 0);
+            arrow.VerticalAlignment = VerticalAlignment.Center;
+            DockPanel.SetDock(arrow, Dock.Right);
+            dock.Children.Add(arrow);
+
+            StackPanel leftGroup = new StackPanel();
+            leftGroup.Orientation = Orientation.Horizontal;
+            leftGroup.VerticalAlignment = VerticalAlignment.Center;
+            leftGroup.HorizontalAlignment = HorizontalAlignment.Left;
+
+            FrameworkElement globe = (FrameworkElement)CreateGlobeIcon(Brushes.White, 12);
+            globe.Margin = new Thickness(0, 0, 6, 0);
+            globe.VerticalAlignment = VerticalAlignment.Center;
+            leftGroup.Children.Add(globe);
+
+            TextBlock txt = new TextBlock();
+            txt.Text = label;
+            txt.Foreground = Brushes.White;
+            txt.FontSize = 11;
+            txt.FontWeight = FontWeights.SemiBold;
+            txt.VerticalAlignment = VerticalAlignment.Center;
+            txt.TextTrimming = TextTrimming.CharacterEllipsis;
+            leftGroup.Children.Add(txt);
+
+            dock.Children.Add(leftGroup);
+
+            return dock;
+        }
+
+        // Cria botao de link web padronizado na largura do maior item (WebServices = 128px)
+        public static Button CreateWebLinkButton(string label, string normalHex, string hoverHex)
+        {
+            Button btn = CreateActionButton(CreateWebLinkContent(label), normalHex, hoverHex);
+            btn.Width = WebButtonWidth;
+            btn.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+            btn.Padding = new Thickness(9, 4, 9, 4);
+            btn.Margin = new Thickness(0, 2, 0, 2);
+            return btn;
+        }
+
         // Icone de maximizar (1 janela) e restaurar (aba dupla sobreposta)
         public static UIElement CreateWindowStateGlyph(bool isMaximized, Brush strokeBrush)
         {
@@ -550,6 +704,9 @@ namespace TOTVSHub
             btn.Cursor = Cursors.Hand;
             btn.BorderThickness = new Thickness(0);
 
+            btn.HorizontalContentAlignment = HorizontalAlignment.Center;
+            btn.VerticalContentAlignment = VerticalAlignment.Center;
+
             ControlTemplate tpl = new ControlTemplate(typeof(Button));
             FrameworkElementFactory borderFactory = new FrameworkElementFactory(typeof(Border));
             borderFactory.Name = "bd";
@@ -558,8 +715,8 @@ namespace TOTVSHub
             borderFactory.SetValue(Border.PaddingProperty, new TemplateBindingExtension(Button.PaddingProperty));
 
             FrameworkElementFactory contentFactory = new FrameworkElementFactory(typeof(ContentPresenter));
-            contentFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-            contentFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            contentFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, new TemplateBindingExtension(Control.HorizontalContentAlignmentProperty));
+            contentFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, new TemplateBindingExtension(Control.VerticalContentAlignmentProperty));
             borderFactory.AppendChild(contentFactory);
 
             tpl.VisualTree = borderFactory;

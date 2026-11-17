@@ -98,9 +98,14 @@ fill=""#ffffff"" stroke=""none"">
             return cachedSvgPath;
         }
 
+        private static Geometry _cachedLogoGeometry = null;
+
         // Extrai e constroi a geometria fiel do totvs_white.svg (aplicando a inversao de eixo Y do Potrace)
         public static Geometry BuildTotvsLogoGeometry(string cachedSvgPath)
         {
+            if (_cachedLogoGeometry != null)
+                return _cachedLogoGeometry;
+
             string svgContent = EmbeddedTotvsWhiteSvg;
             try
             {
@@ -134,7 +139,14 @@ fill=""#ffffff"" stroke=""none"">
                 group.Transform = new ScaleTransform(1.0, -1.0);
             }
 
-            return group;
+            try
+            {
+                group.Freeze();
+            }
+            catch { }
+
+            _cachedLogoGeometry = group;
+            return _cachedLogoGeometry;
         }
 
         // Renderiza o simbolo vetorial branco do totvs_white.svg para o topo e telas do app

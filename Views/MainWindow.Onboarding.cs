@@ -25,7 +25,7 @@ namespace TOTVSHub
             rootGrid.RowDefinitions.Add(rowBody);
 
             StackPanel topLeft = CreateBrandTitleHeader();
-            Border topBar = BuildTopWindowBar(topLeft, null);
+            Border topBar = BuildTopWindowBar(topLeft);
             Grid.SetRow(topBar, 0);
             rootGrid.Children.Add(topBar);
 
@@ -52,31 +52,21 @@ namespace TOTVSHub
             logoBadge.Height = 68;
             logoBadge.CornerRadius = new CornerRadius(18);
             logoBadge.Background = UiTheme.BrushFromHex("#0F172A");
-            logoBadge.BorderBrush = UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex);
-            logoBadge.BorderThickness = new Thickness(1.5);
+            logoBadge.BorderThickness = new Thickness(0);
             logoBadge.HorizontalAlignment = HorizontalAlignment.Center;
             logoBadge.Margin = new Thickness(0, 0, 0, 20);
             logoBadge.Child = TotvsLogo.CreateTotvsWhiteSvgLogo(_cachedSvgPath, 38);
             stack.Children.Add(logoBadge);
 
             TextBlock lblTitle = new TextBlock();
-            lblTitle.Text = "Qual pasta guarda suas coisas?";
+            lblTitle.Text = "Qual pasta raíz guarda seus ambientes?";
             lblTitle.Foreground = UiTheme.TextPrimary;
             lblTitle.FontSize = 22;
             lblTitle.FontWeight = FontWeights.Bold;
             lblTitle.HorizontalAlignment = HorizontalAlignment.Center;
             lblTitle.TextAlignment = TextAlignment.Center;
+            lblTitle.Margin = new Thickness(0, 0, 0, 24);
             stack.Children.Add(lblTitle);
-
-            TextBlock lblSub = new TextBlock();
-            lblSub.Text = "Não encontramos o diretório padrão C:\\bases neste computador.\nSelecione ou informe abaixo a pasta raiz onde ficam seus ambientes TOTVS Protheus (appserver.ini) para iniciar a varredura.";
-            lblSub.Foreground = UiTheme.TextSecondary;
-            lblSub.FontSize = 13;
-            lblSub.TextWrapping = TextWrapping.Wrap;
-            lblSub.TextAlignment = TextAlignment.Center;
-            lblSub.LineHeight = 19;
-            lblSub.Margin = new Thickness(0, 10, 0, 24);
-            stack.Children.Add(lblSub);
 
             TextBlock lblField = new TextBlock();
             lblField.Text = "DIRETÓRIO DOS AMBIENTES";
@@ -212,17 +202,18 @@ namespace TOTVSHub
                 }
             };
 
-            Button btnContinue = UiTheme.CreateActionButton("Continuar  →", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
+            Button btnContinue = UiTheme.CreateActionButton("Começar", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
             btnContinue.Height = 40;
-            btnContinue.Padding = new Thickness(26, 8, 26, 8);
-            btnContinue.FontSize = 13;
+            btnContinue.Padding = new Thickness(40, 8, 40, 8);
+            btnContinue.FontSize = 14;
             btnContinue.Margin = new Thickness(0, 22, 0, 0);
-            btnContinue.HorizontalAlignment = HorizontalAlignment.Right;
+            btnContinue.HorizontalAlignment = HorizontalAlignment.Center;
             btnContinue.Click += delegate { confirmarDiretorio(); };
             stack.Children.Add(btnContinue);
 
             card.Child = stack;
             centerHost.Children.Add(card);
+            rootGrid.Children.Add(centerHost);
             _pageHost.Content = rootGrid;
         }
 

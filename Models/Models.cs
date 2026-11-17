@@ -53,6 +53,7 @@ namespace TOTVSHub
         public string WebAppPort { get; set; }
         public string TcpPort { get; set; }
         public string RestPort { get; set; }
+        public string WebServicesPort { get; set; }
         public string SpecialKey { get; set; }
         public string DBAlias { get; set; }
         public string DBPort { get; set; }
@@ -80,6 +81,7 @@ namespace TOTVSHub
         public Button BtnStop { get; set; }
         public Button BtnWeb { get; set; }
         public Button BtnRest { get; set; }
+        public Button BtnWebServices { get; set; }
         public List<Button> CustomButtons { get; set; }
 
         public AmbienteInfo()

@@ -42,8 +42,14 @@ namespace TOTVSHub
             }
         }
 
+        private System.Threading.EventWaitHandle _bringToFrontEvent;
+        private System.Threading.RegisteredWaitHandle _registeredWait;
+
         private void InicializarBandejaWindows()
         {
+            // Limpa icones fantasmas da bandeja do Windows antes de registrar o novo icone
+            RefreshSystemTrayArea();
+
             _trayMenu = new System.Windows.Forms.ContextMenuStrip();
             _trayMenu.Renderer = new DarkTrayRenderer();
             _trayMenu.ForeColor = Color.FromArgb(248, 250, 252);
@@ -56,7 +62,11 @@ namespace TOTVSHub
 
             _trayIcon.MouseUp += delegate(object s, System.Windows.Forms.MouseEventArgs e)
             {
-                if (e.Button == System.Windows.Forms.MouseButtons.Right)
+                if (e.Button == System.Windows.Forms.MouseButtons.Left)
+                {
+                    RestaurarJanelaPrincipal();
+                }
+                else if (e.Button == System.Windows.Forms.MouseButtons.Right)
                 {
                     ReconstruirMenuBandeja();
                     if (_trayMenu.Handle != IntPtr.Zero)
@@ -64,6 +74,109 @@ namespace TOTVSHub
                     _trayMenu.Show(System.Windows.Forms.Cursor.Position);
                 }
             };
+
+            // Escuta chamadas de nova instancia para restaurar janela sem duplicar na bandeja
+            InicializarSinalInstanciaUnica();
+
+            // Garante o descarte completo do icone da bandeja em qualquer encerramento do processo
+            AppDomain.CurrentDomain.ProcessExit += delegate { DescartarBandeja(); };
+            if (Application.Current != null)
+            {
+                Application.Current.Exit += delegate { DescartarBandeja(); };
+            }
+            Closed += delegate { DescartarBandeja(); };
+        }
+
+        private void InicializarSinalInstanciaUnica()
+        {
+            try
+            {
+                _bringToFrontEvent = new System.Threading.EventWaitHandle(false, System.Threading.EventResetMode.AutoReset, Program.BringToFrontSignalName);
+                _registeredWait = System.Threading.ThreadPool.RegisterWaitForSingleObject(_bringToFrontEvent, delegate(object state, bool timedOut)
+                {
+                    if (!timedOut)
+                    {
+                        Dispatcher.BeginInvoke(new Action(delegate
+                        {
+                            RestaurarJanelaPrincipal();
+                        }));
+                    }
+                }, null, -1, false);
+            }
+            catch { }
+        }
+
+        public void DescartarBandeja()
+        {
+            try
+            {
+                if (_registeredWait != null)
+                {
+                    _registeredWait.Unregister(null);
+                    _registeredWait = null;
+                }
+                if (_bringToFrontEvent != null)
+                {
+                    _bringToFrontEvent.Close();
+                    _bringToFrontEvent = null;
+                }
+                if (_trayIcon != null)
+                {
+                    _trayIcon.Visible = false;
+                    _trayIcon.Dispose();
+                    _trayIcon = null;
+                }
+            }
+            catch { }
+        }
+
+        // Remove icones orfaos de processos encerrados passando mensagem de mouse sobre a barra de notificacao
+        private static void SendMouseMoveAcrossWindow(IntPtr hWnd)
+        {
+            if (hWnd == IntPtr.Zero) return;
+            NativeWin32.RECT rect;
+            if (NativeWin32.GetClientRect(hWnd, out rect))
+            {
+                for (int x = 1; x < rect.Right; x += 8)
+                {
+                    for (int y = 1; y < rect.Bottom; y += 8)
+                    {
+                        IntPtr lParam = (IntPtr)((y << 16) | (x & 0xFFFF));
+                        NativeWin32.PostMessage(hWnd, 0x0200 /* WM_MOUSEMOVE */, IntPtr.Zero, lParam);
+                    }
+                }
+            }
+        }
+
+        public static void RefreshSystemTrayArea()
+        {
+            try
+            {
+                IntPtr trayWnd = NativeWin32.FindWindow("Shell_TrayWnd", null);
+                if (trayWnd != IntPtr.Zero)
+                {
+                    IntPtr trayNotifyWnd = NativeWin32.FindWindowEx(trayWnd, IntPtr.Zero, "TrayNotifyWnd", null);
+                    if (trayNotifyWnd != IntPtr.Zero)
+                    {
+                        IntPtr sysPager = NativeWin32.FindWindowEx(trayNotifyWnd, IntPtr.Zero, "SysPager", null);
+                        IntPtr toolbar = (sysPager != IntPtr.Zero)
+                            ? NativeWin32.FindWindowEx(sysPager, IntPtr.Zero, "ToolbarWindow32", null)
+                            : NativeWin32.FindWindowEx(trayNotifyWnd, IntPtr.Zero, "ToolbarWindow32", null);
+
+                        if (toolbar != IntPtr.Zero)
+                            SendMouseMoveAcrossWindow(toolbar);
+                    }
+                }
+
+                IntPtr overflowWnd = NativeWin32.FindWindow("NotifyIconOverflowWindow", null);
+                if (overflowWnd != IntPtr.Zero)
+                {
+                    IntPtr overflowToolbar = NativeWin32.FindWindowEx(overflowWnd, IntPtr.Zero, "ToolbarWindow32", null);
+                    if (overflowToolbar != IntPtr.Zero)
+                        SendMouseMoveAcrossWindow(overflowToolbar);
+                }
+            }
+            catch { }
         }
 
         private void ReconstruirMenuBandeja()
@@ -72,13 +185,79 @@ namespace TOTVSHub
             _trayMenu.Items.Clear();
 
             var openItem = new System.Windows.Forms.ToolStripMenuItem("Abrir TOTVSHub");
+            openItem.Font = new System.Drawing.Font(_trayMenu.Font, System.Drawing.FontStyle.Bold);
             openItem.ForeColor = Color.White;
             openItem.Click += delegate { RestaurarJanelaPrincipal(); };
             _trayMenu.Items.Add(openItem);
 
             _trayMenu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
-            var protheusMenu = new System.Windows.Forms.ToolStripMenuItem("Protheus");
+            // Facilitador: Ambientes Ativos com atalhos de Protheus, REST e Parar
+            var basesAtivas = _ambientes.Where(a => a.State == EnvRunState.Active).ToList();
+            if (basesAtivas.Count > 0)
+            {
+                var headerAtivos = new System.Windows.Forms.ToolStripMenuItem(string.Format("🟢 Ambientes Ativos ({0})", basesAtivas.Count));
+                headerAtivos.ForeColor = Color.FromArgb(74, 222, 128);
+                headerAtivos.Font = new System.Drawing.Font(_trayMenu.Font, System.Drawing.FontStyle.Bold);
+
+                foreach (AmbienteInfo amb in basesAtivas)
+                {
+                    AmbienteInfo captured = amb;
+                    string execMode = captured.RunningAsService ? "Serviço" : "Console";
+                    string titleAmb = captured.Pid > 0
+                        ? string.Format("{0} ({1} • PID {2})", captured.NomeIni, execMode, captured.Pid)
+                        : string.Format("{0} ({1})", captured.NomeIni, execMode);
+
+                    var envItem = new System.Windows.Forms.ToolStripMenuItem(titleAmb);
+                    envItem.ForeColor = Color.White;
+
+                    if (!string.IsNullOrEmpty(captured.WebAppPort))
+                    {
+                        var subWeb = new System.Windows.Forms.ToolStripMenuItem(string.Format("🌐 Protheus (:{0})", captured.WebAppPort));
+                        subWeb.ForeColor = Color.FromArgb(56, 189, 248);
+                        subWeb.Click += delegate { AbrirNavegador(captured); };
+                        envItem.DropDownItems.Add(subWeb);
+                    }
+
+                    if (!string.IsNullOrEmpty(captured.RestPort))
+                    {
+                        var subRest = new System.Windows.Forms.ToolStripMenuItem(string.Format("🌐 REST (:{0}/rest)", captured.RestPort));
+                        subRest.ForeColor = Color.FromArgb(56, 189, 248);
+                        subRest.Click += delegate { AbrirRestNavegador(captured); };
+                        envItem.DropDownItems.Add(subRest);
+                    }
+
+                    var cfgSub = new System.Windows.Forms.ToolStripMenuItem("⚙️ Configurar (.ini)");
+                    cfgSub.ForeColor = Color.FromArgb(226, 232, 240);
+                    cfgSub.Click += delegate
+                    {
+                        RestaurarJanelaPrincipal();
+                        ShowIniEditorView(captured);
+                    };
+                    envItem.DropDownItems.Add(cfgSub);
+
+                    var stopSub = new System.Windows.Forms.ToolStripMenuItem("⏹️ Parar Ambiente");
+                    stopSub.ForeColor = Color.FromArgb(248, 113, 113);
+                    stopSub.Click += delegate { EncerrarAmbienteAsync(captured); };
+                    envItem.DropDownItems.Add(stopSub);
+
+                    headerAtivos.DropDownItems.Add(envItem);
+                }
+
+                _trayMenu.Items.Add(headerAtivos);
+                _trayMenu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+            }
+            else
+            {
+                var semAtivos = new System.Windows.Forms.ToolStripMenuItem("⚪ Nenhum ambiente ativo no momento");
+                semAtivos.ForeColor = Color.FromArgb(148, 163, 184);
+                semAtivos.Enabled = false;
+                _trayMenu.Items.Add(semAtivos);
+                _trayMenu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+            }
+
+            // Submenu com todas as bases registradas
+            var protheusMenu = new System.Windows.Forms.ToolStripMenuItem("Todos os Ambientes");
             protheusMenu.ForeColor = Color.White;
             var basesComPorta = _ambientes
                 .Where(a => !_hiddenDirs.Contains(a.AppDir) && (!string.IsNullOrEmpty(a.WebAppPort) || !string.IsNullOrEmpty(a.RestPort)))
@@ -113,29 +292,6 @@ namespace TOTVSHub
             }
             _trayMenu.Items.Add(protheusMenu);
 
-            var desativarMenu = new System.Windows.Forms.ToolStripMenuItem("Desativar");
-            desativarMenu.ForeColor = Color.White;
-            var basesAtivas = _ambientes.Where(a => a.State == EnvRunState.Active).ToList();
-            if (basesAtivas.Count == 0)
-            {
-                var nenhumaAtiva = new System.Windows.Forms.ToolStripMenuItem("Nenhuma base ativa no momento");
-                nenhumaAtiva.Enabled = false;
-                desativarMenu.DropDownItems.Add(nenhumaAtiva);
-            }
-            else
-            {
-                foreach (AmbienteInfo amb in basesAtivas)
-                {
-                    AmbienteInfo captured = amb;
-                    string modo = captured.RunningAsService ? "Serviço" : "Console";
-                    var subStop = new System.Windows.Forms.ToolStripMenuItem(string.Format("Parar {0} ({1})", captured.NomeIni, modo));
-                    subStop.ForeColor = Color.FromArgb(248, 113, 113);
-                    subStop.Click += delegate { EncerrarAmbienteAsync(captured); };
-                    desativarMenu.DropDownItems.Add(subStop);
-                }
-            }
-            _trayMenu.Items.Add(desativarMenu);
-
             var checkUpdateItem = new System.Windows.Forms.ToolStripMenuItem("Verificar atualizações");
             checkUpdateItem.ForeColor = Color.FromArgb(56, 189, 248);
             checkUpdateItem.Click += delegate { AbrirDriveAtualizacoes(); };
@@ -157,11 +313,7 @@ namespace TOTVSHub
             exitItem.Click += delegate
             {
                 _isRealExit = true;
-                if (_trayIcon != null)
-                {
-                    _trayIcon.Visible = false;
-                    _trayIcon.Dispose();
-                }
+                DescartarBandeja();
                 Application.Current.Shutdown();
             };
             _trayMenu.Items.Add(exitItem);

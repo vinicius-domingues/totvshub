@@ -24,6 +24,7 @@ namespace TOTVSHub
             bool tempIgnoreOld = _ignoreOldFolders;
             bool tempShowUser = _showProcessUser;
             bool tempShowComments = _showIniComments;
+            bool tempIgnoreSameSubfolder = _ignoreSameSubfolderConflicts;
 
             List<ConflictRule> tempRules = _conflictRules
                 .Select(r => new ConflictRule(r.SectionPattern, r.KeyName))
@@ -48,7 +49,8 @@ namespace TOTVSHub
             Button btnBackArrow = UiTheme.CreateFramelessIconButton(
                 UiTheme.CreateLargeThinLeftArrowIcon(UiTheme.TextPrimary),
                 "Voltar");
-            btnBackArrow.Margin = new Thickness(0, 0, 12, 0);
+            btnBackArrow.Padding = new Thickness(4, 2, 4, 2);
+            btnBackArrow.Margin = new Thickness(0, 0, 10, 0);
             btnBackArrow.Click += delegate
             {
                 if (_needsOnboarding)
@@ -60,14 +62,14 @@ namespace TOTVSHub
             TextBlock titleLbl = new TextBlock();
             titleLbl.Text = "Configurações";
             titleLbl.Foreground = UiTheme.TextPrimary;
-            titleLbl.FontSize = 16;
+            titleLbl.FontSize = 17;
             titleLbl.FontWeight = FontWeights.Bold;
             titleLbl.VerticalAlignment = VerticalAlignment.Center;
 
             topLeft.Children.Add(btnBackArrow);
             topLeft.Children.Add(titleLbl);
 
-            Border topBar = BuildTopWindowBar(topLeft, null);
+            Border topBar = BuildTopWindowBar(topLeft);
             Grid.SetRow(topBar, 0);
             root.Children.Add(topBar);
 
@@ -206,45 +208,111 @@ namespace TOTVSHub
             linksHint.Margin = new Thickness(0, 0, 0, 12);
             linksCardStack.Children.Add(linksHint);
 
-            // Exemplo fixo nao-editavel da formula do Protheus para referencia visual
-            Border builtInRow = new Border();
-            builtInRow.Background = UiTheme.BgInput;
-            builtInRow.BorderBrush = UiTheme.BorderSubtle;
-            builtInRow.BorderThickness = new Thickness(1);
-            builtInRow.CornerRadius = new CornerRadius(7);
-            builtInRow.Padding = new Thickness(12, 8, 12, 8);
-            builtInRow.Margin = new Thickness(0, 0, 0, 8);
+            // Exemplo fixo travado em dois inputs idênticos à inclusão de novas fórmulas
+            Border exampleBox = new Border();
+            exampleBox.Background = UiTheme.BgInput;
+            exampleBox.BorderBrush = UiTheme.BorderSubtle;
+            exampleBox.BorderThickness = new Thickness(1);
+            exampleBox.CornerRadius = new CornerRadius(7);
+            exampleBox.Padding = new Thickness(10, 8, 10, 8);
+            exampleBox.Margin = new Thickness(0, 0, 0, 10);
 
-            DockPanel builtInDock = new DockPanel();
-            Border lockTag = new Border();
-            lockTag.Background = UiTheme.TagBg;
-            lockTag.CornerRadius = new CornerRadius(5);
-            lockTag.Padding = new Thickness(8, 3, 8, 3);
-            DockPanel.SetDock(lockTag, Dock.Right);
+            StackPanel exampleStack = new StackPanel();
+
+            Grid exampleGrid = new Grid();
+            ColumnDefinition eg1 = new ColumnDefinition(); eg1.Width = new GridLength(160);
+            ColumnDefinition eg2 = new ColumnDefinition(); eg2.Width = new GridLength(1, GridUnitType.Star);
+            ColumnDefinition eg3 = new ColumnDefinition(); eg3.Width = GridLength.Auto;
+            exampleGrid.ColumnDefinitions.Add(eg1);
+            exampleGrid.ColumnDefinitions.Add(eg2);
+            exampleGrid.ColumnDefinitions.Add(eg3);
+
+            // Coluna 0: Nome no card
+            StackPanel exColName = new StackPanel();
+            exColName.Margin = new Thickness(0, 0, 8, 0);
+
+            TextBlock lblExNameTitle = new TextBlock();
+            lblExNameTitle.Text = "Nome no card";
+            lblExNameTitle.Foreground = UiTheme.TextSecondary;
+            lblExNameTitle.FontSize = 11;
+            lblExNameTitle.FontWeight = FontWeights.SemiBold;
+            lblExNameTitle.Margin = new Thickness(0, 0, 0, 4);
+            exColName.Children.Add(lblExNameTitle);
+
+            TextBox txtExLabel = CreateTextSettingBox("Nome");
+            txtExLabel.Text = "Protheus";
+            txtExLabel.IsReadOnly = true;
+            txtExLabel.Opacity = 0.75;
+            exColName.Children.Add(txtExLabel);
+
+            Grid.SetColumn(exColName, 0);
+            exampleGrid.Children.Add(exColName);
+
+            // Coluna 1: Hyperlink ou fórmula
+            StackPanel exColFormula = new StackPanel();
+            exColFormula.Margin = new Thickness(0, 0, 8, 0);
+
+            TextBlock lblExFormulaTitle = new TextBlock();
+            lblExFormulaTitle.Text = "Hyperlink ou fórmula";
+            lblExFormulaTitle.Foreground = UiTheme.TextSecondary;
+            lblExFormulaTitle.FontSize = 11;
+            lblExFormulaTitle.FontWeight = FontWeights.SemiBold;
+            lblExFormulaTitle.Margin = new Thickness(0, 0, 0, 4);
+            exColFormula.Children.Add(lblExFormulaTitle);
+
+            TextBox txtExFormula = CreateTextSettingBox("Fórmula");
+            txtExFormula.Text = "http://localhost:<WEBAPP:PORT>";
+            txtExFormula.IsReadOnly = true;
+            txtExFormula.Opacity = 0.75;
+            exColFormula.Children.Add(txtExFormula);
+
+            Grid.SetColumn(exColFormula, 1);
+            exampleGrid.Children.Add(exColFormula);
+
+            // Coluna 2: Selo de bloqueio alinhado na base
+            Border lockBadge = new Border();
+            lockBadge.Background = UiTheme.TagBg;
+            lockBadge.BorderBrush = UiTheme.BorderSubtle;
+            lockBadge.BorderThickness = new Thickness(1);
+            lockBadge.CornerRadius = new CornerRadius(6);
+            lockBadge.Padding = new Thickness(12, 6, 12, 6);
+            lockBadge.Height = 32;
+            lockBadge.VerticalAlignment = VerticalAlignment.Bottom;
             TextBlock lockTxt = new TextBlock();
-            lockTxt.Text = "Fórmula Padrão (Somente leitura)";
+            lockTxt.Text = "🔒 Exemplo Padrão (travado)";
             lockTxt.Foreground = UiTheme.TextMuted;
-            lockTxt.FontSize = 10;
+            lockTxt.FontSize = 11;
             lockTxt.FontWeight = FontWeights.Bold;
-            lockTag.Child = lockTxt;
+            lockTxt.VerticalAlignment = VerticalAlignment.Center;
+            lockBadge.Child = lockTxt;
+            Grid.SetColumn(lockBadge, 2);
+            exampleGrid.Children.Add(lockBadge);
 
-            StackPanel builtInFormulaStack = new StackPanel();
-            builtInFormulaStack.Orientation = Orientation.Horizontal;
-            builtInFormulaStack.VerticalAlignment = VerticalAlignment.Center;
+            exampleStack.Children.Add(exampleGrid);
 
-            TextBlock bName = new TextBlock();
-            bName.Text = "Protheus  →  ";
-            bName.Foreground = UiTheme.TextPrimary;
-            bName.FontWeight = FontWeights.Bold;
-            bName.FontSize = 12;
-            bName.VerticalAlignment = VerticalAlignment.Center;
-            builtInFormulaStack.Children.Add(bName);
-            builtInFormulaStack.Children.Add(RenderFormulaVisualPills("http://localhost:<WEBAPP:PORT>"));
+            // Prévia do botão pronto exatamente como aparece no card
+            StackPanel exBtnPreviewRow = new StackPanel();
+            exBtnPreviewRow.Orientation = Orientation.Horizontal;
+            exBtnPreviewRow.VerticalAlignment = VerticalAlignment.Center;
+            exBtnPreviewRow.Margin = new Thickness(2, 10, 0, 2);
 
-            builtInDock.Children.Add(lockTag);
-            builtInDock.Children.Add(builtInFormulaStack);
-            builtInRow.Child = builtInDock;
-            linksCardStack.Children.Add(builtInRow);
+            TextBlock lblExCardHint = new TextBlock();
+            lblExCardHint.Text = "Resultado no card:";
+            lblExCardHint.Foreground = UiTheme.TextSecondary;
+            lblExCardHint.FontSize = 11;
+            lblExCardHint.FontWeight = FontWeights.SemiBold;
+            lblExCardHint.VerticalAlignment = VerticalAlignment.Center;
+            lblExCardHint.Margin = new Thickness(0, 0, 10, 0);
+            exBtnPreviewRow.Children.Add(lblExCardHint);
+
+            Button exBtnPreview = UiTheme.CreateWebLinkButton("Protheus", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
+            exBtnPreview.ToolTip = "Prévia visual de como o botão do Protheus aparece no card";
+            exBtnPreviewRow.Children.Add(exBtnPreview);
+
+            exampleStack.Children.Add(exBtnPreviewRow);
+
+            exampleBox.Child = exampleStack;
+            linksCardStack.Children.Add(exampleBox);
 
             // Lista editavel dos botoes criados pelo usuario
             StackPanel userLinksPanel = new StackPanel();
@@ -283,40 +351,90 @@ namespace TOTVSHub
                     lBtns.Children.Add(btnDelLink);
 
                     Grid editFieldsGrid = new Grid();
-                    ColumnDefinition lc1 = new ColumnDefinition(); lc1.Width = new GridLength(140);
+                    ColumnDefinition lc1 = new ColumnDefinition(); lc1.Width = new GridLength(160);
                     ColumnDefinition lc2 = new ColumnDefinition(); lc2.Width = new GridLength(1, GridUnitType.Star);
                     editFieldsGrid.ColumnDefinitions.Add(lc1);
                     editFieldsGrid.ColumnDefinitions.Add(lc2);
 
-                    ContentControl formulaPreviewHost = new ContentControl();
-                    formulaPreviewHost.Margin = new Thickness(2, 6, 0, 0);
-                    formulaPreviewHost.Content = RenderFormulaVisualPills(capturedLink.Formula);
+                    StackPanel userBtnPreviewRow = new StackPanel();
+                    userBtnPreviewRow.Orientation = Orientation.Horizontal;
+                    userBtnPreviewRow.VerticalAlignment = VerticalAlignment.Center;
+                    userBtnPreviewRow.Margin = new Thickness(2, 8, 0, 2);
 
-                    TextBox editLabelBox = CreateTextSettingBox("Nome do botão");
+                    TextBlock lblUserCardHint = new TextBlock();
+                    lblUserCardHint.Text = "Resultado no card:";
+                    lblUserCardHint.Foreground = UiTheme.TextSecondary;
+                    lblUserCardHint.FontSize = 11;
+                    lblUserCardHint.FontWeight = FontWeights.SemiBold;
+                    lblUserCardHint.VerticalAlignment = VerticalAlignment.Center;
+                    lblUserCardHint.Margin = new Thickness(0, 0, 10, 0);
+                    userBtnPreviewRow.Children.Add(lblUserCardHint);
+
+                    ContentControl userBtnHost = new ContentControl();
+                    Action updateBtnPreview = delegate
+                    {
+                        string previewText = !string.IsNullOrWhiteSpace(capturedLink.Label) ? capturedLink.Label : "Botão";
+                        Button btnPreview = UiTheme.CreateWebLinkButton(previewText, UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
+                        btnPreview.ToolTip = "Prévia de como este botão aparece no card";
+                        userBtnHost.Content = btnPreview;
+                    };
+                    updateBtnPreview();
+                    userBtnPreviewRow.Children.Add(userBtnHost);
+
+                    // Coluna 0: Nome no card
+                    StackPanel colName = new StackPanel();
+                    colName.Margin = new Thickness(0, 0, 8, 0);
+
+                    TextBlock lblColName = new TextBlock();
+                    lblColName.Text = "Nome no card";
+                    lblColName.Foreground = UiTheme.TextSecondary;
+                    lblColName.FontSize = 11;
+                    lblColName.FontWeight = FontWeights.SemiBold;
+                    lblColName.Margin = new Thickness(0, 0, 0, 4);
+                    colName.Children.Add(lblColName);
+
+                    TextBox editLabelBox;
+                    FrameworkElement boxEditLabel = CreateTextSettingBoxContainer("Digite aqui", out editLabelBox);
                     editLabelBox.Text = capturedLink.Label;
-                    editLabelBox.Height = 28;
-                    editLabelBox.Margin = new Thickness(0, 0, 8, 0);
-                    editLabelBox.TextChanged += delegate { capturedLink.Label = editLabelBox.Text.Trim(); };
-                    Grid.SetColumn(editLabelBox, 0);
+                    editLabelBox.TextChanged += delegate
+                    {
+                        capturedLink.Label = editLabelBox.Text.Trim();
+                        updateBtnPreview();
+                    };
+                    colName.Children.Add(boxEditLabel);
+                    Grid.SetColumn(colName, 0);
+                    editFieldsGrid.Children.Add(colName);
 
-                    TextBox editFormulaBox = CreateTextSettingBox("Fórmula (ex: localhost:<HTTPREST:PORT>/swagger)");
+                    // Coluna 1: Hyperlink ou fórmula
+                    StackPanel colFormula = new StackPanel();
+                    colFormula.Margin = new Thickness(0, 0, 8, 0);
+
+                    TextBlock lblColFormula = new TextBlock();
+                    lblColFormula.Text = "Hyperlink ou fórmula";
+                    lblColFormula.Foreground = UiTheme.TextSecondary;
+                    lblColFormula.FontSize = 11;
+                    lblColFormula.FontWeight = FontWeights.SemiBold;
+                    lblColFormula.Margin = new Thickness(0, 0, 0, 4);
+                    colFormula.Children.Add(lblColFormula);
+
+                    TextBox editFormulaBox;
+                    FrameworkElement boxEditFormula = CreateTextSettingBoxContainer("Fórmula (ex: localhost:<HTTPREST:PORT>/swagger)", out editFormulaBox);
                     editFormulaBox.Text = capturedLink.Formula;
-                    editFormulaBox.Height = 28;
-                    editFormulaBox.Margin = new Thickness(0, 0, 8, 0);
                     editFormulaBox.TextChanged += delegate
                     {
                         capturedLink.Formula = editFormulaBox.Text.Trim();
-                        formulaPreviewHost.Content = RenderFormulaVisualPills(capturedLink.Formula);
                     };
-                    Grid.SetColumn(editFormulaBox, 1);
+                    colFormula.Children.Add(boxEditFormula);
+                    Grid.SetColumn(colFormula, 1);
+                    editFieldsGrid.Children.Add(colFormula);
 
-                    editFieldsGrid.Children.Add(editLabelBox);
-                    editFieldsGrid.Children.Add(editFormulaBox);
+                    btnDelLink.VerticalAlignment = VerticalAlignment.Bottom;
+                    btnDelLink.Height = 32;
 
                     lDock.Children.Add(lBtns);
                     lDock.Children.Add(editFieldsGrid);
                     lRowStack.Children.Add(lDock);
-                    lRowStack.Children.Add(formulaPreviewHost);
+                    lRowStack.Children.Add(userBtnPreviewRow);
                     lRow.Child = lRowStack;
                     userLinksPanel.Children.Add(lRow);
                 }
@@ -334,18 +452,45 @@ namespace TOTVSHub
             addLinkGrid.ColumnDefinitions.Add(alc2);
             addLinkGrid.ColumnDefinitions.Add(alc3);
 
-            TextBox txtNewBtnLabel = CreateTextSettingBox("Nome (ex: Portal)");
-            txtNewBtnLabel.Margin = new Thickness(0, 0, 8, 0);
-            Grid.SetColumn(txtNewBtnLabel, 0);
-            addLinkGrid.Children.Add(txtNewBtnLabel);
+            // Coluna 0: Nome no card
+            StackPanel addColName = new StackPanel();
+            addColName.Margin = new Thickness(0, 0, 8, 0);
 
-            TextBox txtNewBtnFormula = CreateTextSettingBox("Fórmula (ex: localhost:<HTTPREST:PORT>/portal)");
-            txtNewBtnFormula.Margin = new Thickness(0, 0, 8, 0);
-            Grid.SetColumn(txtNewBtnFormula, 1);
-            addLinkGrid.Children.Add(txtNewBtnFormula);
+            TextBlock lblAddNameTitle = new TextBlock();
+            lblAddNameTitle.Text = "Nome no card";
+            lblAddNameTitle.Foreground = UiTheme.TextSecondary;
+            lblAddNameTitle.FontSize = 11;
+            lblAddNameTitle.FontWeight = FontWeights.SemiBold;
+            lblAddNameTitle.Margin = new Thickness(0, 0, 0, 4);
+            addColName.Children.Add(lblAddNameTitle);
+
+            TextBox txtNewBtnLabel;
+            FrameworkElement boxNewBtnLabel = CreateTextSettingBoxContainer("Digite aqui", out txtNewBtnLabel);
+            addColName.Children.Add(boxNewBtnLabel);
+            Grid.SetColumn(addColName, 0);
+            addLinkGrid.Children.Add(addColName);
+
+            // Coluna 1: Hyperlink ou fórmula
+            StackPanel addColFormula = new StackPanel();
+            addColFormula.Margin = new Thickness(0, 0, 8, 0);
+
+            TextBlock lblAddFormulaTitle = new TextBlock();
+            lblAddFormulaTitle.Text = "Hyperlink ou fórmula";
+            lblAddFormulaTitle.Foreground = UiTheme.TextSecondary;
+            lblAddFormulaTitle.FontSize = 11;
+            lblAddFormulaTitle.FontWeight = FontWeights.SemiBold;
+            lblAddFormulaTitle.Margin = new Thickness(0, 0, 0, 4);
+            addColFormula.Children.Add(lblAddFormulaTitle);
+
+            TextBox txtNewBtnFormula;
+            FrameworkElement boxNewBtnFormula = CreateTextSettingBoxContainer("Fórmula (ex: localhost:<HTTPREST:PORT>/portal)", out txtNewBtnFormula);
+            addColFormula.Children.Add(boxNewBtnFormula);
+            Grid.SetColumn(addColFormula, 1);
+            addLinkGrid.Children.Add(addColFormula);
 
             Button btnAddLink = UiTheme.CreateActionButton("+ Adicionar", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
             btnAddLink.Height = 32;
+            btnAddLink.VerticalAlignment = VerticalAlignment.Bottom;
             btnAddLink.Click += delegate
             {
                 string lbl = txtNewBtnLabel.Text.Trim();
@@ -362,6 +507,35 @@ namespace TOTVSHub
             addLinkGrid.Children.Add(btnAddLink);
 
             linksCardStack.Children.Add(addLinkGrid);
+
+            // Prévia ao vivo do novo botão que está sendo digitado
+            StackPanel addBtnPreviewRow = new StackPanel();
+            addBtnPreviewRow.Orientation = Orientation.Horizontal;
+            addBtnPreviewRow.VerticalAlignment = VerticalAlignment.Center;
+            addBtnPreviewRow.Margin = new Thickness(2, 8, 0, 2);
+
+            TextBlock lblAddCardHint = new TextBlock();
+            lblAddCardHint.Text = "Resultado no card:";
+            lblAddCardHint.Foreground = UiTheme.TextSecondary;
+            lblAddCardHint.FontSize = 11;
+            lblAddCardHint.FontWeight = FontWeights.SemiBold;
+            lblAddCardHint.VerticalAlignment = VerticalAlignment.Center;
+            lblAddCardHint.Margin = new Thickness(0, 0, 10, 0);
+            addBtnPreviewRow.Children.Add(lblAddCardHint);
+
+            ContentControl addBtnHost = new ContentControl();
+            Action updateAddPreview = delegate
+            {
+                string previewText = !string.IsNullOrWhiteSpace(txtNewBtnLabel.Text) ? txtNewBtnLabel.Text.Trim() : "Novo Botão";
+                Button btnPreview = UiTheme.CreateWebLinkButton(previewText, UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
+                btnPreview.ToolTip = "Prévia de como este botão aparecerá no card";
+                addBtnHost.Content = btnPreview;
+            };
+            updateAddPreview();
+            addBtnPreviewRow.Children.Add(addBtnHost);
+            txtNewBtnLabel.TextChanged += delegate { updateAddPreview(); };
+
+            linksCardStack.Children.Add(addBtnPreviewRow);
             cardLinks.Child = linksCardStack;
             contentStack.Children.Add(cardLinks);
 
@@ -370,6 +544,22 @@ namespace TOTVSHub
 
             Border cardRules = CreateSettingsCard();
             StackPanel rulesCardStack = new StackPanel();
+
+            // Toggle: Desconsiderar duplicidade entre ambientes da mesma subpasta (padrao ativado)
+            DockPanel sameSubRow = new DockPanel();
+            sameSubRow.Margin = new Thickness(0, 0, 0, 14);
+            UIElement toggleSameSub = UiTheme.CreateModernToggleSwitch(tempIgnoreSameSubfolder, "Sim", "Não", delegate(bool val)
+            {
+                tempIgnoreSameSubfolder = val;
+            });
+            DockPanel.SetDock(toggleSameSub, Dock.Right);
+
+            StackPanel sameSubLabels = new StackPanel();
+            sameSubLabels.Children.Add(CreateSettingsTitle("Desconsiderar duplicidade na mesma subpasta"));
+            sameSubLabels.Children.Add(CreateSettingsDesc("Não acusa conflito de portas/chaves entre ambientes que residem na mesma pasta raiz (ex: múltiplos AppServers de teste/portal no mesmo diretório)."));
+            sameSubRow.Children.Add(toggleSameSub);
+            sameSubRow.Children.Add(sameSubLabels);
+            rulesCardStack.Children.Add(sameSubRow);
 
             TextBlock rulesHint = CreateSettingsDesc("Use <ambiente> para representar a primeira seção [nome] de cada base. Deixe a tag vazia para verificar duplicidade da própria seção.");
             rulesHint.Margin = new Thickness(0, 0, 0, 12);
@@ -553,6 +743,7 @@ namespace TOTVSHub
                 _ignoreOldFolders = true;
                 _showProcessUser = true;
                 _showIniComments = false;
+                _ignoreSameSubfolderConflicts = true;
                 _updateDriveUrl = UiTheme.DefaultUpdateDriveUrl;
                 _conflictRules = ObterRegrasPadrao();
                 _customLinks.Clear();
@@ -565,6 +756,7 @@ namespace TOTVSHub
                 File.WriteAllText(_ignoreOldPrefPath, "1", Encoding.UTF8);
                 File.WriteAllText(_showUserPrefPath, "1", Encoding.UTF8);
                 File.WriteAllText(_showCommentsPrefPath, "0", Encoding.UTF8);
+                File.WriteAllText(_ignoreSameSubfolderPrefPath, "1", Encoding.UTF8);
                 File.WriteAllText(_driveUrlPrefPath, _updateDriveUrl, Encoding.UTF8);
                 SalvarRegrasAppData();
                 SalvarCustomLinksAppData();
@@ -663,6 +855,7 @@ namespace TOTVSHub
                 _ignoreOldFolders = tempIgnoreOld;
                 _showProcessUser = tempShowUser;
                 _showIniComments = tempShowComments;
+                _ignoreSameSubfolderConflicts = tempIgnoreSameSubfolder;
                 _conflictRules = tempRules;
                 _customLinks = tempLinks;
 
@@ -674,6 +867,7 @@ namespace TOTVSHub
                 File.WriteAllText(_ignoreOldPrefPath, _ignoreOldFolders ? "1" : "0", Encoding.UTF8);
                 File.WriteAllText(_showUserPrefPath, _showProcessUser ? "1" : "0", Encoding.UTF8);
                 File.WriteAllText(_showCommentsPrefPath, _showIniComments ? "1" : "0", Encoding.UTF8);
+                File.WriteAllText(_ignoreSameSubfolderPrefPath, _ignoreSameSubfolderConflicts ? "1" : "0", Encoding.UTF8);
                 SalvarRegrasAppData();
                 SalvarCustomLinksAppData();
 
@@ -772,6 +966,50 @@ namespace TOTVSHub
             }
 
             return sp;
+        }
+
+        private FrameworkElement CreateTextSettingBoxContainer(string placeholder, out TextBox textBox)
+        {
+            Border bd = new Border();
+            bd.Background = UiTheme.BgInput;
+            bd.BorderBrush = UiTheme.BorderSubtle;
+            bd.BorderThickness = new Thickness(1);
+            bd.CornerRadius = new CornerRadius(6);
+            bd.Height = 32;
+
+            Grid grid = new Grid();
+
+            TextBox tb = new TextBox();
+            tb.Height = 32;
+            tb.Foreground = UiTheme.TextPrimary;
+            tb.Background = Brushes.Transparent;
+            tb.BorderThickness = new Thickness(0);
+            tb.CaretBrush = UiTheme.TextPrimary;
+            tb.Padding = new Thickness(8, 0, 8, 0);
+            tb.FontSize = 12;
+            tb.VerticalContentAlignment = VerticalAlignment.Center;
+            tb.ToolTip = placeholder;
+
+            TextBlock ph = new TextBlock();
+            ph.Text = placeholder;
+            ph.Foreground = UiTheme.TextMuted;
+            ph.FontSize = 12;
+            ph.VerticalAlignment = VerticalAlignment.Center;
+            ph.Margin = new Thickness(9, 0, 8, 0);
+            ph.IsHitTestVisible = false;
+            ph.Visibility = string.IsNullOrEmpty(tb.Text) ? Visibility.Visible : Visibility.Collapsed;
+
+            tb.TextChanged += delegate
+            {
+                ph.Visibility = string.IsNullOrEmpty(tb.Text) ? Visibility.Visible : Visibility.Collapsed;
+            };
+
+            grid.Children.Add(ph);
+            grid.Children.Add(tb);
+            bd.Child = grid;
+
+            textBox = tb;
+            return bd;
         }
 
         private TextBox CreateTextSettingBox(string placeholder)
