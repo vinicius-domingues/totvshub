@@ -1,0 +1,1374 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.ServiceProcess;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+
+namespace TOTVSHub
+{
+    public partial class MainWindow : Window
+    {
+        private void ShowDashboardView()
+        {
+            _isInDashboardView = true;
+
+            Grid rootGrid = new Grid();
+            RowDefinition rowTop = new RowDefinition(); rowTop.Height = GridLength.Auto;
+            RowDefinition rowToolbar = new RowDefinition(); rowToolbar.Height = GridLength.Auto;
+            RowDefinition rowLoader = new RowDefinition(); rowLoader.Height = GridLength.Auto;
+            RowDefinition rowBody = new RowDefinition(); rowBody.Height = new GridLength(1, GridUnitType.Star);
+
+            rootGrid.RowDefinitions.Add(rowTop);
+            rootGrid.RowDefinitions.Add(rowToolbar);
+            rootGrid.RowDefinitions.Add(rowLoader);
+            rootGrid.RowDefinitions.Add(rowBody);
+
+            // Esquerda do TopBar: Logo branca TOTVS do AppData + TOTVSHub
+            StackPanel titleLeft = CreateBrandTitleHeader();
+
+            // Direita do TopBar: Sino + Sanduiche 3 listras
+            StackPanel topIcons = new StackPanel();
+            topIcons.Orientation = Orientation.Horizontal;
+            topIcons.VerticalAlignment = VerticalAlignment.Center;
+            topIcons.Margin = new Thickness(0, 0, 8, 0);
+
+            Grid bellGrid = new Grid();
+            bellGrid.Children.Add(UiTheme.CreateThinBellIcon(UiTheme.TextPrimary));
+
+            _alertBadge = new Border();
+            _alertBadge.Background = _alertasAtivos.Count > 0 ? UiTheme.AccentRed : UiTheme.BrushFromHex("#475569");
+            _alertBadge.CornerRadius = new CornerRadius(7);
+            _alertBadge.Padding = new Thickness(4, 0, 4, 0);
+            _alertBadge.HorizontalAlignment = HorizontalAlignment.Right;
+            _alertBadge.VerticalAlignment = VerticalAlignment.Top;
+            _alertBadge.Margin = new Thickness(10, -4, -5, 0);
+
+            _alertCountText = new TextBlock();
+            _alertCountText.Text = _alertasAtivos.Count.ToString();
+            _alertCountText.Foreground = Brushes.White;
+            _alertCountText.FontSize = 9;
+            _alertCountText.FontWeight = FontWeights.Bold;
+            _alertBadge.Child = _alertCountText;
+            bellGrid.Children.Add(_alertBadge);
+
+            Button btnAlerts = UiTheme.CreateFramelessIconButton(bellGrid, "Alertas");
+            btnAlerts.Margin = new Thickness(0, 0, 10, 0);
+            btnAlerts.Click += delegate { AbrirCentralAlertas(); };
+            topIcons.Children.Add(btnAlerts);
+
+            Button btnSettings = UiTheme.CreateFramelessIconButton(
+                UiTheme.CreateHamburgerIcon(UiTheme.TextPrimary),
+                "Configurações");
+            btnSettings.Click += delegate { ShowSettingsView(); };
+            topIcons.Children.Add(btnSettings);
+
+            Border topBar = BuildTopWindowBar(titleLeft, topIcons);
+            Grid.SetRow(topBar, 0);
+            rootGrid.Children.Add(topBar);
+
+            // ================= BARRA DE FILTRO E ACOES =================
+            Border toolbar = new Border();
+            toolbar.Padding = new Thickness(20, 14, 20, 10);
+            toolbar.Background = UiTheme.BgWindow;
+
+            Grid toolGrid = new Grid();
+            ColumnDefinition cLeft = new ColumnDefinition(); cLeft.Width = GridLength.Auto;
+            ColumnDefinition cSearch = new ColumnDefinition(); cSearch.Width = new GridLength(1, GridUnitType.Star);
+            ColumnDefinition cRight = new ColumnDefinition(); cRight.Width = GridLength.Auto;
+            toolGrid.ColumnDefinitions.Add(cLeft);
+            toolGrid.ColumnDefinitions.Add(cSearch);
+            toolGrid.ColumnDefinitions.Add(cRight);
+
+            Button btnFolder = UiTheme.CreateActionButton(
+                UiTheme.CreateFolderIcon(Brushes.White, 16),
+                UiTheme.NeutralBtnHex,
+                UiTheme.NeutralBtnHoverHex);
+            btnFolder.Width = 38;
+            btnFolder.Height = 34;
+            btnFolder.Padding = new Thickness(0);
+            btnFolder.Margin = new Thickness(0, 0, 10, 0);
+            btnFolder.ToolTip = "Selecionar Pasta Base";
+            btnFolder.Click += delegate { SelecionarPastaBase(); };
+            Grid.SetColumn(btnFolder, 0);
+            toolGrid.Children.Add(btnFolder);
+
+            Border searchContainer = new Border();
+            searchContainer.Background = UiTheme.BgHeader;
+            searchContainer.BorderBrush = UiTheme.BorderSubtle;
+            searchContainer.BorderThickness = new Thickness(1);
+            searchContainer.CornerRadius = new CornerRadius(8);
+            searchContainer.Padding = new Thickness(12, 7, 12, 7);
+            searchContainer.Margin = new Thickness(0, 0, 10, 0);
+
+            DockPanel searchDock = new DockPanel();
+            UIElement lupaIcon = UiTheme.CreateSearchIcon();
+            DockPanel.SetDock(lupaIcon, Dock.Left);
+            searchDock.Children.Add(lupaIcon);
+
+            Grid searchInner = new Grid();
+            _placeholderText = new TextBlock();
+            _placeholderText.Text = "Filtrar ambientes por nome, pasta, porta, DBAlias ou comentário...";
+            _placeholderText.Foreground = UiTheme.TextMuted;
+            _placeholderText.FontSize = 13;
+            _placeholderText.VerticalAlignment = VerticalAlignment.Center;
+            _placeholderText.IsHitTestVisible = false;
+
+            _searchBox = new TextBox();
+            _searchBox.Background = Brushes.Transparent;
+            _searchBox.Foreground = UiTheme.TextPrimary;
+            _searchBox.CaretBrush = UiTheme.TextPrimary;
+            _searchBox.BorderThickness = new Thickness(0);
+            _searchBox.FontSize = 13;
+            _searchBox.VerticalAlignment = VerticalAlignment.Center;
+            _searchBox.TextChanged += delegate
+            {
+                _placeholderText.Visibility = string.IsNullOrEmpty(_searchBox.Text)
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+                RenderizarCards();
+            };
+
+            searchInner.Children.Add(_placeholderText);
+            searchInner.Children.Add(_searchBox);
+            searchDock.Children.Add(searchInner);
+            searchContainer.Child = searchDock;
+            Grid.SetColumn(searchContainer, 1);
+            toolGrid.Children.Add(searchContainer);
+
+            StackPanel rightTools = new StackPanel();
+            rightTools.Orientation = Orientation.Horizontal;
+            rightTools.VerticalAlignment = VerticalAlignment.Center;
+
+            _btnToggleHiddenView = UiTheme.CreateActionButton("👁 Ocultos", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
+            _btnToggleHiddenView.Width = 104;
+            _btnToggleHiddenView.Height = 34;
+            _btnToggleHiddenView.Margin = new Thickness(0, 0, 10, 0);
+            _btnToggleHiddenView.ToolTip = "Alternar entre bases ativas e ocultas";
+            _btnToggleHiddenView.Click += delegate
+            {
+                _showingHidden = !_showingHidden;
+                RenderizarCards();
+            };
+
+            _refreshIconPath = UiTheme.CreateThinRefreshIcon(UiTheme.AccentLightBlue);
+            Button btnReload = UiTheme.CreateFramelessIconButton(
+                _refreshIconPath,
+                "Atualizar bases e status agora");
+            btnReload.Click += delegate
+            {
+                GirarIconeAtualizacao1x();
+                CarregarAmbientesAsync(true);
+            };
+
+            rightTools.Children.Add(_btnToggleHiddenView);
+            rightTools.Children.Add(btnReload);
+            Grid.SetColumn(rightTools, 2);
+            toolGrid.Children.Add(rightTools);
+
+            StackPanel toolbarWrapper = new StackPanel();
+            toolbarWrapper.Children.Add(toolGrid);
+
+            DockPanel infoBar = new DockPanel();
+            infoBar.Margin = new Thickness(2, 10, 2, 0);
+
+            StackPanel rightStatsStack = new StackPanel();
+            rightStatsStack.Orientation = Orientation.Horizontal;
+            DockPanel.SetDock(rightStatsStack, Dock.Right);
+
+            _lastUpdateLabel = new TextBlock();
+            _lastUpdateLabel.Foreground = UiTheme.TextMuted;
+            _lastUpdateLabel.FontSize = 12;
+            _lastUpdateLabel.Margin = new Thickness(0, 0, 10, 0);
+            _lastUpdateLabel.Text = string.Format("Atualizado em {0:dd/MM/yyyy HH:mm:ss}  •", _lastUpdatedTime);
+
+            _statsLabel = new TextBlock();
+            _statsLabel.Foreground = UiTheme.TextPrimary;
+            _statsLabel.FontSize = 12;
+            _statsLabel.FontWeight = FontWeights.SemiBold;
+
+            rightStatsStack.Children.Add(_lastUpdateLabel);
+            rightStatsStack.Children.Add(_statsLabel);
+
+            _rootPathLabel = new TextBlock();
+            _rootPathLabel.Foreground = UiTheme.TextMuted;
+            _rootPathLabel.FontSize = 12;
+            _rootPathLabel.Text = "Diretório: " + _rootPath;
+
+            infoBar.Children.Add(rightStatsStack);
+            infoBar.Children.Add(_rootPathLabel);
+            toolbarWrapper.Children.Add(infoBar);
+
+            toolbar.Child = toolbarWrapper;
+            Grid.SetRow(toolbar, 1);
+            rootGrid.Children.Add(toolbar);
+
+            // ================= TRILHO DE LOADING HORIZONTAL =================
+            _loadingTrackGrid = new Grid();
+            _loadingTrackGrid.Height = 3;
+            _loadingTrackGrid.Background = UiTheme.BorderSubtle;
+            _loadingTrackGrid.ClipToBounds = true;
+            _loadingTrackGrid.Margin = new Thickness(20, 0, 20, 6);
+
+            _loadingBeam = new Border();
+            _loadingBeam.Width = 240;
+            _loadingBeam.Height = 3;
+            _loadingBeam.CornerRadius = new CornerRadius(1.5);
+            _loadingBeam.HorizontalAlignment = HorizontalAlignment.Left;
+            _loadingBeam.Opacity = 0;
+
+            LinearGradientBrush beamBrush = new LinearGradientBrush();
+            beamBrush.StartPoint = new Point(0, 0);
+            beamBrush.EndPoint = new Point(1, 0);
+            beamBrush.GradientStops.Add(new GradientStop(Colors.Transparent, 0.0));
+            beamBrush.GradientStops.Add(new GradientStop((Color)ColorConverter.ConvertFromString("#0284C7"), 0.5));
+            beamBrush.GradientStops.Add(new GradientStop((Color)ColorConverter.ConvertFromString("#38BDF8"), 0.85));
+            beamBrush.GradientStops.Add(new GradientStop(Colors.Transparent, 1.0));
+            _loadingBeam.Background = beamBrush;
+
+            _loadingBeamTransform = new TranslateTransform(-240, 0);
+            _loadingBeam.RenderTransform = _loadingBeamTransform;
+            _loadingTrackGrid.Children.Add(_loadingBeam);
+
+            Grid.SetRow(_loadingTrackGrid, 2);
+            rootGrid.Children.Add(_loadingTrackGrid);
+
+            // ================= CONTAINER DE AMBIENTES (LISTA EM NORMAL, CARDS GRID EM TELA CHEIA) =================
+            ScrollViewer scroll = new ScrollViewer();
+            scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+            scroll.Padding = new Thickness(20, 4, 20, 18);
+            _cardsScrollViewer = scroll;
+
+            if (WindowState == WindowState.Maximized)
+            {
+                UniformGrid ug = new UniformGrid();
+                ug.Columns = ActualWidth >= 1750 ? 3 : 2;
+                ug.VerticalAlignment = VerticalAlignment.Top;
+                _cardsContainer = ug;
+            }
+            else
+            {
+                StackPanel sp = new StackPanel();
+                _cardsContainer = sp;
+            }
+
+            scroll.Content = _cardsContainer;
+            Grid.SetRow(scroll, 3);
+            rootGrid.Children.Add(scroll);
+
+            _pageHost.Content = rootGrid;
+            RenderizarCards();
+        }
+
+        private void AtualizarColunasGridMaximizado()
+        {
+            UniformGrid ug = _cardsContainer as UniformGrid;
+            if (ug != null)
+            {
+                int cols = ActualWidth >= 1750 ? 3 : 2;
+                if (ug.Columns != cols)
+                    ug.Columns = cols;
+            }
+        }
+
+        private void GirarIconeAtualizacao1x()
+        {
+            if (_refreshIconPath == null) return;
+            RotateTransform rt = _refreshIconPath.RenderTransform as RotateTransform;
+            if (rt == null)
+            {
+                rt = new RotateTransform(0);
+                _refreshIconPath.RenderTransform = rt;
+            }
+
+            DoubleAnimation spin = new DoubleAnimation();
+            spin.From = 0;
+            spin.To = 360;
+            spin.Duration = TimeSpan.FromMilliseconds(650);
+            spin.EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut };
+            rt.BeginAnimation(RotateTransform.AngleProperty, spin);
+        }
+
+        private void DispararAnimacaoLoadingHorizontal()
+        {
+            if (_loadingTrackGrid == null || _loadingBeam == null || _loadingBeamTransform == null)
+                return;
+
+            double trackWidth = _loadingTrackGrid.ActualWidth > 0 ? _loadingTrackGrid.ActualWidth : 960;
+            _loadingBeam.Opacity = 1.0;
+
+            DoubleAnimation slide = new DoubleAnimation();
+            slide.From = -240;
+            slide.To = trackWidth + 40;
+            slide.Duration = TimeSpan.FromMilliseconds(850);
+            slide.EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut };
+            slide.Completed += delegate
+            {
+                _loadingBeam.Opacity = 0;
+            };
+
+            _loadingBeamTransform.BeginAnimation(TranslateTransform.XProperty, slide);
+        }
+
+        // =====================================================================
+        // RENDERIZACAO DOS CARDS (LISTA EM NORMAL, GRID DE CARDS EM TELA CHEIA)
+        // =====================================================================
+        private void AtualizarBotaoOcultos()
+        {
+            if (_btnToggleHiddenView == null) return;
+            _btnToggleHiddenView.Content = _showingHidden ? "👁 Ativos" : "👁 Ocultos";
+            _btnToggleHiddenView.Background = UiTheme.BrushFromHex(UiTheme.NeutralBtnHex);
+        }
+
+        private void RenderizarCards()
+        {
+            if (_cardsContainer == null) return;
+
+            bool isMaximized = (WindowState == WindowState.Maximized);
+            if (_cardsScrollViewer != null)
+            {
+                if (isMaximized && !(_cardsContainer is UniformGrid))
+                {
+                    UniformGrid ugNew = new UniformGrid();
+                    ugNew.Columns = ActualWidth >= 1750 ? 3 : 2;
+                    ugNew.VerticalAlignment = VerticalAlignment.Top;
+                    _cardsContainer = ugNew;
+                    _cardsScrollViewer.Content = _cardsContainer;
+                }
+                else if (!isMaximized && !(_cardsContainer is StackPanel))
+                {
+                    StackPanel spNew = new StackPanel();
+                    _cardsContainer = spNew;
+                    _cardsScrollViewer.Content = _cardsContainer;
+                }
+            }
+
+            AtualizarBotaoOcultos();
+            _cardsContainer.Children.Clear();
+
+            if (isMaximized)
+                AtualizarColunasGridMaximizado();
+
+            // Animacao vetorial enquanto a primeira varredura nao conclui
+            if (!_isInitialScanCompleted)
+            {
+                UniformGrid ug = _cardsContainer as UniformGrid;
+                if (ug != null) ug.Columns = 1;
+                _cardsContainer.Children.Add(UiTheme.CreateVectorLoadingScreen(_cachedSvgPath));
+                AtualizarResumoEVisualCards();
+                return;
+            }
+
+            string filtro = (_searchBox != null && _searchBox.Text != null)
+                ? _searchBox.Text.Trim().ToLowerInvariant()
+                : "";
+
+            int visiveis = 0;
+
+            foreach (AmbienteInfo amb in _ambientes)
+            {
+                bool isHidden = _hiddenDirs.Contains(amb.AppDir);
+                if (_showingHidden != isHidden)
+                    continue;
+
+                string notaCard = null;
+                _cardNotes.TryGetValue(amb.AppDir, out notaCard);
+
+                if (!string.IsNullOrEmpty(filtro))
+                {
+                    bool match = (amb.NomeIni != null && amb.NomeIni.ToLowerInvariant().Contains(filtro))
+                              || (amb.PastaBase != null && amb.PastaBase.ToLowerInvariant().Contains(filtro))
+                              || (amb.AppDir != null && amb.AppDir.ToLowerInvariant().Contains(filtro))
+                              || (amb.WebAppPort != null && amb.WebAppPort.Contains(filtro))
+                              || (amb.TcpPort != null && amb.TcpPort.Contains(filtro))
+                              || (amb.RestPort != null && amb.RestPort.Contains(filtro))
+                              || (amb.SpecialKey != null && amb.SpecialKey.ToLowerInvariant().Contains(filtro))
+                              || (amb.DBAlias != null && amb.DBAlias.ToLowerInvariant().Contains(filtro))
+                              || (amb.DBPort != null && amb.DBPort.Contains(filtro))
+                              || (amb.ProcessUser != null && amb.ProcessUser.ToLowerInvariant().Contains(filtro))
+                              || (amb.ServiceName != null && amb.ServiceName.ToLowerInvariant().Contains(filtro))
+                              || (!string.IsNullOrEmpty(notaCard) && notaCard.ToLowerInvariant().Contains(filtro));
+                    if (!match) continue;
+                }
+
+                visiveis++;
+                Border cardUi = CriarCardAmbiente(amb, isHidden);
+                if (isMaximized)
+                {
+                    cardUi.Margin = new Thickness(5, 0, 5, 10);
+                }
+                _cardsContainer.Children.Add(cardUi);
+            }
+
+            if (visiveis == 0)
+            {
+                UniformGrid ug = _cardsContainer as UniformGrid;
+                if (ug != null) ug.Columns = 1;
+
+                Border emptyBox = new Border();
+                emptyBox.Background = UiTheme.BgCard;
+                emptyBox.BorderBrush = UiTheme.BorderSubtle;
+                emptyBox.BorderThickness = new Thickness(1);
+                emptyBox.CornerRadius = new CornerRadius(12);
+                emptyBox.Padding = new Thickness(30);
+                emptyBox.Margin = new Thickness(0, 10, 0, 0);
+
+                TextBlock emptyTxt = new TextBlock();
+                if (_showingHidden)
+                    emptyTxt.Text = "Nenhum ambiente oculto no momento.";
+                else
+                    emptyTxt.Text = Directory.Exists(_rootPath)
+                        ? "Nenhum ambiente ativo encontrado."
+                        : "A pasta configurada não existe: " + _rootPath;
+
+                emptyTxt.Foreground = UiTheme.TextPrimary;
+                emptyTxt.FontSize = 14;
+                emptyTxt.HorizontalAlignment = HorizontalAlignment.Center;
+                emptyBox.Child = emptyTxt;
+
+                _cardsContainer.Children.Add(emptyBox);
+            }
+
+            AtualizarResumoEVisualCards();
+        }
+
+        private Border CreateMetaPill(string label, string value)
+        {
+            Border pill = new Border();
+            pill.Background = UiTheme.TagBg;
+            pill.BorderBrush = UiTheme.BorderSubtle;
+            pill.BorderThickness = new Thickness(1);
+            pill.CornerRadius = new CornerRadius(5);
+            pill.Padding = new Thickness(7, 2, 7, 2);
+            pill.Margin = new Thickness(0, 0, 6, 4);
+
+            StackPanel row = new StackPanel();
+            row.Orientation = Orientation.Horizontal;
+            row.VerticalAlignment = VerticalAlignment.Center;
+
+            TextBlock lbl = new TextBlock();
+            lbl.Text = label + ": ";
+            lbl.Foreground = UiTheme.TextMuted;
+            lbl.FontSize = 11;
+            lbl.FontWeight = FontWeights.SemiBold;
+
+            TextBlock val = new TextBlock();
+            val.Text = string.IsNullOrWhiteSpace(value) ? "-" : value;
+            val.Foreground = UiTheme.TextPrimary;
+            val.FontSize = 11;
+            val.FontWeight = FontWeights.Bold;
+
+            row.Children.Add(lbl);
+            row.Children.Add(val);
+            pill.Child = row;
+            return pill;
+        }
+
+        private Border CriarCardAmbiente(AmbienteInfo amb, bool isHidden)
+        {
+            Border card = new Border();
+            card.Background = UiTheme.BgCard;
+            card.BorderBrush = UiTheme.BorderSubtle;
+            card.BorderThickness = new Thickness(1);
+            card.CornerRadius = new CornerRadius(12);
+            card.Padding = new Thickness(16, 14, 16, 14);
+            card.Margin = new Thickness(0, 0, 0, 10);
+            amb.CardBorder = card;
+
+            Grid cardGrid = new Grid();
+            RowDefinition rMain = new RowDefinition(); rMain.Height = GridLength.Auto;
+            RowDefinition rNote = new RowDefinition(); rNote.Height = GridLength.Auto;
+            cardGrid.RowDefinitions.Add(rMain);
+            cardGrid.RowDefinitions.Add(rNote);
+
+            ColumnDefinition colLeftTools = new ColumnDefinition(); colLeftTools.Width = GridLength.Auto;
+            ColumnDefinition colInfo = new ColumnDefinition(); colInfo.Width = new GridLength(1, GridUnitType.Star);
+            ColumnDefinition colRightActions = new ColumnDefinition(); colRightActions.Width = GridLength.Auto;
+            cardGrid.ColumnDefinitions.Add(colLeftTools);
+            cardGrid.ColumnDefinitions.Add(colInfo);
+            cardGrid.ColumnDefinitions.Add(colRightActions);
+
+            // ================= COLUNA 0 (ESQUERDA): LAPIS E OLHO CENTRALIZADOS VERTICALMENTE + STATUS ABAIXO =================
+            StackPanel leftToolsColumn = new StackPanel();
+            leftToolsColumn.Orientation = Orientation.Vertical;
+            leftToolsColumn.VerticalAlignment = VerticalAlignment.Center;
+            leftToolsColumn.HorizontalAlignment = HorizontalAlignment.Center;
+            leftToolsColumn.Margin = new Thickness(0, 0, 16, 0);
+
+            StackPanel toolsIconsRow = new StackPanel();
+            toolsIconsRow.Orientation = Orientation.Horizontal;
+            toolsIconsRow.HorizontalAlignment = HorizontalAlignment.Center;
+            toolsIconsRow.VerticalAlignment = VerticalAlignment.Center;
+
+            Button btnConfig = UiTheme.CreateFramelessIconButton(
+                UiTheme.CreatePencilIcon(UiTheme.TextSecondary),
+                "Configurar appserver.ini");
+            btnConfig.Click += delegate { ShowIniEditorView(amb); };
+
+            Button btnHide = UiTheme.CreateFramelessIconButton(
+                isHidden ? UiTheme.CreateEyeOffIcon(UiTheme.AccentAmber) : UiTheme.CreateEyeIcon(UiTheme.TextSecondary),
+                isHidden ? "Desocultar ambiente" : "Ocultar ambiente");
+            btnHide.Margin = new Thickness(4, 0, 0, 0);
+            btnHide.Click += delegate
+            {
+                if (_hiddenDirs.Contains(amb.AppDir))
+                    _hiddenDirs.Remove(amb.AppDir);
+                else
+                    _hiddenDirs.Add(amb.AppDir);
+
+                SalvarOcultosAppData();
+                RecalcularAlertas();
+                RenderizarCards();
+            };
+
+            toolsIconsRow.Children.Add(btnConfig);
+            toolsIconsRow.Children.Add(btnHide);
+            leftToolsColumn.Children.Add(toolsIconsRow);
+
+            // Status abaixo do configurar e ocultar
+            Border statusBadge = new Border();
+            statusBadge.CornerRadius = new CornerRadius(10);
+            statusBadge.Padding = new Thickness(8, 3, 8, 3);
+            statusBadge.Margin = new Thickness(0, 6, 0, 0);
+            statusBadge.HorizontalAlignment = HorizontalAlignment.Center;
+            statusBadge.BorderThickness = new Thickness(1);
+
+            StackPanel statusInner = new StackPanel();
+            statusInner.Orientation = Orientation.Horizontal;
+            statusInner.VerticalAlignment = VerticalAlignment.Center;
+            statusInner.HorizontalAlignment = HorizontalAlignment.Center;
+
+            Border statusDot = new Border();
+            statusDot.Width = 7;
+            statusDot.Height = 7;
+            statusDot.CornerRadius = new CornerRadius(3.5);
+            statusDot.Margin = new Thickness(0, 0, 5, 0);
+            statusDot.VerticalAlignment = VerticalAlignment.Center;
+
+            TextBlock statusTxt = new TextBlock();
+            statusTxt.FontSize = 11;
+            statusTxt.FontWeight = FontWeights.Bold;
+            statusTxt.VerticalAlignment = VerticalAlignment.Center;
+
+            statusInner.Children.Add(statusDot);
+            statusInner.Children.Add(statusTxt);
+            statusBadge.Child = statusInner;
+
+            amb.StatusBadge = statusBadge;
+            amb.StatusDot = statusDot;
+            amb.StatusText = statusTxt;
+
+            leftToolsColumn.Children.Add(statusBadge);
+            Grid.SetRow(leftToolsColumn, 0);
+            Grid.SetColumn(leftToolsColumn, 0);
+            cardGrid.Children.Add(leftToolsColumn);
+
+            // ================= COLUNA 1 (CENTRO): NOME DO AMBIENTE AZUL, PASTA, USUARIO PID E METADADOS PADRAO =================
+            StackPanel infoColumn = new StackPanel();
+            infoColumn.VerticalAlignment = VerticalAlignment.Center;
+            infoColumn.Margin = new Thickness(0, 0, 12, 0);
+
+            WrapPanel titleWrap = new WrapPanel();
+            titleWrap.VerticalAlignment = VerticalAlignment.Center;
+
+            // Nome do ambiente no mesmo tom de azul (#0284C7)
+            TextBlock lblEnvName = new TextBlock();
+            lblEnvName.Text = amb.NomeIni;
+            lblEnvName.Foreground = UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex);
+            lblEnvName.FontSize = 15;
+            lblEnvName.FontWeight = FontWeights.Bold;
+            lblEnvName.Margin = new Thickness(0, 0, 8, 0);
+            lblEnvName.VerticalAlignment = VerticalAlignment.Center;
+            titleWrap.Children.Add(lblEnvName);
+
+            Border folderTag = new Border();
+            folderTag.Background = UiTheme.TagBg;
+            folderTag.BorderBrush = UiTheme.BorderSubtle;
+            folderTag.BorderThickness = new Thickness(1);
+            folderTag.CornerRadius = new CornerRadius(5);
+            folderTag.Padding = new Thickness(7, 2, 7, 2);
+            folderTag.Margin = new Thickness(0, 0, 6, 0);
+            folderTag.VerticalAlignment = VerticalAlignment.Center;
+            TextBlock folderTagTxt = new TextBlock();
+            folderTagTxt.Text = amb.PastaBase;
+            folderTagTxt.Foreground = UiTheme.TextSecondary;
+            folderTagTxt.FontSize = 11;
+            folderTagTxt.FontWeight = FontWeights.SemiBold;
+            folderTag.Child = folderTagTxt;
+            titleWrap.Children.Add(folderTag);
+
+            Border modeBadge = new Border();
+            modeBadge.Background = UiTheme.TagBg;
+            modeBadge.BorderBrush = UiTheme.BorderSubtle;
+            modeBadge.BorderThickness = new Thickness(1);
+            modeBadge.CornerRadius = new CornerRadius(5);
+            modeBadge.Padding = new Thickness(7, 2, 7, 2);
+            modeBadge.Margin = new Thickness(0, 0, 6, 0);
+            modeBadge.VerticalAlignment = VerticalAlignment.Center;
+            TextBlock modeTxt = new TextBlock();
+            modeTxt.Foreground = UiTheme.TextSecondary;
+            modeTxt.FontSize = 11;
+            modeTxt.FontWeight = FontWeights.SemiBold;
+            modeBadge.Child = modeTxt;
+            amb.ModeTagText = modeTxt;
+            titleWrap.Children.Add(modeBadge);
+
+            // Tag opcional do usuario do processo (PID)
+            Border userBadge = new Border();
+            userBadge.Background = UiTheme.BrushFromHex("#0C4A6E");
+            userBadge.BorderBrush = UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex);
+            userBadge.BorderThickness = new Thickness(1);
+            userBadge.CornerRadius = new CornerRadius(5);
+            userBadge.Padding = new Thickness(7, 2, 7, 2);
+            userBadge.Margin = new Thickness(0, 0, 6, 0);
+            userBadge.VerticalAlignment = VerticalAlignment.Center;
+            TextBlock userTxt = new TextBlock();
+            userTxt.Foreground = UiTheme.AccentLightBlue;
+            userTxt.FontSize = 11;
+            userTxt.FontWeight = FontWeights.Bold;
+            userBadge.Child = userTxt;
+            amb.UserTagBorder = userBadge;
+            amb.UserTagText = userTxt;
+            titleWrap.Children.Add(userBadge);
+
+            Button btnOpenExplorer = UiTheme.CreateFramelessIconButton(
+                UiTheme.CreateFolderIcon(UiTheme.TextSecondary, 13),
+                "Abrir diretório do AppServer no Explorer");
+            btnOpenExplorer.Padding = new Thickness(4, 2, 4, 2);
+            btnOpenExplorer.Click += delegate
+            {
+                try
+                {
+                    if (Directory.Exists(amb.AppDir))
+                        Process.Start("explorer.exe", amb.AppDir);
+                }
+                catch { }
+            };
+            titleWrap.Children.Add(btnOpenExplorer);
+
+            Button btnNote = UiTheme.CreateFramelessIconButton(
+                new TextBlock { Text = "📝", FontSize = 11, Foreground = UiTheme.TextSecondary },
+                "Adicionar ou editar anotação deste ambiente");
+            btnNote.Padding = new Thickness(4, 2, 4, 2);
+            btnNote.Click += delegate { EditarNotaCard(amb); };
+            titleWrap.Children.Add(btnNote);
+
+            infoColumn.Children.Add(titleWrap);
+
+            TextBlock lblPath = new TextBlock();
+            lblPath.Text = amb.AppDir;
+            lblPath.Foreground = UiTheme.TextMuted;
+            lblPath.FontSize = 11;
+            lblPath.TextTrimming = TextTrimming.CharacterEllipsis;
+            lblPath.Margin = new Thickness(0, 3, 0, 6);
+            infoColumn.Children.Add(lblPath);
+
+            // Tags de facil visualizacao: Portas + SpecialKey, DBAlias e DBPort como padrao
+            WrapPanel metaWrap = new WrapPanel();
+            metaWrap.Children.Add(CreateMetaPill("WebApp", !string.IsNullOrEmpty(amb.WebAppPort) ? amb.WebAppPort : "-"));
+            metaWrap.Children.Add(CreateMetaPill("TCP", !string.IsNullOrEmpty(amb.TcpPort) ? amb.TcpPort : "-"));
+            metaWrap.Children.Add(CreateMetaPill("REST", !string.IsNullOrEmpty(amb.RestPort) ? amb.RestPort : "-"));
+            metaWrap.Children.Add(CreateMetaPill("SpecialKey", !string.IsNullOrEmpty(amb.SpecialKey) ? amb.SpecialKey : "-"));
+            metaWrap.Children.Add(CreateMetaPill("DBAlias", !string.IsNullOrEmpty(amb.DBAlias) ? amb.DBAlias : "-"));
+            metaWrap.Children.Add(CreateMetaPill("DBPort", !string.IsNullOrEmpty(amb.DBPort) ? amb.DBPort : "-"));
+            infoColumn.Children.Add(metaWrap);
+
+            Grid.SetRow(infoColumn, 0);
+            Grid.SetColumn(infoColumn, 1);
+            cardGrid.Children.Add(infoColumn);
+
+            // ================= COLUNA 2 (DIREITA): PROTHEUS, REST, BOTOES CUSTOMIZADOS E CONTROLE DE PROCESSO =================
+            StackPanel rightActionsColumn = new StackPanel();
+            rightActionsColumn.Orientation = Orientation.Vertical;
+            rightActionsColumn.VerticalAlignment = VerticalAlignment.Center;
+            rightActionsColumn.HorizontalAlignment = HorizontalAlignment.Right;
+
+            WrapPanel accessButtonsWrap = new WrapPanel();
+            accessButtonsWrap.HorizontalAlignment = HorizontalAlignment.Right;
+            accessButtonsWrap.Margin = new Thickness(0, 0, 0, 6);
+
+            // Botao 'Protheus' (antigo 'Acessar') no mesmo tom de azul
+            Button btnWeb = UiTheme.CreateActionButton("Protheus", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
+            btnWeb.Margin = new Thickness(6, 0, 0, 4);
+            btnWeb.ToolTip = !string.IsNullOrEmpty(amb.WebAppPort)
+                ? string.Format("Abrir http://localhost:{0}", amb.WebAppPort)
+                : "Porta WEBAPP não configurada no appserver.ini";
+            if (string.IsNullOrEmpty(amb.WebAppPort))
+                btnWeb.Opacity = 0.50;
+            btnWeb.Click += delegate { AbrirNavegador(amb); };
+            amb.BtnWeb = btnWeb;
+            accessButtonsWrap.Children.Add(btnWeb);
+
+            // Botao 'REST' no mesmo tom de azul
+            Button btnRest = UiTheme.CreateActionButton("REST", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
+            btnRest.Margin = new Thickness(6, 0, 0, 4);
+            btnRest.ToolTip = !string.IsNullOrEmpty(amb.RestPort)
+                ? string.Format("Abrir http://localhost:{0}/rest", amb.RestPort)
+                : "Porta HTTPREST não configurada no appserver.ini";
+            if (string.IsNullOrEmpty(amb.RestPort))
+                btnRest.Opacity = 0.50;
+            btnRest.Click += delegate { AbrirRestNavegador(amb); };
+            amb.BtnRest = btnRest;
+            accessButtonsWrap.Children.Add(btnRest);
+
+            // Botoes personalizados gerados pelas formulas configuradas pelo usuario
+            amb.CustomButtons.Clear();
+            foreach (CustomLinkButton linkDef in _customLinks)
+            {
+                CustomLinkButton capturedDef = linkDef;
+                string resolvedUrl = ResolverFormulaLink(amb, capturedDef.Formula);
+                Button btnCustom = UiTheme.CreateActionButton(capturedDef.Label, UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
+                btnCustom.Margin = new Thickness(6, 0, 0, 4);
+                btnCustom.ToolTip = !string.IsNullOrEmpty(resolvedUrl)
+                    ? string.Format("Abrir {0}", resolvedUrl)
+                    : string.Format("Fórmula: {0} (chaves ausentes neste .ini)", capturedDef.Formula);
+                if (string.IsNullOrEmpty(resolvedUrl))
+                    btnCustom.Opacity = 0.50;
+                btnCustom.Click += delegate { AbrirLinkCustomizado(amb, capturedDef); };
+                amb.CustomButtons.Add(btnCustom);
+                accessButtonsWrap.Children.Add(btnCustom);
+            }
+
+            rightActionsColumn.Children.Add(accessButtonsWrap);
+
+            WrapPanel powerButtonsWrap = new WrapPanel();
+            powerButtonsWrap.HorizontalAlignment = HorizontalAlignment.Right;
+
+            Button btnStart = UiTheme.CreateActionButton("Iniciar", "#059669", "#10B981");
+            btnStart.Margin = new Thickness(6, 0, 0, 0);
+            btnStart.Click += delegate { IniciarAmbienteAsync(amb, null); };
+            amb.BtnStart = btnStart;
+
+            Button btnRestart = UiTheme.CreateActionButton("Reiniciar", "#D97706", "#F59E0B");
+            btnRestart.Margin = new Thickness(6, 0, 0, 0);
+            btnRestart.Click += delegate { ReiniciarAmbienteAsync(amb); };
+            amb.BtnRestart = btnRestart;
+
+            Button btnStop = UiTheme.CreateActionButton("Parar", "#DC2626", "#EF4444");
+            btnStop.Margin = new Thickness(6, 0, 0, 0);
+            btnStop.Click += delegate { EncerrarAmbienteAsync(amb); };
+            amb.BtnStop = btnStop;
+
+            powerButtonsWrap.Children.Add(btnStart);
+            powerButtonsWrap.Children.Add(btnRestart);
+            powerButtonsWrap.Children.Add(btnStop);
+            rightActionsColumn.Children.Add(powerButtonsWrap);
+
+            Grid.SetRow(rightActionsColumn, 0);
+            Grid.SetColumn(rightActionsColumn, 2);
+            cardGrid.Children.Add(rightActionsColumn);
+
+            // ================= LINHA 1: BANNER DE NOTA / COMENTARIO DO CARD (SE HOUVER) =================
+            string noteText;
+            if (_cardNotes.TryGetValue(amb.AppDir, out noteText) && !string.IsNullOrWhiteSpace(noteText))
+            {
+                Border noteBanner = new Border();
+                noteBanner.Background = UiTheme.NoteBannerBg;
+                noteBanner.BorderBrush = UiTheme.BorderSubtle;
+                noteBanner.BorderThickness = new Thickness(1);
+                noteBanner.CornerRadius = new CornerRadius(7);
+                noteBanner.Padding = new Thickness(10, 6, 10, 6);
+                noteBanner.Margin = new Thickness(0, 10, 0, 0);
+                noteBanner.Cursor = Cursors.Hand;
+                noteBanner.ToolTip = "Clique para editar a anotação";
+                noteBanner.MouseLeftButtonUp += delegate { EditarNotaCard(amb); };
+
+                TextBlock noteLbl = new TextBlock();
+                noteLbl.Text = "📝 " + noteText;
+                noteLbl.Foreground = UiTheme.NoteTextFg;
+                noteLbl.FontSize = 12;
+                noteLbl.TextWrapping = TextWrapping.Wrap;
+                noteBanner.Child = noteLbl;
+
+                Grid.SetRow(noteBanner, 1);
+                Grid.SetColumnSpan(noteBanner, 3);
+                cardGrid.Children.Add(noteBanner);
+            }
+
+            card.Child = cardGrid;
+            AtualizarVisualCard(amb);
+            return card;
+        }
+
+        private void EditarNotaCard(AmbienteInfo amb)
+        {
+            string atual = "";
+            _cardNotes.TryGetValue(amb.AppDir, out atual);
+
+            Window dlg = new Window();
+            dlg.Title = "Anotação — " + amb.NomeIni;
+            dlg.Icon = TotvsLogo.CreateTotvsWindowImageSource(_cachedSvgPath);
+            dlg.Owner = this;
+            dlg.Width = 440;
+            dlg.SizeToContent = SizeToContent.Height;
+            dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            dlg.WindowStyle = WindowStyle.None;
+            dlg.ResizeMode = ResizeMode.NoResize;
+            dlg.Background = UiTheme.BgHeader;
+            dlg.FontFamily = new FontFamily("Segoe UI");
+            UiTheme.ApplyWindowChromeState(dlg, false);
+
+            Border outer = new Border();
+            outer.Background = UiTheme.BgHeader;
+            outer.BorderBrush = UiTheme.BorderSubtle;
+            outer.BorderThickness = new Thickness(1);
+            outer.CornerRadius = new CornerRadius(12);
+            outer.Padding = new Thickness(20, 16, 20, 18);
+            outer.MouseLeftButtonDown += delegate(object s, MouseButtonEventArgs e)
+            {
+                if (e.ClickCount == 1)
+                {
+                    try { dlg.DragMove(); } catch { }
+                }
+            };
+
+            StackPanel stack = new StackPanel();
+
+            DockPanel topRow = new DockPanel();
+            topRow.Margin = new Thickness(0, 0, 0, 10);
+            Button btnClose = UiTheme.CreateWindowButton("✕", "#DC2626");
+            btnClose.Width = 28;
+            btnClose.Height = 26;
+            DockPanel.SetDock(btnClose, Dock.Right);
+            btnClose.Click += delegate { dlg.Close(); };
+            topRow.Children.Add(btnClose);
+
+            TextBlock lblTitle = new TextBlock();
+            lblTitle.Text = "Anotação para " + amb.NomeIni;
+            lblTitle.Foreground = UiTheme.TextPrimary;
+            lblTitle.FontSize = 14;
+            lblTitle.FontWeight = FontWeights.Bold;
+            lblTitle.VerticalAlignment = VerticalAlignment.Center;
+            topRow.Children.Add(lblTitle);
+            stack.Children.Add(topRow);
+
+            TextBox txtNote = new TextBox();
+            txtNote.Text = atual ?? "";
+            txtNote.AcceptsReturn = true;
+            txtNote.TextWrapping = TextWrapping.Wrap;
+            txtNote.Height = 84;
+            txtNote.Foreground = UiTheme.TextPrimary;
+            txtNote.Background = UiTheme.BgInput;
+            txtNote.CaretBrush = UiTheme.TextPrimary;
+            txtNote.BorderBrush = UiTheme.BorderSubtle;
+            txtNote.BorderThickness = new Thickness(1);
+            txtNote.Padding = new Thickness(8, 6, 8, 6);
+            txtNote.FontSize = 12;
+            txtNote.Margin = new Thickness(0, 0, 0, 14);
+            stack.Children.Add(txtNote);
+
+            StackPanel btnsRow = new StackPanel();
+            btnsRow.Orientation = Orientation.Horizontal;
+            btnsRow.HorizontalAlignment = HorizontalAlignment.Right;
+
+            Button btnClear = UiTheme.CreateActionButton("Limpar", UiTheme.NeutralBtnHex, "#DC2626");
+            btnClear.Margin = new Thickness(0, 0, 8, 0);
+            btnClear.Click += delegate
+            {
+                _cardNotes.Remove(amb.AppDir);
+                SalvarNotasAppData();
+                dlg.Close();
+                RenderizarCards();
+            };
+
+            Button btnSave = UiTheme.CreateActionButton("Salvar", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
+            btnSave.Click += delegate
+            {
+                string val = (txtNote.Text ?? "").Trim();
+                if (string.IsNullOrEmpty(val))
+                    _cardNotes.Remove(amb.AppDir);
+                else
+                    _cardNotes[amb.AppDir] = val;
+
+                SalvarNotasAppData();
+                dlg.Close();
+                RenderizarCards();
+            };
+
+            btnsRow.Children.Add(btnClear);
+            btnsRow.Children.Add(btnSave);
+            stack.Children.Add(btnsRow);
+
+            outer.Child = stack;
+            dlg.Content = outer;
+            dlg.ShowDialog();
+        }
+
+        private void AtualizarVisualCard(AmbienteInfo amb)
+        {
+            if (amb.CardBorder == null) return;
+
+            string modoBase = amb.IsServiceRegistered
+                ? string.Format("Serviço ({0})", amb.ServiceName)
+                : "Console";
+
+            if (amb.State == EnvRunState.Active && amb.Pid > 0)
+            {
+                string execMode = amb.RunningAsService ? "Serviço" : "Console";
+                amb.ModeTagText.Text = string.Format("{0}  •  PID {1}", execMode, amb.Pid);
+            }
+            else
+            {
+                amb.ModeTagText.Text = modoBase;
+            }
+
+            if (amb.UserTagBorder != null && amb.UserTagText != null)
+            {
+                if (_showProcessUser && amb.State == EnvRunState.Active && !string.IsNullOrEmpty(amb.ProcessUser))
+                {
+                    amb.UserTagText.Text = "👤 " + amb.ProcessUser;
+                    amb.UserTagBorder.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    amb.UserTagBorder.Visibility = Visibility.Collapsed;
+                }
+            }
+
+            if (amb.State == EnvRunState.Active)
+            {
+                amb.CardBorder.Background = amb.RunningAsService ? UiTheme.BgCardServiceActive : UiTheme.BgCardConsoleActive;
+                amb.CardBorder.BorderBrush = amb.RunningAsService ? UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex) : UiTheme.AccentGreen;
+                amb.StatusBadge.Background = UiTheme.BrushFromHex("#064E3B");
+                amb.StatusBadge.BorderBrush = UiTheme.AccentGreen;
+                amb.StatusDot.Background = UiTheme.AccentGreen;
+                amb.StatusText.Text = "Ativo";
+                amb.StatusText.Foreground = UiTheme.AccentGreen;
+
+                amb.BtnStart.Visibility = Visibility.Collapsed;
+                amb.BtnRestart.Visibility = Visibility.Visible;
+                amb.BtnStop.Visibility = Visibility.Visible;
+                amb.BtnRestart.IsEnabled = true;
+                amb.BtnStop.IsEnabled = true;
+            }
+            else if (amb.State == EnvRunState.Initializing)
+            {
+                amb.CardBorder.Background = UiTheme.BgCard;
+                amb.CardBorder.BorderBrush = UiTheme.AccentAmber;
+                amb.StatusBadge.Background = UiTheme.BrushFromHex("#451A03");
+                amb.StatusBadge.BorderBrush = UiTheme.AccentAmber;
+                amb.StatusDot.Background = UiTheme.AccentAmber;
+                amb.StatusText.Text = "Iniciando...";
+                amb.StatusText.Foreground = UiTheme.AccentAmber;
+
+                amb.BtnStart.Visibility = Visibility.Visible;
+                amb.BtnStart.IsEnabled = false;
+                amb.BtnRestart.Visibility = Visibility.Collapsed;
+                amb.BtnStop.Visibility = Visibility.Collapsed;
+            }
+            else if (amb.State == EnvRunState.Stopping)
+            {
+                amb.CardBorder.Background = UiTheme.BgCard;
+                amb.CardBorder.BorderBrush = UiTheme.AccentAmber;
+                amb.StatusBadge.Background = UiTheme.BrushFromHex("#451A03");
+                amb.StatusBadge.BorderBrush = UiTheme.AccentAmber;
+                amb.StatusDot.Background = UiTheme.AccentAmber;
+                amb.StatusText.Text = "Parando...";
+                amb.StatusText.Foreground = UiTheme.AccentAmber;
+
+                amb.BtnStart.Visibility = Visibility.Collapsed;
+                amb.BtnRestart.Visibility = Visibility.Collapsed;
+                amb.BtnStop.Visibility = Visibility.Visible;
+                amb.BtnStop.IsEnabled = false;
+            }
+            else
+            {
+                amb.CardBorder.Background = UiTheme.BgCard;
+                amb.CardBorder.BorderBrush = UiTheme.BorderSubtle;
+                amb.StatusBadge.Background = UiTheme.TagBg;
+                amb.StatusBadge.BorderBrush = UiTheme.BorderSubtle;
+                amb.StatusDot.Background = UiTheme.TextMuted;
+                amb.StatusText.Text = "Parado";
+                amb.StatusText.Foreground = UiTheme.TextSecondary;
+
+                amb.BtnStart.Visibility = Visibility.Visible;
+                amb.BtnStart.IsEnabled = true;
+                amb.BtnRestart.Visibility = Visibility.Collapsed;
+                amb.BtnStop.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void AtualizarResumoEVisualCards()
+        {
+            int totalVisiveis = 0;
+            int ativosCount = 0;
+
+            foreach (AmbienteInfo amb in _ambientes)
+            {
+                AtualizarVisualCard(amb);
+                if (!_hiddenDirs.Contains(amb.AppDir))
+                {
+                    totalVisiveis++;
+                    if (amb.State == EnvRunState.Active)
+                        ativosCount++;
+                }
+            }
+
+            if (_statsLabel != null)
+            {
+                _statsLabel.Text = string.Format("{0} de {1} ativos ({2} ocultos)",
+                    ativosCount,
+                    totalVisiveis,
+                    _hiddenDirs.Count);
+            }
+        }
+
+        // =====================================================================
+        // RESOLUCAO DE FORMULAS DE LINKS PERSONALIZADOS E NAVEGADOR
+        // =====================================================================
+        private string ResolverFormulaLink(AmbienteInfo amb, string formula)
+        {
+            if (amb == null || string.IsNullOrWhiteSpace(formula))
+                return null;
+
+            bool missingKey = false;
+            string result = Regex.Replace(formula.Trim(), @"(\{([^}]+)\}|<([^>]+)>)", delegate(Match m)
+            {
+                string inner = m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Value;
+                inner = (inner ?? "").Trim();
+                if (string.IsNullOrEmpty(inner))
+                {
+                    missingKey = true;
+                    return "";
+                }
+
+                string secName = null;
+                string keyName = null;
+
+                char[] seps = new char[] { ':', '>', '/', '.' };
+                int sepIdx = inner.IndexOfAny(seps);
+                if (sepIdx > 0)
+                {
+                    secName = inner.Substring(0, sepIdx).Trim().Trim('[', ']');
+                    keyName = inner.Substring(sepIdx + 1).Trim();
+                }
+                else
+                {
+                    keyName = inner.Trim();
+                }
+
+                if (string.Equals(secName, "ambiente", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(secName, "<ambiente>", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(secName, "environment", StringComparison.OrdinalIgnoreCase))
+                {
+                    secName = amb.NomeIni;
+                }
+
+                string val = null;
+                if (!string.IsNullOrEmpty(secName) && !string.IsNullOrEmpty(keyName))
+                {
+                    Dictionary<string, string> secDict;
+                    if (amb.IniSectionsMap.TryGetValue(secName, out secDict))
+                    {
+                        secDict.TryGetValue(keyName, out val);
+                    }
+                    if (string.IsNullOrWhiteSpace(val))
+                    {
+                        val = ObterValorChaveIni(amb, secName, keyName);
+                    }
+                }
+                else if (!string.IsNullOrEmpty(keyName))
+                {
+                    if (string.Equals(keyName, "WebAppPort", StringComparison.OrdinalIgnoreCase))
+                        val = amb.WebAppPort;
+                    else if (string.Equals(keyName, "RestPort", StringComparison.OrdinalIgnoreCase))
+                        val = amb.RestPort;
+                    else if (string.Equals(keyName, "TcpPort", StringComparison.OrdinalIgnoreCase))
+                        val = amb.TcpPort;
+                    else if (string.Equals(keyName, "SpecialKey", StringComparison.OrdinalIgnoreCase))
+                        val = amb.SpecialKey;
+                    else if (string.Equals(keyName, "DBAlias", StringComparison.OrdinalIgnoreCase))
+                        val = amb.DBAlias;
+                    else if (string.Equals(keyName, "DBPort", StringComparison.OrdinalIgnoreCase))
+                        val = amb.DBPort;
+                    else if (string.Equals(keyName, "ambiente", StringComparison.OrdinalIgnoreCase))
+                        val = amb.NomeIni;
+                    else
+                        val = ObterValorChaveIni(amb, amb.NomeIni, keyName);
+                }
+
+                if (string.IsNullOrWhiteSpace(val))
+                {
+                    missingKey = true;
+                    return "";
+                }
+                return val.Trim();
+            });
+
+            if (missingKey || string.IsNullOrWhiteSpace(result))
+                return null;
+
+            if (!result.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !result.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                result = "http://" + result;
+            }
+            return result;
+        }
+
+        private void AbrirUrlNoNavegador(string url, int delaySeconds)
+        {
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                if (delaySeconds > 0)
+                    Thread.Sleep(delaySeconds * 1000);
+                try
+                {
+                    ProcessStartInfo psi = new ProcessStartInfo();
+                    psi.FileName = url;
+                    psi.UseShellExecute = true;
+                    Process.Start(psi);
+                }
+                catch { }
+            });
+        }
+
+        private void AbrirNavegador(AmbienteInfo amb)
+        {
+            if (string.IsNullOrEmpty(amb.WebAppPort))
+            {
+                StyledDialog.Info(this, "Porta WebApp Ausente", "Este ambiente não possui porta configurada na seção [WEBAPP].", amb.IniPath);
+                return;
+            }
+
+            string url = string.Format("http://localhost:{0}", amb.WebAppPort);
+            if (amb.State != EnvRunState.Active)
+            {
+                int delay = _browserDelaySeconds;
+                IniciarAmbienteAsync(amb, delegate { AbrirUrlNoNavegador(url, delay); });
+            }
+            else
+            {
+                AbrirUrlNoNavegador(url, 0);
+            }
+        }
+
+        private void AbrirRestNavegador(AmbienteInfo amb)
+        {
+            if (string.IsNullOrEmpty(amb.RestPort))
+            {
+                StyledDialog.Info(this, "Porta REST Ausente", "Este ambiente não possui porta configurada na seção [HTTPREST].", amb.IniPath);
+                return;
+            }
+
+            string url = string.Format("http://localhost:{0}/rest", amb.RestPort);
+            if (amb.State != EnvRunState.Active)
+            {
+                int delay = _browserDelaySeconds;
+                IniciarAmbienteAsync(amb, delegate { AbrirUrlNoNavegador(url, delay); });
+            }
+            else
+            {
+                AbrirUrlNoNavegador(url, 0);
+            }
+        }
+
+        private void AbrirLinkCustomizado(AmbienteInfo amb, CustomLinkButton linkDef)
+        {
+            string url = ResolverFormulaLink(amb, linkDef.Formula);
+            if (string.IsNullOrEmpty(url))
+            {
+                StyledDialog.Info(
+                    this,
+                    "Chave Não Encontrada",
+                    string.Format("Não foi possível montar o link \"{0}\" para o ambiente {1}.", linkDef.Label, amb.NomeIni),
+                    string.Format("Verifique se as seções/chaves da fórmula ({0}) existem no appserver.ini.", linkDef.Formula));
+                return;
+            }
+
+            if (amb.State != EnvRunState.Active)
+            {
+                int delay = _browserDelaySeconds;
+                IniciarAmbienteAsync(amb, delegate { AbrirUrlNoNavegador(url, delay); });
+            }
+            else
+            {
+                AbrirUrlNoNavegador(url, 0);
+            }
+        }
+
+        // =====================================================================
+        // CONTROLE DE PROCESSOS E SERVICOS DO WINDOWS (INICIAR / REINICIAR / PARAR)
+        // =====================================================================
+        private void IniciarPorLinhaDeComandoOuServico(AmbienteInfo amb)
+        {
+            bool startedService = false;
+            if (amb.IsServiceRegistered && !string.IsNullOrEmpty(amb.ServiceName))
+            {
+                try
+                {
+                    using (ServiceController sc = new ServiceController(amb.ServiceName))
+                    {
+                        if (sc.Status == ServiceControllerStatus.Stopped || sc.Status == ServiceControllerStatus.Paused)
+                        {
+                            sc.Start();
+                            sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(8));
+                            startedService = true;
+                        }
+                        else if (sc.Status == ServiceControllerStatus.Running)
+                        {
+                            startedService = true;
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            if (!startedService && File.Exists(amb.ExePath))
+            {
+                try
+                {
+                    ProcessStartInfo psi = new ProcessStartInfo();
+                    psi.FileName = amb.ExePath;
+                    psi.Arguments = "-console";
+                    psi.WorkingDirectory = amb.AppDir;
+                    psi.UseShellExecute = true;
+                    Process.Start(psi);
+                }
+                catch { }
+            }
+        }
+
+        private void PararPorPidOuServico(AmbienteInfo amb)
+        {
+            if (amb.RunningAsService && !string.IsNullOrEmpty(amb.ServiceName))
+            {
+                try
+                {
+                    using (ServiceController sc = new ServiceController(amb.ServiceName))
+                    {
+                        if (sc.Status != ServiceControllerStatus.Stopped && sc.Status != ServiceControllerStatus.StopPending)
+                        {
+                            sc.Stop();
+                            sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(8));
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            if (amb.Pid > 0)
+            {
+                try
+                {
+                    using (Process p = Process.GetProcessById(amb.Pid))
+                    {
+                        if (!p.HasExited)
+                        {
+                            p.Kill();
+                            p.WaitForExit(4000);
+                        }
+                    }
+                }
+                catch { }
+            }
+        }
+
+        private void IniciarAmbienteAsync(AmbienteInfo amb, Action onStartedCallback)
+        {
+            if (amb.State == EnvRunState.Initializing || amb.State == EnvRunState.Stopping)
+                return;
+
+            if (amb.State == EnvRunState.Active)
+            {
+                if (onStartedCallback != null)
+                    onStartedCallback();
+                return;
+            }
+
+            amb.State = EnvRunState.Initializing;
+            AtualizarResumoEVisualCards();
+            bool fetchUser = _showProcessUser;
+
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                try
+                {
+                    IniciarPorLinhaDeComandoOuServico(amb);
+                    Thread.Sleep(1200);
+                    SincronizarEstadoProcessosEServicos(_ambientes.ToList(), fetchUser);
+                }
+                finally
+                {
+                    Dispatcher.BeginInvoke(new Action(delegate
+                    {
+                        if (amb.State == EnvRunState.Initializing)
+                            amb.State = EnvRunState.Stopped;
+                        SincronizarEstadoProcessosEServicos(new List<AmbienteInfo> { amb }, fetchUser);
+                        AtualizarResumoEVisualCards();
+                        if (amb.State == EnvRunState.Active && onStartedCallback != null)
+                            onStartedCallback();
+                    }));
+                }
+            });
+        }
+
+        private void EncerrarAmbienteAsync(AmbienteInfo amb)
+        {
+            if (amb.State == EnvRunState.Stopped || amb.State == EnvRunState.Stopping)
+                return;
+
+            amb.State = EnvRunState.Stopping;
+            AtualizarResumoEVisualCards();
+            bool fetchUser = _showProcessUser;
+
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                try
+                {
+                    PararPorPidOuServico(amb);
+                    Thread.Sleep(900);
+                }
+                finally
+                {
+                    Dispatcher.BeginInvoke(new Action(delegate
+                    {
+                        amb.State = EnvRunState.Stopped;
+                        amb.Pid = 0;
+                        amb.ProcessUser = null;
+                        SincronizarEstadoProcessosEServicos(new List<AmbienteInfo> { amb }, fetchUser);
+                        AtualizarResumoEVisualCards();
+                    }));
+                }
+            });
+        }
+
+        private void ReiniciarAmbienteAsync(AmbienteInfo amb)
+        {
+            if (amb.State == EnvRunState.Initializing || amb.State == EnvRunState.Stopping)
+                return;
+
+            amb.State = EnvRunState.Initializing;
+            AtualizarResumoEVisualCards();
+            bool fetchUser = _showProcessUser;
+
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                try
+                {
+                    PararPorPidOuServico(amb);
+                    Thread.Sleep(1000);
+                    IniciarPorLinhaDeComandoOuServico(amb);
+                    Thread.Sleep(1200);
+                }
+                finally
+                {
+                    Dispatcher.BeginInvoke(new Action(delegate
+                    {
+                        amb.State = EnvRunState.Stopped;
+                        SincronizarEstadoProcessosEServicos(new List<AmbienteInfo> { amb }, fetchUser);
+                        AtualizarResumoEVisualCards();
+                    }));
+                }
+            });
+        }
+    }
+}
