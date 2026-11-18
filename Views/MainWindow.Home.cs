@@ -462,53 +462,49 @@ namespace TOTVSHub
                 {
                     gridContainer.Children.Clear();
                     gridContainer.ColumnDefinitions.Clear();
+                    gridContainer.RowDefinitions.Clear();
 
                     double availW = _cardsScrollViewer.ActualWidth > 0 ? _cardsScrollViewer.ActualWidth : ActualWidth;
-
                     int numCols = availW < 780 ? 1 : 2;
-
-                    List<StackPanel> colPanels = new List<StackPanel>();
-                    List<double> colHeights = new List<double>();
 
                     for (int c = 0; c < numCols; c++)
                     {
                         ColumnDefinition cd = new ColumnDefinition();
                         cd.Width = new GridLength(1, GridUnitType.Star);
                         gridContainer.ColumnDefinitions.Add(cd);
-
-                        StackPanel colStack = new StackPanel();
-                        colStack.HorizontalAlignment = HorizontalAlignment.Stretch;
-                        colStack.Margin = new Thickness(0, 0, c < numCols - 1 ? 14 : 0, 0);
-
-                        Grid.SetColumn(colStack, c);
-                        gridContainer.Children.Add(colStack);
-                        colPanels.Add(colStack);
-                        colHeights.Add(0.0);
                     }
 
-                    foreach (var item in listaAmbientesParaExibir)
+                    int totalItems = listaAmbientesParaExibir.Count;
+                    int numRows = (totalItems + numCols - 1) / numCols;
+
+                    for (int r = 0; r < numRows; r++)
                     {
+                        RowDefinition rd = new RowDefinition();
+                        rd.Height = GridLength.Auto;
+                        gridContainer.RowDefinitions.Add(rd);
+                    }
+
+                    for (int i = 0; i < totalItems; i++)
+                    {
+                        var item = listaAmbientesParaExibir[i];
                         AmbienteInfo amb = item.Item1;
                         bool isHidden = item.Item2;
                         Border cardUi = CriarCardAmbiente(amb, isHidden);
 
-                        string nText;
-                        bool hasNote = _cardNotes.TryGetValue(amb.AppDir, out nText) && !string.IsNullOrWhiteSpace(nText);
-                        double estimatedHeight = 110 + (hasNote ? 48 : 0);
+                        int row = i / numCols;
+                        int col = i % numCols;
 
-                        int bestCol = 0;
-                        double minH = colHeights[0];
-                        for (int c = 1; c < numCols; c++)
-                        {
-                            if (colHeights[c] < minH)
-                            {
-                                minH = colHeights[c];
-                                bestCol = c;
-                            }
-                        }
+                        cardUi.VerticalAlignment = VerticalAlignment.Stretch;
+                        cardUi.Margin = new Thickness(
+                            0,
+                            0,
+                            (col < numCols - 1) ? 14 : 0,
+                            12
+                        );
 
-                        colPanels[bestCol].Children.Add(cardUi);
-                        colHeights[bestCol] += estimatedHeight;
+                        Grid.SetRow(cardUi, row);
+                        Grid.SetColumn(cardUi, col);
+                        gridContainer.Children.Add(cardUi);
                     }
                 }
             }
@@ -557,10 +553,12 @@ namespace TOTVSHub
             card.CornerRadius = new CornerRadius(12);
             card.Padding = new Thickness(16, 14, 16, 14);
             card.Margin = new Thickness(0, 0, 0, 10);
+            card.MinHeight = 160;
             amb.CardBorder = card;
 
             Grid cardGrid = new Grid();
-            RowDefinition rMain = new RowDefinition(); rMain.Height = GridLength.Auto;
+            cardGrid.VerticalAlignment = VerticalAlignment.Stretch;
+            RowDefinition rMain = new RowDefinition(); rMain.Height = new GridLength(1, GridUnitType.Star);
             RowDefinition rNote = new RowDefinition(); rNote.Height = GridLength.Auto;
             cardGrid.RowDefinitions.Add(rMain);
             cardGrid.RowDefinitions.Add(rNote);
