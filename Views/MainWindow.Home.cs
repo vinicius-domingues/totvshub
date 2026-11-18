@@ -575,12 +575,12 @@ namespace TOTVSHub
             StackPanel leftToolsColumn = new StackPanel();
             leftToolsColumn.Orientation = Orientation.Vertical;
             leftToolsColumn.VerticalAlignment = VerticalAlignment.Center;
-            leftToolsColumn.HorizontalAlignment = HorizontalAlignment.Center;
+            leftToolsColumn.HorizontalAlignment = HorizontalAlignment.Left;
             leftToolsColumn.Margin = new Thickness(0, 0, 16, 0);
 
             StackPanel toolsIconsRow = new StackPanel();
             toolsIconsRow.Orientation = Orientation.Horizontal;
-            toolsIconsRow.HorizontalAlignment = HorizontalAlignment.Center;
+            toolsIconsRow.HorizontalAlignment = HorizontalAlignment.Left;
             toolsIconsRow.VerticalAlignment = VerticalAlignment.Center;
 
             Button btnConfig = UiTheme.CreateFramelessIconButton(
@@ -619,13 +619,13 @@ namespace TOTVSHub
             statusBadge.CornerRadius = new CornerRadius(10);
             statusBadge.Padding = new Thickness(8, 3, 8, 3);
             statusBadge.Margin = new Thickness(0, 6, 0, 0);
-            statusBadge.HorizontalAlignment = HorizontalAlignment.Center;
+            statusBadge.HorizontalAlignment = HorizontalAlignment.Left;
             statusBadge.BorderThickness = new Thickness(1);
 
             StackPanel statusInner = new StackPanel();
             statusInner.Orientation = Orientation.Horizontal;
             statusInner.VerticalAlignment = VerticalAlignment.Center;
-            statusInner.HorizontalAlignment = HorizontalAlignment.Center;
+            statusInner.HorizontalAlignment = HorizontalAlignment.Left;
 
             Border statusDot = new Border();
             statusDot.Width = 7;
@@ -656,7 +656,7 @@ namespace TOTVSHub
             userBadge.CornerRadius = new CornerRadius(5);
             userBadge.Padding = new Thickness(7, 2, 7, 2);
             userBadge.Margin = new Thickness(0, 4, 0, 0);
-            userBadge.HorizontalAlignment = HorizontalAlignment.Center;
+            userBadge.HorizontalAlignment = HorizontalAlignment.Left;
             userBadge.VerticalAlignment = VerticalAlignment.Center;
             TextBlock userTxt = new TextBlock();
             userTxt.Foreground = UiTheme.AccentLightBlue;
@@ -991,17 +991,37 @@ namespace TOTVSHub
                 if (amb.State == EnvRunState.Active && (amb.Pid > 0 || !string.IsNullOrEmpty(amb.ProcessUser)))
                 {
                     string userInfo = "";
-                    if (_showProcessUser && !string.IsNullOrEmpty(amb.ProcessUser))
+                    if (!string.IsNullOrEmpty(amb.ProcessUser))
+                    {
                         userInfo = "👤 " + amb.ProcessUser;
-                    if (amb.Pid > 0)
-                        userInfo = string.IsNullOrEmpty(userInfo) ? "PID " + amb.Pid : userInfo + "  •  PID " + amb.Pid;
+                    }
+                    else if (amb.Pid > 0)
+                    {
+                        userInfo = "👤 " + (amb.RunningAsService ? "Serviço" : "Console");
+                    }
 
                     amb.UserTagText.Text = userInfo;
                     amb.UserTagBorder.Visibility = string.IsNullOrEmpty(userInfo) ? Visibility.Collapsed : Visibility.Visible;
+
+                    string pidTip = amb.Pid > 0 ? string.Format("PID: {0}", amb.Pid) : null;
+                    if (amb.Pid > 0 && !string.IsNullOrEmpty(amb.ProcessUser))
+                    {
+                        pidTip = string.Format("PID: {0} ({1})", amb.Pid, amb.ProcessUser);
+                    }
+                    amb.UserTagBorder.ToolTip = pidTip;
+                    if (amb.StatusBadge != null)
+                    {
+                        amb.StatusBadge.ToolTip = pidTip;
+                    }
                 }
                 else
                 {
                     amb.UserTagBorder.Visibility = Visibility.Collapsed;
+                    amb.UserTagBorder.ToolTip = null;
+                    if (amb.StatusBadge != null)
+                    {
+                        amb.StatusBadge.ToolTip = null;
+                    }
                 }
             }
 
