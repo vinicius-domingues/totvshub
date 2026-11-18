@@ -617,10 +617,13 @@ namespace TOTVSHub
 
             Border statusBadge = new Border();
             statusBadge.CornerRadius = new CornerRadius(10);
-            statusBadge.Padding = new Thickness(8, 3, 8, 3);
+            statusBadge.Padding = new Thickness(8, 0, 8, 0);
             statusBadge.Margin = new Thickness(0, 6, 0, 0);
             statusBadge.HorizontalAlignment = HorizontalAlignment.Left;
+            statusBadge.VerticalAlignment = VerticalAlignment.Center;
             statusBadge.BorderThickness = new Thickness(1);
+            statusBadge.Height = 22;
+            statusBadge.Width = 84;
 
             StackPanel statusInner = new StackPanel();
             statusInner.Orientation = Orientation.Horizontal;
@@ -653,15 +656,22 @@ namespace TOTVSHub
             userBadge.Background = UiTheme.BrushFromHex("#0C4A6E");
             userBadge.BorderBrush = UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex);
             userBadge.BorderThickness = new Thickness(1);
-            userBadge.CornerRadius = new CornerRadius(5);
-            userBadge.Padding = new Thickness(7, 2, 7, 2);
+            userBadge.CornerRadius = new CornerRadius(10);
+            userBadge.Padding = new Thickness(8, 0, 8, 0);
             userBadge.Margin = new Thickness(0, 4, 0, 0);
             userBadge.HorizontalAlignment = HorizontalAlignment.Left;
             userBadge.VerticalAlignment = VerticalAlignment.Center;
+            userBadge.Height = 22;
+            userBadge.Width = 84;
+
             TextBlock userTxt = new TextBlock();
             userTxt.Foreground = UiTheme.AccentLightBlue;
             userTxt.FontSize = 11;
             userTxt.FontWeight = FontWeights.Bold;
+            userTxt.TextTrimming = TextTrimming.CharacterEllipsis;
+            userTxt.TextWrapping = TextWrapping.NoWrap;
+            userTxt.VerticalAlignment = VerticalAlignment.Center;
+            userTxt.HorizontalAlignment = HorizontalAlignment.Left;
             userBadge.Child = userTxt;
             amb.UserTagBorder = userBadge;
             amb.UserTagText = userTxt;
@@ -831,30 +841,42 @@ namespace TOTVSHub
             cardGrid.Children.Add(rightActionsColumn);
 
             string noteText;
-            if (_cardNotes.TryGetValue(amb.AppDir, out noteText) && !string.IsNullOrWhiteSpace(noteText))
+            bool hasNote = _cardNotes.TryGetValue(amb.AppDir, out noteText) && !string.IsNullOrWhiteSpace(noteText);
+
+            Border noteBanner = new Border();
+            noteBanner.CornerRadius = new CornerRadius(7);
+            noteBanner.Padding = new Thickness(10, 6, 10, 6);
+            noteBanner.Margin = new Thickness(0, 10, 0, 0);
+
+            TextBlock noteLbl = new TextBlock();
+            noteLbl.FontSize = 12;
+            noteLbl.TextWrapping = TextWrapping.Wrap;
+
+            if (hasNote)
             {
-                Border noteBanner = new Border();
                 noteBanner.Background = UiTheme.NoteBannerBg;
                 noteBanner.BorderBrush = UiTheme.BorderSubtle;
                 noteBanner.BorderThickness = new Thickness(1);
-                noteBanner.CornerRadius = new CornerRadius(7);
-                noteBanner.Padding = new Thickness(10, 6, 10, 6);
-                noteBanner.Margin = new Thickness(0, 10, 0, 0);
                 noteBanner.Cursor = Cursors.Hand;
                 noteBanner.ToolTip = "Clique para editar a anotação";
                 noteBanner.MouseLeftButtonUp += delegate { EditarNotaCard(amb); };
 
-                TextBlock noteLbl = new TextBlock();
                 noteLbl.Text = "📝 " + noteText;
                 noteLbl.Foreground = UiTheme.NoteTextFg;
-                noteLbl.FontSize = 12;
-                noteLbl.TextWrapping = TextWrapping.Wrap;
-                noteBanner.Child = noteLbl;
-
-                Grid.SetRow(noteBanner, 1);
-                Grid.SetColumnSpan(noteBanner, 3);
-                cardGrid.Children.Add(noteBanner);
             }
+            else
+            {
+                noteBanner.Background = Brushes.Transparent;
+                noteBanner.BorderBrush = Brushes.Transparent;
+                noteBanner.BorderThickness = new Thickness(1);
+                noteBanner.Visibility = Visibility.Hidden;
+                noteLbl.Text = "📝";
+            }
+            noteBanner.Child = noteLbl;
+
+            Grid.SetRow(noteBanner, 1);
+            Grid.SetColumnSpan(noteBanner, 3);
+            cardGrid.Children.Add(noteBanner);
 
             card.Child = cardGrid;
             AtualizarVisualCard(amb);
@@ -990,28 +1012,31 @@ namespace TOTVSHub
             {
                 if (amb.State == EnvRunState.Active && (amb.Pid > 0 || !string.IsNullOrEmpty(amb.ProcessUser)))
                 {
-                    string userInfo = "";
-                    if (!string.IsNullOrEmpty(amb.ProcessUser))
+                    string userInfo = !string.IsNullOrEmpty(amb.ProcessUser)
+                        ? "👤 " + amb.ProcessUser
+                        : (amb.RunningAsService ? "👤 Serviço" : "👤 Console");
+
+                    amb.UserTagText.Text = userInfo;
+                    amb.UserTagBorder.Visibility = Visibility.Visible;
+
+                    string fullUserWithPid = "";
+                    if (!string.IsNullOrEmpty(amb.ProcessUser) && amb.Pid > 0)
                     {
-                        userInfo = "👤 " + amb.ProcessUser;
+                        fullUserWithPid = string.Format("Usuário: {0} • PID: {1}", amb.ProcessUser, amb.Pid);
+                    }
+                    else if (!string.IsNullOrEmpty(amb.ProcessUser))
+                    {
+                        fullUserWithPid = string.Format("Usuário: {0}", amb.ProcessUser);
                     }
                     else if (amb.Pid > 0)
                     {
-                        userInfo = "👤 " + (amb.RunningAsService ? "Serviço" : "Console");
+                        fullUserWithPid = string.Format("PID: {0}", amb.Pid);
                     }
 
-                    amb.UserTagText.Text = userInfo;
-                    amb.UserTagBorder.Visibility = string.IsNullOrEmpty(userInfo) ? Visibility.Collapsed : Visibility.Visible;
-
-                    string pidTip = amb.Pid > 0 ? string.Format("PID: {0}", amb.Pid) : null;
-                    if (amb.Pid > 0 && !string.IsNullOrEmpty(amb.ProcessUser))
-                    {
-                        pidTip = string.Format("PID: {0} ({1})", amb.Pid, amb.ProcessUser);
-                    }
-                    amb.UserTagBorder.ToolTip = pidTip;
+                    amb.UserTagBorder.ToolTip = fullUserWithPid;
                     if (amb.StatusBadge != null)
                     {
-                        amb.StatusBadge.ToolTip = pidTip;
+                        amb.StatusBadge.ToolTip = fullUserWithPid;
                     }
                 }
                 else
@@ -1125,10 +1150,14 @@ namespace TOTVSHub
 
             if (_statsLabel != null)
             {
-                _statsLabel.Text = string.Format("{0} de {1} ativos ({2} ocultos)",
+                string txtAtivos = (ativosCount == 1) ? "ativo" : "ativos";
+                string txtOcultos = (_hiddenDirs.Count == 1) ? "oculto" : "ocultos";
+                _statsLabel.Text = string.Format("{0} de {1} {2} ({3} {4})",
                     ativosCount,
                     totalVisiveis,
-                    _hiddenDirs.Count);
+                    txtAtivos,
+                    _hiddenDirs.Count,
+                    txtOcultos);
             }
         }
 

@@ -16,7 +16,7 @@ namespace TOTVSHub
 {
     public static class UiTheme
     {
-        public const string AppVersion = "v2.4.0";
+        public const string AppVersion = "v2.5.0";
         public const string DefaultUpdateDriveUrl = "https://drive.google.com";
 
         public const string PrimaryBlueHex = "#0284C7";

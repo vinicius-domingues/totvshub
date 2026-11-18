@@ -8,8 +8,13 @@ for %%a in (%*) do (
     if /i "%%~a"=="/nopause" set "NOPAUSE=1"
 )
 
+:: Detecta dinamicamente a versao declarada no installer.iss
+set "SETUP_VER=2.5.0"
+for /f "tokens=2 delims=""" %%v in ('findstr /i "MyAppVersion" "%~dp0scripts\installer.iss"') do set "SETUP_VER=%%v"
+set "SETUP_EXE=Output\TOTVSHub_Setup_v!SETUP_VER!.exe"
+
 echo ========================================================
-echo         TOTVSHub - Pipeline de Build Automatizado        
+echo         TOTVSHub - Pipeline de Build Automatizado (v!SETUP_VER!)
 echo ========================================================
 echo.
 echo Etapas do pipeline:
@@ -85,9 +90,9 @@ if !errorlevel! neq 0 (
     echo [FALHA NO PIPELINE] Erro na Etapa 4: Falha na geracao ou assinatura do instalador.
     goto :pipeline_error
 )
-if not exist "%~dp0Output\TOTVSHub_Setup_v2.4.0.exe" (
+if not exist "%~dp0!SETUP_EXE!" (
     echo.
-    echo [FALHA NO PIPELINE] Erro na Etapa 4: Arquivo Output\TOTVSHub_Setup_v2.4.0.exe nao encontrado.
+    echo [FALHA NO PIPELINE] Erro na Etapa 4: Arquivo !SETUP_EXE! nao encontrado.
     goto :pipeline_error
 )
 echo [OK] Etapa 4 concluida com sucesso. Instalador gerado e assinado.
@@ -119,7 +124,7 @@ echo     [SUCESSO TOTAL] PIPELINE CONCLUIDO COM EXITO!
 echo ========================================================
 echo   - Binario compilado:    TOTVSHub.exe
 echo   - Binario protegido:    Dist_Protected\TOTVSHub.exe
-echo   - Instalador assinado:  Output\TOTVSHub_Setup_v2.4.0.exe
+echo   - Instalador assinado:  !SETUP_EXE!
 echo   - Checksums e Release:  RELEASE_NOTES.md
 echo ========================================================
 echo.

@@ -2,7 +2,7 @@
 ; https://jrsoftware.org/isinfo.php
 
 #define MyAppName "TOTVSHub"
-#define MyAppVersion "2.4.0"
+#define MyAppVersion "2.5.0"
 #define MyAppPublisher "TOTVS Hub Project"
 #define MyAppURL "https://github.com/vinicius-domingues/totvshub"
 #define MyAppExeName "TOTVSHub.exe"

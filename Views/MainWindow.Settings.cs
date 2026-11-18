@@ -128,21 +128,6 @@ namespace TOTVSHub
             ignoreOldRow.Children.Add(ignoreOldLabels);
             genStack.Children.Add(ignoreOldRow);
 
-            DockPanel showUserRow = new DockPanel();
-            showUserRow.Margin = new Thickness(0, 0, 0, 14);
-            UIElement toggleShowUser = UiTheme.CreateModernToggleSwitch(tempShowUser, "Sim", "Não", delegate(bool val)
-            {
-                tempShowUser = val;
-            });
-            DockPanel.SetDock(toggleShowUser, Dock.Right);
-
-            StackPanel showUserLabels = new StackPanel();
-            showUserLabels.Children.Add(CreateSettingsTitle("Mostrar usuário do processo (PID)"));
-            showUserLabels.Children.Add(CreateSettingsDesc("Exibe nos cards o usuário do Windows que está executando o AppServer"));
-            showUserRow.Children.Add(toggleShowUser);
-            showUserRow.Children.Add(showUserLabels);
-            genStack.Children.Add(showUserRow);
-
             DockPanel showCommentsRow = new DockPanel();
             UIElement toggleShowComments = UiTheme.CreateModernToggleSwitch(tempShowComments, "Sim", "Não", delegate(bool val)
             {
@@ -596,7 +581,7 @@ namespace TOTVSHub
                     else
                     {
                         TextBlock arrowLbl = new TextBlock();
-                        arrowLbl.Text = "  >  ";
+                        arrowLbl.Text = " : ";
                         arrowLbl.Foreground = UiTheme.TextMuted;
                         arrowLbl.FontWeight = FontWeights.Bold;
                         arrowLbl.FontSize = 13;
@@ -635,7 +620,7 @@ namespace TOTVSHub
             addRuleGrid.Children.Add(txtNewSec);
 
             TextBlock sepArrow = new TextBlock();
-            sepArrow.Text = "  >  ";
+            sepArrow.Text = "  :  ";
             sepArrow.Foreground = UiTheme.TextMuted;
             sepArrow.FontWeight = FontWeights.Bold;
             sepArrow.FontSize = 14;

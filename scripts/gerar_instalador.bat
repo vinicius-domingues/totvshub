@@ -58,8 +58,12 @@ if "!ISCC!"=="" (
     exit /b 1
 )
 
+set "SETUP_VER=2.5.0"
+for /f "tokens=2 delims=""" %%v in ('findstr /i "MyAppVersion" "%~dp0installer.iss"') do set "SETUP_VER=%%v"
+set "SETUP_NAME=TOTVSHub_Setup_v!SETUP_VER!.exe"
+
 echo [INFO] Compilador encontrado: !ISCC!
-echo [EXECUTANDO] Gerando instalador TOTVSHub_Setup_v2.4.0.exe...
+echo [EXECUTANDO] Gerando instalador !SETUP_NAME!...
 echo.
 
 if not exist "Output" mkdir "Output"
@@ -74,9 +78,9 @@ if !errorlevel! neq 0 (
     exit /b 1
 )
 
-if not exist "Output\TOTVSHub_Setup_v2.4.0.exe" (
+if not exist "Output\!SETUP_NAME!" (
     echo.
-    echo [ERRO] Arquivo Output\TOTVSHub_Setup_v2.4.0.exe nao foi encontrado apos a compilacao.
+    echo [ERRO] Arquivo Output\!SETUP_NAME! nao foi encontrado apos a compilacao.
     popd
     if "%NOPAUSE%"=="" pause
     exit /b 1
@@ -85,11 +89,11 @@ if not exist "Output\TOTVSHub_Setup_v2.4.0.exe" (
 echo.
 echo ========================================================
 echo [SUCESSO] Instalador gerado com sucesso em:
-echo   Output\TOTVSHub_Setup_v2.4.0.exe
+echo   Output\!SETUP_NAME!
 echo ========================================================
 echo.
 echo [ASSINANDO] Assinando instalador com carimbo de tempo...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0assinar.ps1" -TargetExe "Output\TOTVSHub_Setup_v2.4.0.exe"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0assinar.ps1" -TargetExe "Output\!SETUP_NAME!"
 
 set "SIGN_ERR=!errorlevel!"
 popd
