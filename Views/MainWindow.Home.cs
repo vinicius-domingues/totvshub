@@ -1232,19 +1232,164 @@ namespace TOTVSHub
                 && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
             if (!isSafe) return;
 
+            int waitSeconds = delaySeconds > 0 ? delaySeconds : (_browserDelaySeconds > 0 ? _browserDelaySeconds : 3);
+
             ThreadPool.QueueUserWorkItem(delegate
             {
-                if (delaySeconds > 0)
-                    Thread.Sleep(delaySeconds * 1000);
+                if (waitSeconds > 0)
+                    Thread.Sleep(waitSeconds * 1000);
+
+                AbrirNavegadorPadraoDoSistema(uriResult.AbsoluteUri);
+            });
+        }
+
+        private static void AbrirNavegadorPadraoDoSistema(string targetUrl)
+        {
+            if (string.IsNullOrWhiteSpace(targetUrl)) return;
+
+            string browserExe = null;
+            string browserArgs = null;
+
+            try
+            {
+                using (var userChoiceKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice"))
+                {
+                    if (userChoiceKey != null)
+                    {
+                        object progIdObj = userChoiceKey.GetValue("ProgId");
+                        if (progIdObj != null)
+                        {
+                            string progId = progIdObj.ToString();
+                            if (!string.IsNullOrEmpty(progId))
+                            {
+                                using (var cmdKey = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(
+                                    string.Format(@"{0}\shell\open\command", progId)))
+                                {
+                                    if (cmdKey != null)
+                                    {
+                                        object rawCmd = cmdKey.GetValue(null);
+                                        if (rawCmd != null)
+                                        {
+                                            ExtrairExecutavelEArgumentos(rawCmd.ToString(), targetUrl, out browserExe, out browserArgs);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            if (!string.IsNullOrEmpty(browserExe) && File.Exists(browserExe))
+            {
                 try
                 {
                     ProcessStartInfo psi = new ProcessStartInfo();
-                    psi.FileName = uriResult.AbsoluteUri;
-                    psi.UseShellExecute = true;
+                    psi.FileName = browserExe;
+                    psi.Arguments = browserArgs;
+                    psi.UseShellExecute = false;
                     Process.Start(psi);
+                    return;
                 }
                 catch { }
-            });
+            }
+
+            try
+            {
+                ProcessStartInfo psiExplorer = new ProcessStartInfo();
+                psiExplorer.FileName = "explorer.exe";
+                psiExplorer.Arguments = string.Format("\"{0}\"", targetUrl);
+                psiExplorer.UseShellExecute = true;
+                Process.Start(psiExplorer);
+                return;
+            }
+            catch { }
+
+            try
+            {
+                ProcessStartInfo psiFallback = new ProcessStartInfo();
+                psiFallback.FileName = targetUrl;
+                psiFallback.UseShellExecute = true;
+                Process.Start(psiFallback);
+                return;
+            }
+            catch { }
+
+            try
+            {
+                ProcessStartInfo psiCmd = new ProcessStartInfo();
+                psiCmd.FileName = "cmd.exe";
+                psiCmd.Arguments = string.Format("/c start \"\" \"{0}\"", targetUrl);
+                psiCmd.CreateNoWindow = true;
+                psiCmd.UseShellExecute = false;
+                Process.Start(psiCmd);
+            }
+            catch { }
+        }
+
+        private static void ExtrairExecutavelEArgumentos(string rawCommand, string url, out string exePath, out string args)
+        {
+            exePath = null;
+            args = string.Format("\"{0}\"", url);
+
+            if (string.IsNullOrWhiteSpace(rawCommand)) return;
+            string trimmed = rawCommand.Trim();
+
+            if (trimmed.StartsWith("\""))
+            {
+                int endQuote = trimmed.IndexOf('"', 1);
+                if (endQuote > 1)
+                {
+                    exePath = trimmed.Substring(1, endQuote - 1);
+                    string rawArgs = trimmed.Substring(endQuote + 1).Trim();
+                    if (!string.IsNullOrEmpty(rawArgs))
+                    {
+                        if (rawArgs.Contains("%1"))
+                        {
+                            args = rawArgs.Replace("%1", url);
+                        }
+                        else
+                        {
+                            args = string.Format("{0} \"{1}\"", rawArgs, url);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                int exeIdx = trimmed.IndexOf(".exe", StringComparison.OrdinalIgnoreCase);
+                if (exeIdx > 0)
+                {
+                    exePath = trimmed.Substring(0, exeIdx + 4).Trim('"', ' ');
+                    string rawArgs = trimmed.Substring(exeIdx + 4).Trim();
+                    if (!string.IsNullOrEmpty(rawArgs))
+                    {
+                        if (rawArgs.Contains("%1"))
+                        {
+                            args = rawArgs.Replace("%1", url);
+                        }
+                        else
+                        {
+                            args = string.Format("{0} \"{1}\"", rawArgs, url);
+                        }
+                    }
+                }
+                else
+                {
+                    int spaceIdx = trimmed.IndexOf(' ');
+                    if (spaceIdx > 0)
+                    {
+                        exePath = trimmed.Substring(0, spaceIdx).Trim('"', ' ');
+                        args = string.Format("\"{0}\"", url);
+                    }
+                    else
+                    {
+                        exePath = trimmed.Trim('"', ' ');
+                    }
+                }
+            }
         }
 
         private void AbrirNavegador(AmbienteInfo amb)
@@ -1256,14 +1401,15 @@ namespace TOTVSHub
             }
 
             string url = string.Format("http://localhost:{0}", amb.WebAppPort);
+            int delay = _browserDelaySeconds > 0 ? _browserDelaySeconds : 3;
+
             if (amb.State != EnvRunState.Active)
             {
-                int delay = _browserDelaySeconds;
                 IniciarAmbienteAsync(amb, delegate { AbrirUrlNoNavegador(url, delay); });
             }
             else
             {
-                AbrirUrlNoNavegador(url, 0);
+                AbrirUrlNoNavegador(url, delay);
             }
         }
 
@@ -1276,14 +1422,15 @@ namespace TOTVSHub
             }
 
             string url = string.Format("http://localhost:{0}/rest", amb.RestPort);
+            int delay = _browserDelaySeconds > 0 ? _browserDelaySeconds : 3;
+
             if (amb.State != EnvRunState.Active)
             {
-                int delay = _browserDelaySeconds;
                 IniciarAmbienteAsync(amb, delegate { AbrirUrlNoNavegador(url, delay); });
             }
             else
             {
-                AbrirUrlNoNavegador(url, 0);
+                AbrirUrlNoNavegador(url, delay);
             }
         }
 
@@ -1296,14 +1443,15 @@ namespace TOTVSHub
             }
 
             string url = string.Format("http://localhost:{0}/ws", amb.WebServicesPort);
+            int delay = _browserDelaySeconds > 0 ? _browserDelaySeconds : 3;
+
             if (amb.State != EnvRunState.Active)
             {
-                int delay = _browserDelaySeconds;
                 IniciarAmbienteAsync(amb, delegate { AbrirUrlNoNavegador(url, delay); });
             }
             else
             {
-                AbrirUrlNoNavegador(url, 0);
+                AbrirUrlNoNavegador(url, delay);
             }
         }
 
@@ -1320,14 +1468,15 @@ namespace TOTVSHub
                 return;
             }
 
+            int delay = _browserDelaySeconds > 0 ? _browserDelaySeconds : 3;
+
             if (amb.State != EnvRunState.Active)
             {
-                int delay = _browserDelaySeconds;
                 IniciarAmbienteAsync(amb, delegate { AbrirUrlNoNavegador(url, delay); });
             }
             else
             {
-                AbrirUrlNoNavegador(url, 0);
+                AbrirUrlNoNavegador(url, delay);
             }
         }
 

@@ -21,7 +21,7 @@ namespace TOTVSHub
         private bool _needsOnboarding = false;
         private int _pollIntervalSeconds = 60;
         private int _scanBasesMinutes = 60;
-        private int _browserDelaySeconds = 4;
+        private int _browserDelaySeconds = 3;
         private bool _ignoreOldFolders = true;
         private bool _showProcessUser = true;
         private bool _showIniComments = false;

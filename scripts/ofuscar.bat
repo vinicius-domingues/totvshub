@@ -47,6 +47,10 @@ if not exist "%OBFUSCAR_EXE%" (
 )
 
 if not exist "Dist_Protected" mkdir "Dist_Protected"
+if exist "Dist_Protected\TOTVSHub.exe.old" del /F /Q "Dist_Protected\TOTVSHub.exe.old" >nul 2>&1
+if exist "Dist_Protected\TOTVSHub.exe" (
+    ren "Dist_Protected\TOTVSHub.exe" "TOTVSHub.exe.old" >nul 2>&1
+)
 
 echo [EXECUTANDO] Ofuscando strings, renomeando metodos e protegendo fluxo...
 "%OBFUSCAR_EXE%" "%~dp0obfuscar.xml"

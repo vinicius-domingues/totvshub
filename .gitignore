@@ -1,5 +1,6 @@
 *.lnk
 *.log
+*.old
 out.txt
 err.txt
 tools/

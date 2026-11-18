@@ -182,7 +182,7 @@ namespace TOTVSHub
             TextBox txtBrowserSec = CreateNumericSettingBox(_browserDelaySeconds.ToString());
             timersStack.Children.Add(CreateTimerRow(
                 "Atraso para abrir aba no navegador (segundos)",
-                "Tempo de espera após iniciar o AppServer antes de abrir o navegador (padrão: 4s)",
+                "Tempo de espera após iniciar o AppServer antes de abrir o navegador (padrão: 3s)",
                 txtBrowserSec,
                 false));
 
@@ -714,7 +714,7 @@ namespace TOTVSHub
                 _rootPath = @"C:\bases";
                 _pollIntervalSeconds = 60;
                 _scanBasesMinutes = 60;
-                _browserDelaySeconds = 4;
+                _browserDelaySeconds = 3;
                 _ignoreOldFolders = true;
                 _showProcessUser = true;
                 _showIniComments = false;

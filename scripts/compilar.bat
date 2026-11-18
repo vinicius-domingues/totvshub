@@ -13,6 +13,10 @@ for %%a in (%*) do (
 )
 
 taskkill /F /IM TOTVSHub.exe >nul 2>&1
+if exist "TOTVSHub.exe.old" del /F /Q "TOTVSHub.exe.old" >nul 2>&1
+if exist "TOTVSHub.exe" (
+    ren "TOTVSHub.exe" "TOTVSHub.exe.old" >nul 2>&1
+)
 
 set "ICO_ARG="
 if exist "assets\totvs_white.ico" set "ICO_ARG=/win32icon:assets\totvs_white.ico"
