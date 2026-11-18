@@ -121,7 +121,12 @@ namespace TOTVSHub
             try
             {
                 hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
-                if (hProc != IntPtr.Zero && OpenProcessToken(hProc, TOKEN_QUERY, out hToken))
+                if (hProc == IntPtr.Zero)
+                {
+                    hProc = OpenProcess(0x0400, false, pid);
+                }
+
+                if (hProc != IntPtr.Zero && OpenProcessToken(hProc, TOKEN_QUERY | 0x0002, out hToken))
                 {
                     using (WindowsIdentity wi = new WindowsIdentity(hToken))
                     {
@@ -161,12 +166,21 @@ namespace TOTVSHub
                             if (cols.Length >= 7)
                             {
                                 string userCol = cols[6].Trim('"').Trim();
-                                int slash = userCol.IndexOf('\\');
-                                return slash >= 0 ? userCol.Substring(slash + 1) : userCol;
+                                if (!string.IsNullOrEmpty(userCol) && !string.Equals(userCol, "N/A", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    int slash = userCol.IndexOf('\\');
+                                    return slash >= 0 ? userCol.Substring(slash + 1) : userCol;
+                                }
                             }
                         }
                     }
                 }
+            }
+            catch { }
+
+            try
+            {
+                return Environment.UserName;
             }
             catch { }
 

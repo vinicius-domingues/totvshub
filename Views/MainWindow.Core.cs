@@ -389,11 +389,7 @@ namespace TOTVSHub
                 _ignoreOldFolders = !string.Equals(oldVal, "0", StringComparison.OrdinalIgnoreCase);
             }
 
-            if (File.Exists(_showUserPrefPath))
-            {
-                string uVal = File.ReadAllText(_showUserPrefPath, Encoding.UTF8).Trim();
-                _showProcessUser = !string.Equals(uVal, "0", StringComparison.OrdinalIgnoreCase);
-            }
+            _showProcessUser = true;
 
             if (File.Exists(_showCommentsPrefPath))
             {

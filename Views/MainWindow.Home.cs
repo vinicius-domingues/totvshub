@@ -574,14 +574,14 @@ namespace TOTVSHub
 
             StackPanel leftToolsColumn = new StackPanel();
             leftToolsColumn.Orientation = Orientation.Vertical;
-            leftToolsColumn.VerticalAlignment = VerticalAlignment.Center;
+            leftToolsColumn.VerticalAlignment = VerticalAlignment.Top;
             leftToolsColumn.HorizontalAlignment = HorizontalAlignment.Left;
             leftToolsColumn.Margin = new Thickness(0, 0, 16, 0);
 
             StackPanel toolsIconsRow = new StackPanel();
             toolsIconsRow.Orientation = Orientation.Horizontal;
             toolsIconsRow.HorizontalAlignment = HorizontalAlignment.Left;
-            toolsIconsRow.VerticalAlignment = VerticalAlignment.Center;
+            toolsIconsRow.VerticalAlignment = VerticalAlignment.Top;
 
             Button btnConfig = UiTheme.CreateFramelessIconButton(
                 UiTheme.CreatePencilIcon(UiTheme.TextSecondary),
@@ -682,19 +682,19 @@ namespace TOTVSHub
             cardGrid.Children.Add(leftToolsColumn);
 
             StackPanel infoColumn = new StackPanel();
-            infoColumn.VerticalAlignment = VerticalAlignment.Center;
+            infoColumn.VerticalAlignment = VerticalAlignment.Top;
             infoColumn.Margin = new Thickness(0, 0, 12, 0);
 
             WrapPanel titleWrap = new WrapPanel();
-            titleWrap.VerticalAlignment = VerticalAlignment.Center;
+            titleWrap.VerticalAlignment = VerticalAlignment.Top;
 
             TextBlock lblEnvName = new TextBlock();
             lblEnvName.Text = amb.NomeIni;
             lblEnvName.Foreground = UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex);
             lblEnvName.FontSize = 15;
             lblEnvName.FontWeight = FontWeights.Bold;
-            lblEnvName.Margin = new Thickness(0, 0, 8, 0);
-            lblEnvName.VerticalAlignment = VerticalAlignment.Center;
+            lblEnvName.Margin = new Thickness(0, 3, 8, 0);
+            lblEnvName.VerticalAlignment = VerticalAlignment.Top;
             titleWrap.Children.Add(lblEnvName);
 
             infoColumn.Children.Add(titleWrap);
@@ -729,12 +729,12 @@ namespace TOTVSHub
 
             StackPanel rightActionsColumn = new StackPanel();
             rightActionsColumn.Orientation = Orientation.Horizontal;
-            rightActionsColumn.VerticalAlignment = VerticalAlignment.Center;
+            rightActionsColumn.VerticalAlignment = VerticalAlignment.Top;
             rightActionsColumn.HorizontalAlignment = HorizontalAlignment.Right;
 
             StackPanel accessButtonsStack = new StackPanel();
             accessButtonsStack.Orientation = Orientation.Vertical;
-            accessButtonsStack.VerticalAlignment = VerticalAlignment.Center;
+            accessButtonsStack.VerticalAlignment = VerticalAlignment.Top;
             accessButtonsStack.Margin = new Thickness(0, 0, 8, 0);
 
             Button btnWeb = UiTheme.CreateWebLinkButton("Protheus", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
@@ -793,7 +793,7 @@ namespace TOTVSHub
 
             StackPanel powerButtonsStack = new StackPanel();
             powerButtonsStack.Orientation = Orientation.Vertical;
-            powerButtonsStack.VerticalAlignment = VerticalAlignment.Center;
+            powerButtonsStack.VerticalAlignment = VerticalAlignment.Top;
 
             Button btnStart = UiTheme.CreateActionButton(
                 UiTheme.CreatePlayIcon(Brushes.White, 13),
@@ -1012,26 +1012,18 @@ namespace TOTVSHub
             {
                 if (amb.State == EnvRunState.Active && (amb.Pid > 0 || !string.IsNullOrEmpty(amb.ProcessUser)))
                 {
-                    string userInfo = !string.IsNullOrEmpty(amb.ProcessUser)
-                        ? "👤 " + amb.ProcessUser
-                        : (amb.RunningAsService ? "👤 Serviço" : "👤 Console");
+                    string rawUser = !string.IsNullOrEmpty(amb.ProcessUser)
+                        ? amb.ProcessUser
+                        : (!amb.RunningAsService ? Environment.UserName : "Serviço");
+
+                    string userInfo = "👤 " + rawUser;
 
                     amb.UserTagText.Text = userInfo;
                     amb.UserTagBorder.Visibility = Visibility.Visible;
 
-                    string fullUserWithPid = "";
-                    if (!string.IsNullOrEmpty(amb.ProcessUser) && amb.Pid > 0)
-                    {
-                        fullUserWithPid = string.Format("Usuário: {0} • PID: {1}", amb.ProcessUser, amb.Pid);
-                    }
-                    else if (!string.IsNullOrEmpty(amb.ProcessUser))
-                    {
-                        fullUserWithPid = string.Format("Usuário: {0}", amb.ProcessUser);
-                    }
-                    else if (amb.Pid > 0)
-                    {
-                        fullUserWithPid = string.Format("PID: {0}", amb.Pid);
-                    }
+                    string fullUserWithPid = amb.Pid > 0
+                        ? string.Format("Usuário: {0} • PID: {1}", rawUser, amb.Pid)
+                        : string.Format("Usuário: {0}", rawUser);
 
                     amb.UserTagBorder.ToolTip = fullUserWithPid;
                     if (amb.StatusBadge != null)
