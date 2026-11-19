@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Management;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
@@ -87,6 +88,36 @@ namespace TOTVSHub
         [DllImport("user32.dll")]
         public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
+        [StructLayout(LayoutKind.Sequential, Size = 72)]
+        public struct PROCESS_MEMORY_COUNTERS_EX
+        {
+            public uint cb;
+            public uint PageFaultCount;
+            public UIntPtr PeakWorkingSetSize;
+            public UIntPtr WorkingSetSize;
+            public UIntPtr QuotaPeakPagedPoolUsage;
+            public UIntPtr QuotaPagedPoolUsage;
+            public UIntPtr QuotaPeakNonPagedPoolUsage;
+            public UIntPtr QuotaNonPagedPoolUsage;
+            public UIntPtr PagefileUsage;
+            public UIntPtr PeakPagefileUsage;
+            public UIntPtr PrivateUsage;
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool GetProcessTimes(
+            IntPtr hProcess,
+            out System.Runtime.InteropServices.ComTypes.FILETIME lpCreationTime,
+            out System.Runtime.InteropServices.ComTypes.FILETIME lpExitTime,
+            out System.Runtime.InteropServices.ComTypes.FILETIME lpKernelTime,
+            out System.Runtime.InteropServices.ComTypes.FILETIME lpUserTime);
+
+        [DllImport("psapi.dll", SetLastError = true)]
+        public static extern bool GetProcessMemoryInfo(
+            IntPtr hProcess,
+            out PROCESS_MEMORY_COUNTERS_EX counters,
+            uint size);
+
         public static string GetProcessImagePathSafe(int pid)
         {
             IntPtr hProc = IntPtr.Zero;
@@ -142,7 +173,26 @@ namespace TOTVSHub
                 if (hProc != IntPtr.Zero) CloseHandle(hProc);
             }
 
-            // 2. Fallback via tasklist /v /fi "PID eq <pid>" /fo csv /nh
+            // 2. Fallback via WMI Win32_Process GetOwner
+            try
+            {
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT ProcessId FROM Win32_Process WHERE ProcessId = " + pid))
+                {
+                    foreach (ManagementObject o in s.Get())
+                    {
+                        object[] outParams = new object[2];
+                        int ret = Convert.ToInt32(o.InvokeMethod("GetOwner", outParams));
+                        if (ret == 0 && outParams[0] != null && !string.IsNullOrWhiteSpace(outParams[0].ToString()))
+                        {
+                            return outParams[0].ToString().Trim();
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            // 3. Fallback via tasklist /v /fi "PID eq <pid>" /fo csv /nh
             try
             {
                 ProcessStartInfo psi = new ProcessStartInfo();
@@ -173,6 +223,121 @@ namespace TOTVSHub
             catch { }
 
             return null;
+        }
+
+        public static int GetProcessIdByTcpPort(int port)
+        {
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = "netstat.exe";
+                psi.Arguments = "-ano -p tcp";
+                psi.RedirectStandardOutput = true;
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                using (Process p = Process.Start(psi))
+                {
+                    if (p != null)
+                    {
+                        string output = p.StandardOutput.ReadToEnd();
+                        p.WaitForExit(1000);
+                        string pattern = @":(?<p>" + port + @")\s+.*?LISTENING\s+(?<pid>\d+)";
+                        var m = System.Text.RegularExpressions.Regex.Match(output, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        if (m.Success)
+                        {
+                            int pid;
+                            if (int.TryParse(m.Groups["pid"].Value, out pid))
+                                return pid;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return 0;
+        }
+
+        public static void GetProcessCpuAndRam(int pid, ref TimeSpan lastCpuTime, ref DateTime lastSampleTime, out double cpuPercent, out long ramMb)
+        {
+            cpuPercent = 0;
+            ramMb = 0;
+            if (pid <= 0) return;
+
+            // 1. Tenta via Win32 API com PROCESS_QUERY_LIMITED_INFORMATION (funciona entre diferentes usuários e serviços)
+            IntPtr hProc = IntPtr.Zero;
+            try
+            {
+                hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+                if (hProc != IntPtr.Zero)
+                {
+                    PROCESS_MEMORY_COUNTERS_EX counters;
+                    counters.cb = (uint)Marshal.SizeOf(typeof(PROCESS_MEMORY_COUNTERS_EX));
+                    if (GetProcessMemoryInfo(hProc, out counters, counters.cb))
+                    {
+                        ramMb = (long)counters.WorkingSetSize.ToUInt64() / (1024 * 1024);
+                    }
+
+                    System.Runtime.InteropServices.ComTypes.FILETIME ftCreate, ftExit, ftKernel, ftUser;
+                    if (GetProcessTimes(hProc, out ftCreate, out ftExit, out ftKernel, out ftUser))
+                    {
+                        long kTicks = (((long)ftKernel.dwHighDateTime) << 32) | (uint)ftKernel.dwLowDateTime;
+                        long uTicks = (((long)ftUser.dwHighDateTime) << 32) | (uint)ftUser.dwLowDateTime;
+                        TimeSpan totalProcessorTime = TimeSpan.FromTicks(kTicks + uTicks);
+
+                        DateTime now = DateTime.UtcNow;
+                        if (lastSampleTime > DateTime.MinValue && now > lastSampleTime)
+                        {
+                            double elapsedMs = (now - lastSampleTime).TotalMilliseconds;
+                            double cpuUsedMs = (totalProcessorTime - lastCpuTime).TotalMilliseconds;
+                            if (elapsedMs > 0)
+                            {
+                                cpuPercent = Math.Round((cpuUsedMs / (elapsedMs * Environment.ProcessorCount)) * 100.0, 1);
+                                if (cpuPercent < 0) cpuPercent = 0;
+                                if (cpuPercent > 100) cpuPercent = 100;
+                            }
+                        }
+
+                        lastCpuTime = totalProcessorTime;
+                        lastSampleTime = now;
+                        return;
+                    }
+                }
+            }
+            catch { }
+            finally
+            {
+                if (hProc != IntPtr.Zero) CloseHandle(hProc);
+            }
+
+            // 2. Fallback padrão via .NET Process caso Win32 falhe
+            try
+            {
+                using (Process p = Process.GetProcessById(pid))
+                {
+                    if (p.HasExited) return;
+
+                    if (ramMb == 0)
+                        ramMb = p.WorkingSet64 / (1024 * 1024);
+
+                    DateTime now = DateTime.UtcNow;
+                    TimeSpan totalProcessorTime = p.TotalProcessorTime;
+
+                    if (lastSampleTime > DateTime.MinValue && now > lastSampleTime)
+                    {
+                        double elapsedMs = (now - lastSampleTime).TotalMilliseconds;
+                        double cpuUsedMs = (totalProcessorTime - lastCpuTime).TotalMilliseconds;
+                        if (elapsedMs > 0)
+                        {
+                            cpuPercent = Math.Round((cpuUsedMs / (elapsedMs * Environment.ProcessorCount)) * 100.0, 1);
+                            if (cpuPercent < 0) cpuPercent = 0;
+                            if (cpuPercent > 100) cpuPercent = 100;
+                        }
+                    }
+
+                    lastCpuTime = totalProcessorTime;
+                    lastSampleTime = now;
+                }
+            }
+            catch { }
         }
 
         public static IntPtr MultiMonitorWndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

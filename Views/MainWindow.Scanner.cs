@@ -449,6 +449,8 @@ namespace TOTVSHub
                 if (amb.State == EnvRunState.Initializing || amb.State == EnvRunState.Stopping)
                     continue;
 
+                EnvRunState previousState = amb.State;
+
                 if (svc != null && string.Equals(svc.State, "Running", StringComparison.OrdinalIgnoreCase))
                 {
                     amb.State = EnvRunState.Active;
@@ -469,11 +471,66 @@ namespace TOTVSHub
                     }
                     else
                     {
-                        amb.State = EnvRunState.Stopped;
-                        amb.RunningAsService = amb.IsServiceRegistered;
-                        amb.Pid = 0;
-                        amb.ProcessUser = null;
+                        // Casamento inteligente por portas (detecta AppServer mesmo iniciado por outro usuário no servidor)
+                        int portPid = 0;
+                        int tcpP;
+                        if (int.TryParse(amb.TcpPort, out tcpP) && tcpP > 0)
+                            portPid = NativeWin32.GetProcessIdByTcpPort(tcpP);
+
+                        if (portPid == 0)
+                        {
+                            int webP;
+                            if (int.TryParse(amb.WebAppPort, out webP) && webP > 0)
+                                portPid = NativeWin32.GetProcessIdByTcpPort(webP);
+                        }
+
+                        if (portPid == 0)
+                        {
+                            int restP;
+                            if (int.TryParse(amb.RestPort, out restP) && restP > 0)
+                                portPid = NativeWin32.GetProcessIdByTcpPort(restP);
+                        }
+
+                        if (portPid > 0)
+                        {
+                            amb.State = EnvRunState.Active;
+                            amb.RunningAsService = (svc != null && svc.ProcessId == portPid);
+                            amb.Pid = portPid;
+                            amb.ProcessUser = (fetchUser && portPid > 0) ? NativeWin32.GetProcessOwnerUser(portPid) : null;
+                        }
+                        else
+                        {
+                            amb.State = EnvRunState.Stopped;
+                            amb.RunningAsService = amb.IsServiceRegistered;
+                            amb.Pid = 0;
+                            amb.ProcessUser = null;
+                        }
                     }
+                }
+
+                // Monitoramento de CPU e RAM (Item 11)
+                if (amb.State == EnvRunState.Active && amb.Pid > 0)
+                {
+                    TimeSpan lastCpu = amb.LastCpuTime;
+                    DateTime lastSample = amb.LastCpuSampleTime;
+                    double cpu;
+                    long ram;
+                    NativeWin32.GetProcessCpuAndRam(amb.Pid, ref lastCpu, ref lastSample, out cpu, out ram);
+                    amb.CpuPercent = cpu;
+                    amb.RamMb = ram;
+                    amb.LastCpuTime = lastCpu;
+                    amb.LastCpuSampleTime = lastSample;
+                }
+                else
+                {
+                    amb.CpuPercent = 0;
+                    amb.RamMb = 0;
+                }
+
+                // Notificação de queda de serviço monitorado (Item 3)
+                if (previousState == EnvRunState.Active && amb.State == EnvRunState.Stopped)
+                {
+                    RegistrarAlertaQuedaAmbiente(amb);
                 }
             }
         }
@@ -507,6 +564,36 @@ namespace TOTVSHub
                     }));
                 }
             });
+        }
+
+        private void RegistrarAlertaQuedaAmbiente(AmbienteInfo amb)
+        {
+            Dispatcher.BeginInvoke(new Action(delegate
+            {
+                AlertaConflito al = new AlertaConflito();
+                al.Titulo = "Queda de Serviço: " + amb.NomeIni;
+                al.Descricao = string.Format("O ambiente '{0}' parou inesperadamente ou caiu.", amb.NomeIni);
+                al.Envolvidos.Add(amb);
+
+                bool alreadyHas = _alertasAtivos.Any(a => a.Titulo == al.Titulo);
+                if (!alreadyHas)
+                {
+                    _alertasAtivos.Add(al);
+                    if (_alertBadge != null && _alertCountText != null)
+                    {
+                        _alertCountText.Text = _alertasAtivos.Count.ToString();
+                        _alertBadge.Background = UiTheme.AccentRed;
+                    }
+                    if (_trayIcon != null)
+                    {
+                        try
+                        {
+                            _trayIcon.ShowBalloonTip(4000, "Ambiente Caiu", string.Format("O serviço do ambiente {0} parou.", amb.NomeIni), System.Windows.Forms.ToolTipIcon.Warning);
+                        }
+                        catch { }
+                    }
+                }
+            }));
         }
 
         // =====================================================================

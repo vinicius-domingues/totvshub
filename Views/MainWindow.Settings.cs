@@ -498,6 +498,12 @@ namespace TOTVSHub
                 if (string.IsNullOrEmpty(lbl) || string.IsNullOrEmpty(form))
                     return;
 
+                if (tempLinks.Count >= 5)
+                {
+                    MessageBox.Show(this, "Limite atingido: Você pode cadastrar no máximo 5 botões de acesso.", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
                 tempLinks.Add(new CustomLinkButton(lbl, form, false));
                 renderUserLinks();
                 txtNewBtnLabel.Text = "";
@@ -680,6 +686,12 @@ namespace TOTVSHub
                 if (string.IsNullOrEmpty(sec))
                     return;
 
+                if (tempRules.Count >= 10)
+                {
+                    MessageBox.Show(this, "Limite atingido: Você pode cadastrar no máximo 10 regras/tags de monitoramento.", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
                 bool exists = tempRules.Any(r =>
                     string.Equals(r.SectionPattern, sec, StringComparison.OrdinalIgnoreCase) &&
                     string.Equals(r.KeyName ?? "", key, StringComparison.OrdinalIgnoreCase));
@@ -798,7 +810,11 @@ namespace TOTVSHub
             aboutTitles.VerticalAlignment = VerticalAlignment.Center;
 
             TextBlock aboutName = new TextBlock();
+#if CORP
+            aboutName.Text = "TOTVSHub Corp  •  " + UiTheme.AppVersion;
+#else
             aboutName.Text = "TOTVSHub  •  " + UiTheme.AppVersion;
+#endif
             aboutName.Foreground = UiTheme.TextPrimary;
             aboutName.FontSize = 14;
             aboutName.FontWeight = FontWeights.Bold;

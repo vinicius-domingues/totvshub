@@ -13,6 +13,13 @@ namespace TOTVSHub
         [STAThread]
         public static void Main(string[] args)
         {
+            // Força renderização por software para compatibilidade total com sessões RDP e evitar UCEERR_RENDERTHREADFAILURE (0x88980406)
+            try
+            {
+                System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
+            }
+            catch { }
+
             if (args != null && args.Length > 0 && string.Equals(args[0], "--generate-ico", StringComparison.OrdinalIgnoreCase))
             {
                 string appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TOTVSHub");
@@ -49,6 +56,8 @@ namespace TOTVSHub
                     else
                     {
                         IntPtr hWnd = NativeWin32.FindWindow(null, "TOTVSHub");
+                        if (hWnd == IntPtr.Zero)
+                            hWnd = NativeWin32.FindWindow(null, "TOTVSHub Corp");
                         if (hWnd != IntPtr.Zero)
                         {
                             NativeWin32.ShowWindow(hWnd, 9); // SW_RESTORE
@@ -65,6 +74,14 @@ namespace TOTVSHub
             try
             {
                 Application app = new Application();
+                app.DispatcherUnhandledException += delegate(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+                {
+                    System.Runtime.InteropServices.COMException comEx = e.Exception as System.Runtime.InteropServices.COMException;
+                    if (comEx != null && (uint)comEx.ErrorCode == 0x88980406)
+                    {
+                        e.Handled = true;
+                    }
+                };
                 UiTheme.InstallCustomBlueScrollBar(app);
                 MainWindow win = new MainWindow();
                 app.Run(win);

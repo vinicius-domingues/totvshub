@@ -16,7 +16,7 @@ namespace TOTVSHub
 {
     public static class UiTheme
     {
-        public const string AppVersion = "v2.4.0";
+        public const string AppVersion = "2.6.0";
         public const string DefaultUpdateDriveUrl = "https://drive.google.com";
 
         // Tom azul unico padronizado para todos os botoes azuis e toggles
@@ -187,7 +187,7 @@ namespace TOTVSHub
             container.Children.Add(stateLabel);
             container.Children.Add(track);
 
-            container.MouseLeftButtonUp += delegate
+            Action doToggle = delegate
             {
                 state = !state;
                 stateLabel.Text = state ? onLabel : offLabel;
@@ -203,6 +203,18 @@ namespace TOTVSHub
 
                 if (onChanged != null)
                     onChanged(state);
+            };
+
+            container.Tag = doToggle;
+            container.MouseLeftButtonDown += delegate(object s, MouseButtonEventArgs e)
+            {
+                e.Handled = true;
+            };
+
+            container.MouseLeftButtonUp += delegate(object s, MouseButtonEventArgs e)
+            {
+                e.Handled = true;
+                doToggle();
             };
 
             return container;
@@ -405,7 +417,7 @@ namespace TOTVSHub
         }
 
         // Icone de Lapis (Configurar card - sem fundo)
-        public static UIElement CreatePencilIcon(Brush strokeBrush)
+        public static UIElement CreatePencilIcon(Brush strokeBrush, double size = 16)
         {
             System.Windows.Shapes.Path pencil = new System.Windows.Shapes.Path();
             pencil.Data = Geometry.Parse("M 17,3 A 2.8,2.8 0 1 1 21,7 L 7.5,20.5 L 2,22 L 3.5,16.5 Z");
@@ -414,30 +426,30 @@ namespace TOTVSHub
             pencil.StrokeStartLineCap = PenLineCap.Round;
             pencil.StrokeEndLineCap = PenLineCap.Round;
             pencil.StrokeLineJoin = PenLineJoin.Round;
-            pencil.Width = 16;
-            pencil.Height = 16;
+            pencil.Width = size;
+            pencil.Height = size;
             pencil.Stretch = Stretch.Uniform;
             pencil.VerticalAlignment = VerticalAlignment.Center;
             return pencil;
         }
 
         // Icone de Olho (Ocultar card - sem fundo)
-        public static UIElement CreateEyeIcon(Brush strokeBrush)
+        public static UIElement CreateEyeIcon(Brush strokeBrush, double size = 17)
         {
             System.Windows.Shapes.Path eye = new System.Windows.Shapes.Path();
             eye.Data = Geometry.Parse("M 1,12 C 1,12 5,4 12,4 C 19,4 23,12 23,12 C 23,12 19,20 12,20 C 5,20 1,12 1,12 Z M 12,15 A 3,3 0 1 0 12,9 A 3,3 0 1 0 12,15 Z");
             eye.Stroke = strokeBrush;
             eye.StrokeThickness = 1.8;
             eye.StrokeLineJoin = PenLineJoin.Round;
-            eye.Width = 17;
-            eye.Height = 17;
+            eye.Width = size;
+            eye.Height = size;
             eye.Stretch = Stretch.Uniform;
             eye.VerticalAlignment = VerticalAlignment.Center;
             return eye;
         }
 
         // Icone de Olho Cortado (Desocultar card - sem fundo)
-        public static UIElement CreateEyeOffIcon(Brush strokeBrush)
+        public static UIElement CreateEyeOffIcon(Brush strokeBrush, double size = 17)
         {
             System.Windows.Shapes.Path eyeOff = new System.Windows.Shapes.Path();
             eyeOff.Data = Geometry.Parse("M 17.94,17.94 A 10.07,10.07 0 0 1 12,20 C 5,20 1,12 1,12 A 18.45,18.45 0 0 1 5.06,5.06 M 9.9,4.24 A 9.12,9.12 0 0 1 12,4 C 19,4 23,12 23,12 A 18.5,18.5 0 0 1 20.84,15.18 M 1,1 L 23,23");
@@ -446,8 +458,8 @@ namespace TOTVSHub
             eyeOff.StrokeStartLineCap = PenLineCap.Round;
             eyeOff.StrokeEndLineCap = PenLineCap.Round;
             eyeOff.StrokeLineJoin = PenLineJoin.Round;
-            eyeOff.Width = 17;
-            eyeOff.Height = 17;
+            eyeOff.Width = size;
+            eyeOff.Height = size;
             eyeOff.Stretch = Stretch.Uniform;
             eyeOff.VerticalAlignment = VerticalAlignment.Center;
             return eyeOff;
@@ -605,11 +617,6 @@ namespace TOTVSHub
             leftGroup.VerticalAlignment = VerticalAlignment.Center;
             leftGroup.HorizontalAlignment = HorizontalAlignment.Left;
 
-            FrameworkElement globe = (FrameworkElement)CreateGlobeIcon(Brushes.White, 12);
-            globe.Margin = new Thickness(0, 0, 6, 0);
-            globe.VerticalAlignment = VerticalAlignment.Center;
-            leftGroup.Children.Add(globe);
-
             TextBlock txt = new TextBlock();
             txt.Text = label;
             txt.Foreground = Brushes.White;
@@ -731,6 +738,200 @@ namespace TOTVSHub
             return btn;
         }
 
+        // Icone de Tres Pontos Vertical (⋮ / Mais opcoes do card)
+        public static UIElement CreateThreeDotsIcon(Brush fillBrush, double size = 16)
+        {
+            System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
+            icon.Data = Geometry.Parse("M 10,3 A 1.8,1.8 0 1 0 10,6.6 A 1.8,1.8 0 1 0 10,3 M 10,9 A 1.8,1.8 0 1 0 10,12.6 A 1.8,1.8 0 1 0 10,9 M 10,15 A 1.8,1.8 0 1 0 10,18.6 A 1.8,1.8 0 1 0 10,15");
+            icon.Fill = fillBrush;
+            icon.Width = size;
+            icon.Height = size;
+            icon.Stretch = Stretch.Uniform;
+            icon.VerticalAlignment = VerticalAlignment.Center;
+            icon.HorizontalAlignment = HorizontalAlignment.Center;
+            return icon;
+        }
+
+        // Icone de Copiar (Duas paginas sobrepostas)
+        public static UIElement CreateCopyIcon(Brush strokeBrush, double size = 14)
+        {
+            System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
+            icon.Data = Geometry.Parse("M 8,7 L 16,7 C 16.6,7 17,7.4 17,8 L 17,17 C 17,17.6 16.6,18 16,18 L 8,18 C 7.4,18 7,17.6 7,17 L 7,8 C 7,7.4 7.4,7 8,7 Z M 5,14 L 4,14 C 3.4,14 3,13.6 3,13 L 3,4 C 3,3.4 3.4,3 4,3 L 13,3 C 13.6,3 14,3.4 14,4 L 14,5");
+            icon.Stroke = strokeBrush;
+            icon.StrokeThickness = 1.6;
+            icon.StrokeStartLineCap = PenLineCap.Round;
+            icon.StrokeEndLineCap = PenLineCap.Round;
+            icon.StrokeLineJoin = PenLineJoin.Round;
+            icon.Width = size;
+            icon.Height = size;
+            icon.Stretch = Stretch.Uniform;
+            icon.VerticalAlignment = VerticalAlignment.Center;
+            icon.HorizontalAlignment = HorizontalAlignment.Center;
+            return icon;
+        }
+
+        // Icone de Historico (D-1)
+        public static UIElement CreateHistoryIcon(Brush strokeBrush, double size = 12)
+        {
+            System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
+            icon.Data = Geometry.Parse("M 3,12 A 9,9 0 1 0 6.2,5.6 L 3,3 M 3,8 L 3,3 L 8,3 M 12,7 L 12,12 L 15,14");
+            icon.Stroke = strokeBrush;
+            icon.StrokeThickness = 1.8;
+            icon.StrokeStartLineCap = PenLineCap.Round;
+            icon.StrokeEndLineCap = PenLineCap.Round;
+            icon.StrokeLineJoin = PenLineJoin.Round;
+            icon.Width = size;
+            icon.Height = size;
+            icon.Stretch = Stretch.Uniform;
+            icon.VerticalAlignment = VerticalAlignment.Center;
+            icon.HorizontalAlignment = HorizontalAlignment.Center;
+            return icon;
+        }
+
+        // Icone de Cubo / Modulo (RPOCustom)
+        public static UIElement CreateCubeIcon(Brush strokeBrush, double size = 12)
+        {
+            System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
+            icon.Data = Geometry.Parse("M 12,2 L 21,7 L 21,17 L 12,22 L 3,17 L 3,7 Z M 12,2 L 12,12 M 21,7 L 12,12 L 3,7 M 12,12 L 12,22");
+            icon.Stroke = strokeBrush;
+            icon.StrokeThickness = 1.6;
+            icon.StrokeLineJoin = PenLineJoin.Round;
+            icon.Width = size;
+            icon.Height = size;
+            icon.Stretch = Stretch.Uniform;
+            icon.VerticalAlignment = VerticalAlignment.Center;
+            icon.HorizontalAlignment = HorizontalAlignment.Center;
+            return icon;
+        }
+
+        // Botao de icone PURO (sem texto) para D-1 e RPOCustom (outline cinza quando inativo, verde quando ativo)
+        public static Button CreateRpoPureIconButton(UIElement icon, bool isActive)
+        {
+            Button btn = new Button();
+            btn.Width = 34;
+            btn.Height = 26;
+            btn.Padding = new Thickness(0);
+            btn.Cursor = Cursors.Hand;
+            btn.Content = icon;
+            ApplyRpoButtonStyle(btn, isActive);
+            return btn;
+        }
+
+        // Botao de icone para D-1 e RPOCustom (nao e switch; outline cinza quando inativo, verde quando ativo)
+        public static Button CreateRpoIconButton(UIElement icon, string text, bool isActive)
+        {
+            Button btn = new Button();
+            btn.Height = 24;
+            btn.Padding = new Thickness(8, 2, 8, 2);
+            btn.Cursor = Cursors.Hand;
+            btn.Margin = new Thickness(0, 0, 8, 0);
+
+            StackPanel sp = new StackPanel();
+            sp.Orientation = Orientation.Horizontal;
+            sp.VerticalAlignment = VerticalAlignment.Center;
+            sp.HorizontalAlignment = HorizontalAlignment.Center;
+
+            FrameworkElement fe = icon as FrameworkElement;
+            if (fe != null)
+            {
+                fe.Margin = new Thickness(0, 0, 5, 0);
+                fe.VerticalAlignment = VerticalAlignment.Center;
+            }
+            if (icon != null)
+                sp.Children.Add(icon);
+
+            TextBlock tb = new TextBlock();
+            tb.Text = text;
+            tb.FontSize = 11;
+            tb.FontWeight = FontWeights.Bold;
+            tb.VerticalAlignment = VerticalAlignment.Center;
+            sp.Children.Add(tb);
+
+            btn.Content = sp;
+            ApplyRpoButtonStyle(btn, isActive);
+            return btn;
+        }
+
+        public static void ApplyRpoButtonStyle(Button btn, bool isActive)
+        {
+            Brush bg = isActive ? BrushFromHex("#065F46") : BrushFromHex(NeutralBtnHex);
+            Brush border = isActive ? BrushFromHex("#10B981") : BrushFromHex("#475569");
+            Brush fg = isActive ? Brushes.White : BrushFromHex("#94A3B8");
+
+            btn.Background = bg;
+            btn.Foreground = fg;
+            btn.BorderBrush = border;
+            btn.BorderThickness = new Thickness(1);
+
+            ControlTemplate tpl = new ControlTemplate(typeof(Button));
+            FrameworkElementFactory borderFactory = new FrameworkElementFactory(typeof(Border));
+            borderFactory.Name = "bd";
+            borderFactory.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Button.BackgroundProperty));
+            borderFactory.SetValue(Border.BorderBrushProperty, new TemplateBindingExtension(Button.BorderBrushProperty));
+            borderFactory.SetValue(Border.BorderThicknessProperty, new TemplateBindingExtension(Button.BorderThicknessProperty));
+            borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(5));
+            borderFactory.SetValue(Border.PaddingProperty, new TemplateBindingExtension(Button.PaddingProperty));
+
+            FrameworkElementFactory contentFactory = new FrameworkElementFactory(typeof(ContentPresenter));
+            contentFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            contentFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            borderFactory.AppendChild(contentFactory);
+
+            tpl.VisualTree = borderFactory;
+
+            Trigger hoverTrigger = new Trigger();
+            hoverTrigger.Property = UIElement.IsMouseOverProperty;
+            hoverTrigger.Value = true;
+            hoverTrigger.Setters.Add(new Setter(Border.BackgroundProperty, isActive ? BrushFromHex("#047857") : BrushFromHex(NeutralBtnHoverHex), "bd"));
+            tpl.Triggers.Add(hoverTrigger);
+
+            btn.Template = tpl;
+
+            StackPanel sp = btn.Content as StackPanel;
+            if (sp != null)
+            {
+                foreach (UIElement child in sp.Children)
+                {
+                    TextBlock childTb = child as TextBlock;
+                    if (childTb != null)
+                    {
+                        childTb.Foreground = fg;
+                    }
+                    else
+                    {
+                        System.Windows.Shapes.Path path = child as System.Windows.Shapes.Path;
+                        if (path != null)
+                        {
+                            if (path.Stroke != null && path.Stroke != Brushes.Transparent) path.Stroke = fg;
+                            if (path.Fill != null && path.Fill != Brushes.Transparent) path.Fill = fg;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                System.Windows.Shapes.Path singlePath = btn.Content as System.Windows.Shapes.Path;
+                if (singlePath != null)
+                {
+                    if (singlePath.Stroke != null && singlePath.Stroke != Brushes.Transparent) singlePath.Stroke = fg;
+                    if (singlePath.Fill != null && singlePath.Fill != Brushes.Transparent) singlePath.Fill = fg;
+                }
+                Canvas canvas = btn.Content as Canvas;
+                if (canvas != null)
+                {
+                    foreach (UIElement c in canvas.Children)
+                    {
+                        System.Windows.Shapes.Path p = c as System.Windows.Shapes.Path;
+                        if (p != null)
+                        {
+                            if (p.Stroke != null && p.Stroke != Brushes.Transparent) p.Stroke = fg;
+                            if (p.Fill != null && p.Fill != Brushes.Transparent) p.Fill = fg;
+                        }
+                    }
+                }
+            }
+        }
+
         public static Button CreateWindowButton(object content, string hoverHex)
         {
             Button btn = new Button();
@@ -765,6 +966,223 @@ namespace TOTVSHub
 
             btn.Template = tpl;
             return btn;
+        }
+
+        public static UIElement CreateGridSquareIcon(Brush strokeBrush, double size = 16)
+        {
+            Canvas canvas = new Canvas();
+            canvas.Width = size;
+            canvas.Height = size;
+
+            // 4 quadrados com contorno (2x2)
+            double s = (size - 3) / 2.0;
+            double p1 = 0;
+            double p2 = s + 3;
+
+            canvas.Children.Add(new System.Windows.Shapes.Rectangle { Width = s, Height = s, Stroke = strokeBrush, StrokeThickness = 1.6, Margin = new Thickness(p1, p1, 0, 0) });
+            canvas.Children.Add(new System.Windows.Shapes.Rectangle { Width = s, Height = s, Stroke = strokeBrush, StrokeThickness = 1.6, Margin = new Thickness(p2, p1, 0, 0) });
+            canvas.Children.Add(new System.Windows.Shapes.Rectangle { Width = s, Height = s, Stroke = strokeBrush, StrokeThickness = 1.6, Margin = new Thickness(p1, p2, 0, 0) });
+            canvas.Children.Add(new System.Windows.Shapes.Rectangle { Width = s, Height = s, Stroke = strokeBrush, StrokeThickness = 1.6, Margin = new Thickness(p2, p2, 0, 0) });
+
+            return canvas;
+        }
+
+        public static UIElement CreateListBarsIcon(Brush strokeBrush, double size = 16)
+        {
+            System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
+            icon.Data = Geometry.Parse("M 2,4 L 14,4 M 2,8 L 14,8 M 2,12 L 14,12");
+            icon.Stroke = strokeBrush;
+            icon.StrokeThickness = 2.0;
+            icon.StrokeStartLineCap = PenLineCap.Round;
+            icon.StrokeEndLineCap = PenLineCap.Round;
+            icon.Width = size;
+            icon.Height = size;
+            icon.Stretch = Stretch.Uniform;
+            icon.VerticalAlignment = VerticalAlignment.Center;
+            icon.HorizontalAlignment = HorizontalAlignment.Center;
+            return icon;
+        }
+
+        // Toggle segmentado Grid vs Lista conforme anexo do usuario
+        public static Border CreateViewModeSegmentedToggle(bool initialCardsMode, Action<bool> onToggle)
+        {
+            Border outer = new Border();
+            outer.Height = 32;
+            outer.Background = BrushFromHex("#0F172A");
+            outer.BorderBrush = BrushFromHex("#334155");
+            outer.BorderThickness = new Thickness(1);
+            outer.CornerRadius = new CornerRadius(7);
+            outer.Padding = new Thickness(2);
+            outer.VerticalAlignment = VerticalAlignment.Center;
+
+            StackPanel sp = new StackPanel();
+            sp.Orientation = Orientation.Horizontal;
+
+            Border btnGrid = new Border();
+            btnGrid.Width = 28;
+            btnGrid.Height = 26;
+            btnGrid.CornerRadius = new CornerRadius(5);
+            btnGrid.Cursor = Cursors.Hand;
+            btnGrid.ToolTip = "Visualização em Cards (Grade)";
+
+            Border btnList = new Border();
+            btnList.Width = 28;
+            btnList.Height = 26;
+            btnList.CornerRadius = new CornerRadius(5);
+            btnList.Cursor = Cursors.Hand;
+            btnList.ToolTip = "Visualização em Linhas";
+
+            Action<bool> updateVisual = delegate(bool cards)
+            {
+                btnGrid.Background = cards ? BrushFromHex(PrimaryBlueHex) : Brushes.Transparent;
+                btnGrid.Child = CreateGridSquareIcon(cards ? Brushes.White : BrushFromHex("#94A3B8"), 14);
+
+                btnList.Background = !cards ? BrushFromHex(PrimaryBlueHex) : Brushes.Transparent;
+                btnList.Child = CreateListBarsIcon(!cards ? Brushes.White : BrushFromHex("#94A3B8"), 14);
+            };
+
+            bool currentCards = initialCardsMode;
+            updateVisual(currentCards);
+
+            btnGrid.MouseLeftButtonUp += delegate
+            {
+                if (!currentCards)
+                {
+                    currentCards = true;
+                    updateVisual(currentCards);
+                    if (onToggle != null) onToggle(true);
+                }
+            };
+
+            btnList.MouseLeftButtonUp += delegate
+            {
+                if (currentCards)
+                {
+                    currentCards = false;
+                    updateVisual(currentCards);
+                    if (onToggle != null) onToggle(false);
+                }
+            };
+
+            sp.Children.Add(btnGrid);
+            sp.Children.Add(btnList);
+            outer.Child = sp;
+
+            return outer;
+        }
+
+        public static UIElement CreateExchangeIcon(Brush strokeBrush, double size = 14)
+        {
+            System.Windows.Shapes.Path path = new System.Windows.Shapes.Path();
+            path.Data = Geometry.Parse("M 3,6 L 14,6 M 11,3 L 14,6 L 11,9 M 13,12 L 2,12 M 5,9 L 2,12 L 5,15");
+            path.Stroke = strokeBrush;
+            path.StrokeThickness = 1.6;
+            path.StrokeStartLineCap = PenLineCap.Round;
+            path.StrokeEndLineCap = PenLineCap.Round;
+            path.StrokeLineJoin = PenLineJoin.Round;
+            path.Width = size;
+            path.Height = size;
+            path.Stretch = Stretch.Uniform;
+            path.VerticalAlignment = VerticalAlignment.Center;
+            path.HorizontalAlignment = HorizontalAlignment.Center;
+            return path;
+        }
+
+        public static UIElement CreateSourcesListIcon(Brush strokeBrush, double size = 14)
+        {
+            System.Windows.Shapes.Path path = new System.Windows.Shapes.Path();
+            path.Data = Geometry.Parse("M 4,2 L 12,2 L 16,6 L 16,18 L 4,18 Z M 12,2 L 12,6 L 16,6 M 7,10 L 13,10 M 7,13 L 13,13 M 7,16 L 11,16");
+            path.Stroke = strokeBrush;
+            path.StrokeThickness = 1.4;
+            path.StrokeStartLineCap = PenLineCap.Round;
+            path.StrokeEndLineCap = PenLineCap.Round;
+            path.StrokeLineJoin = PenLineJoin.Round;
+            path.Width = size;
+            path.Height = size;
+            path.Stretch = Stretch.Uniform;
+            path.VerticalAlignment = VerticalAlignment.Center;
+            path.HorizontalAlignment = HorizontalAlignment.Center;
+            return path;
+        }
+
+        public static UIElement CreateDownloadIcon(Brush strokeBrush, double size = 14)
+        {
+            System.Windows.Shapes.Path path = new System.Windows.Shapes.Path();
+            path.Data = Geometry.Parse("M 3,14 L 3,16 C 3,16.5 3.5,17 4,17 L 16,17 C 16.5,17 17,16.5 17,16 L 17,14 M 10,3 L 10,13 M 6,9 L 10,13 L 14,9");
+            path.Stroke = strokeBrush;
+            path.StrokeThickness = 1.6;
+            path.StrokeStartLineCap = PenLineCap.Round;
+            path.StrokeEndLineCap = PenLineCap.Round;
+            path.StrokeLineJoin = PenLineJoin.Round;
+            path.Width = size;
+            path.Height = size;
+            path.Stretch = Stretch.Uniform;
+            path.VerticalAlignment = VerticalAlignment.Center;
+            path.HorizontalAlignment = HorizontalAlignment.Center;
+            return path;
+        }
+
+        public static UIElement CreateScrollIcon(Brush strokeBrush, double size = 14)
+        {
+            System.Windows.Shapes.Path path = new System.Windows.Shapes.Path();
+            path.Data = Geometry.Parse("M 7,2 L 7,12 M 4,9 L 7,12 L 10,9 M 3,14 L 11,14");
+            path.Stroke = strokeBrush;
+            path.StrokeThickness = 1.6;
+            path.StrokeStartLineCap = PenLineCap.Round;
+            path.StrokeEndLineCap = PenLineCap.Round;
+            path.StrokeLineJoin = PenLineJoin.Round;
+            path.Width = size;
+            path.Height = size;
+            path.Stretch = Stretch.Uniform;
+            path.VerticalAlignment = VerticalAlignment.Center;
+            path.HorizontalAlignment = HorizontalAlignment.Center;
+            return path;
+        }
+
+        public static ContextMenu CreateDarkContextMenu()
+        {
+            ContextMenu cm = new ContextMenu();
+            cm.Background = BrushFromHex("#0F172A");
+            cm.BorderBrush = BorderSubtle;
+            cm.BorderThickness = new Thickness(1);
+            cm.Foreground = TextPrimary;
+            cm.Padding = new Thickness(4);
+            return cm;
+        }
+
+        public static MenuItem CreateDarkMenuItem(string headerText, UIElement icon, RoutedEventHandler onClick)
+        {
+            MenuItem mi = new MenuItem();
+            mi.Background = Brushes.Transparent;
+            mi.Foreground = TextPrimary;
+            mi.Padding = new Thickness(8, 6, 12, 6);
+            mi.Margin = new Thickness(0, 1, 0, 1);
+            mi.Cursor = Cursors.Hand;
+            if (onClick != null) mi.Click += onClick;
+
+            StackPanel sp = new StackPanel();
+            sp.Orientation = Orientation.Horizontal;
+            sp.VerticalAlignment = VerticalAlignment.Center;
+
+            if (icon != null)
+            {
+                FrameworkElement fe = icon as FrameworkElement;
+                if (fe != null) fe.Margin = new Thickness(0, 0, 8, 0);
+                sp.Children.Add(icon);
+            }
+
+            TextBlock txt = new TextBlock();
+            txt.Text = headerText;
+            txt.Foreground = TextPrimary;
+            txt.FontSize = 12;
+            txt.FontWeight = FontWeights.Normal;
+            txt.VerticalAlignment = VerticalAlignment.Center;
+            sp.Children.Add(txt);
+
+            mi.Header = sp;
+            mi.Icon = null;
+
+            return mi;
         }
     }
 }

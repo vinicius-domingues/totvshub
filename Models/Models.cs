@@ -69,6 +69,11 @@ namespace TOTVSHub
         public int Pid { get; set; }
         public string ProcessUser { get; set; }
 
+        public double CpuPercent { get; set; }
+        public long RamMb { get; set; }
+        public TimeSpan LastCpuTime { get; set; }
+        public DateTime LastCpuSampleTime { get; set; }
+
         public Border CardBorder { get; set; }
         public Border StatusBadge { get; set; }
         public TextBlock StatusText { get; set; }
@@ -76,6 +81,9 @@ namespace TOTVSHub
         public TextBlock ModeTagText { get; set; }
         public Border UserTagBorder { get; set; }
         public TextBlock UserTagText { get; set; }
+        public TextBlock CpuUsageText { get; set; }
+        public TextBlock RamUsageText { get; set; }
+        public StackPanel MetricsPanel { get; set; }
         public Button BtnStart { get; set; }
         public Button BtnRestart { get; set; }
         public Button BtnStop { get; set; }

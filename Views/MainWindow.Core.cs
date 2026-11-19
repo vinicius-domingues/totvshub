@@ -87,6 +87,7 @@ namespace TOTVSHub
         private TextBlock _lastUpdateLabel;
         private TextBlock _statsLabel;
         private Button _btnToggleHiddenView;
+        private bool _isCardsViewMode = false;
         private Border _alertBadge;
         private TextBlock _alertCountText;
         private System.Windows.Shapes.Path _refreshIconPath;
@@ -230,12 +231,16 @@ namespace TOTVSHub
                     return Path.Combine(normRoot, rel);
                 }
 
+                // Se normAppDir nao comeca com _rootPath, sobe ate a pasta do ambiente (1 nivel abaixo da pasta raiz pai)
                 DirectoryInfo di = new DirectoryInfo(amb.AppDir);
-                if (di.Parent != null && di.Parent.Parent != null)
-                    return di.Parent.Parent.FullName;
-                if (di.Parent != null)
-                    return di.Parent.FullName;
-                return di.FullName;
+                while (di != null && di.Parent != null && di.Parent.Parent != null && di.Parent.Parent.Parent != null)
+                {
+                    di = di.Parent;
+                }
+                if (di != null)
+                    return di.FullName;
+
+                return amb.PastaBase ?? amb.AppDir;
             }
             catch
             {
@@ -405,6 +410,7 @@ namespace TOTVSHub
             else
             {
                 _ignoreSameSubfolderConflicts = true;
+                try { File.WriteAllText(_ignoreSameSubfolderPrefPath, "1", Encoding.UTF8); } catch { }
             }
 
             if (File.Exists(_driveUrlPrefPath))
@@ -539,6 +545,9 @@ namespace TOTVSHub
             StackPanel titleLeft = new StackPanel();
             titleLeft.Orientation = Orientation.Horizontal;
             titleLeft.VerticalAlignment = VerticalAlignment.Center;
+            titleLeft.Cursor = Cursors.Hand;
+            titleLeft.ToolTip = "Ir para Ambientes";
+            titleLeft.MouseLeftButtonUp += delegate { SwitchToTab(HubActiveTab.Ambientes); };
 
             titleLeft.Children.Add(TotvsLogo.CreateTotvsWhiteSvgLogo(_cachedSvgPath, 24));
 
@@ -641,11 +650,14 @@ namespace TOTVSHub
 
             titleBar.PreviewMouseLeftButtonDown += delegate(object s, MouseButtonEventArgs e)
             {
-                // Ignora cliques em botoes do topo
+                // Ignora cliques em botoes, caixas de texto e abas do topo
                 DependencyObject dep = e.OriginalSource as DependencyObject;
                 while (dep != null && dep != titleBar)
                 {
                     if (dep is Button || dep is TextBox)
+                        return;
+                    FrameworkElement fe = dep as FrameworkElement;
+                    if (fe != null && fe.Tag != null && fe.Tag.ToString().IndexOf("Tab", StringComparison.OrdinalIgnoreCase) >= 0)
                         return;
                     dep = VisualTreeHelper.GetParent(dep);
                 }
@@ -772,9 +784,67 @@ namespace TOTVSHub
             {
                 ((FrameworkElement)leftContent).VerticalAlignment = VerticalAlignment.Center;
             }
+
+            if (_isInDashboardView)
+            {
+                _currentTab = HubActiveTab.Ambientes;
+            }
+
+            StackPanel sp = leftContent as StackPanel;
+            if (sp != null && !HasBrowserTabs(sp))
+            {
+                // Limita largura de pilulas de caminho (ex: no IniEditor) para acomodar as abas
+                foreach (UIElement child in sp.Children)
+                {
+                    Border b = child as Border;
+                    if (b != null)
+                    {
+                        TextBlock tb = b.Child as TextBlock;
+                        if (tb != null && tb.Text != null && (tb.Text.Contains("\\") || tb.Text.Contains("/")))
+                        {
+                            b.MaxWidth = 260;
+                            tb.TextTrimming = TextTrimming.CharacterEllipsis;
+                            tb.ToolTip = tb.Text;
+                        }
+                    }
+                }
+
+                Border separator = new Border();
+                separator.Width = 1;
+                separator.Height = 22;
+                separator.Background = UiTheme.BorderSubtle;
+                separator.Margin = new Thickness(18, 0, 16, 0);
+                separator.VerticalAlignment = VerticalAlignment.Center;
+                sp.Children.Add(separator);
+
+                UIElement tabs = BuildBrowserTabBar(_currentTab);
+                sp.Children.Add(tabs);
+            }
+
             titleDock.Children.Add(leftContent);
             titleBar.Child = titleDock;
             return titleBar;
+        }
+
+        private bool HasBrowserTabs(UIElement element)
+        {
+            if (element == null) return false;
+            FrameworkElement fe = element as FrameworkElement;
+            if (fe != null && fe.Tag != null)
+            {
+                string tag = fe.Tag.ToString();
+                if (tag.IndexOf("Tab", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+            }
+            Panel panel = element as Panel;
+            if (panel != null)
+            {
+                foreach (UIElement child in panel.Children)
+                {
+                    if (HasBrowserTabs(child)) return true;
+                }
+            }
+            return false;
         }
     }
 }

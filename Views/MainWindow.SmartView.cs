@@ -1,0 +1,912 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Shapes;
+using Path = System.IO.Path;
+
+namespace TOTVSHub
+{
+    public partial class MainWindow : Window
+    {
+        private SmartViewPortStatus _smartViewPort7017 = new SmartViewPortStatus(7017, "SmartView Home", "Serviço central de execução e processamento de relatórios SmartView");
+        private SmartViewPortStatus _smartViewPort7019 = new SmartViewPortStatus(7019, "SmartView Diagnostic", "Interface web do SmartView e APIs REST de diagnóstico");
+
+        private ScrollViewer _svScrollViewer;
+        private Panel _svCardsContainer;
+        private Border _svCard7017;
+        private Border _svCard7019;
+        private TextBlock _svCard7017StatusText;
+        private TextBlock _svCard7019StatusText;
+        private Border _svCard7017Badge;
+        private Border _svCard7019Badge;
+        private TextBlock _svCard7017LatencyText;
+        private TextBlock _svCard7019LatencyText;
+        private TextBlock _svFolderLabel;
+        private TextBlock _svLastUpdateLabel;
+        private string _smartViewDetectedFolder;
+        private int _smartViewPid = 0;
+        private string _smartViewSavedFolderPrefPath;
+        private string _smartViewNotesPrefPath;
+        private Dictionary<int, string> _smartViewNotes = new Dictionary<int, string>();
+        private string _svFilterText = "";
+
+        private bool _isCheckingSmartView = false;
+
+        private void CarregarNotasSmartViewAppData()
+        {
+            if (string.IsNullOrEmpty(_smartViewNotesPrefPath))
+                _smartViewNotesPrefPath = Path.Combine(_appDataDir, "smartview_notas.txt");
+
+            _smartViewNotes.Clear();
+            if (File.Exists(_smartViewNotesPrefPath))
+            {
+                try
+                {
+                    string[] lines = File.ReadAllLines(_smartViewNotesPrefPath, Encoding.UTF8);
+                    foreach (string line in lines)
+                    {
+                        int eq = line.IndexOf('=');
+                        if (eq > 0)
+                        {
+                            int port;
+                            if (int.TryParse(line.Substring(0, eq).Trim(), out port))
+                            {
+                                _smartViewNotes[port] = line.Substring(eq + 1).Trim();
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+        }
+
+        private void SalvarNotasSmartViewAppData()
+        {
+            if (string.IsNullOrEmpty(_smartViewNotesPrefPath))
+                _smartViewNotesPrefPath = Path.Combine(_appDataDir, "smartview_notas.txt");
+
+            try
+            {
+                List<string> lines = new List<string>();
+                foreach (KeyValuePair<int, string> kvp in _smartViewNotes)
+                {
+                    if (!string.IsNullOrWhiteSpace(kvp.Value))
+                        lines.Add(string.Format("{0}={1}", kvp.Key, kvp.Value.Trim()));
+                }
+                File.WriteAllLines(_smartViewNotesPrefPath, lines.ToArray(), Encoding.UTF8);
+            }
+            catch { }
+        }
+
+        private void CarregarSmartViewPrefFolder()
+        {
+            if (string.IsNullOrEmpty(_smartViewSavedFolderPrefPath))
+                _smartViewSavedFolderPrefPath = Path.Combine(_appDataDir, "smartview_path.txt");
+
+            if (File.Exists(_smartViewSavedFolderPrefPath))
+            {
+                try
+                {
+                    string txt = File.ReadAllText(_smartViewSavedFolderPrefPath).Trim();
+                    if (!string.IsNullOrEmpty(txt) && Directory.Exists(txt))
+                        _smartViewDetectedFolder = txt;
+                }
+                catch { }
+            }
+        }
+
+        private void SalvarSmartViewPrefFolder(string path)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_smartViewSavedFolderPrefPath))
+                    _smartViewSavedFolderPrefPath = Path.Combine(_appDataDir, "smartview_path.txt");
+                File.WriteAllText(_smartViewSavedFolderPrefPath, path ?? "");
+            }
+            catch { }
+        }
+
+        public void ShowSmartView()
+        {
+            _isInDashboardView = false;
+            _currentTab = HubActiveTab.SmartView;
+            CarregarSmartViewPrefFolder();
+            CarregarNotasSmartViewAppData();
+
+            Grid rootGrid = new Grid();
+            RowDefinition rowTop = new RowDefinition(); rowTop.Height = GridLength.Auto;
+            RowDefinition rowToolbar = new RowDefinition(); rowToolbar.Height = GridLength.Auto;
+            RowDefinition rowInfoBar = new RowDefinition(); rowInfoBar.Height = GridLength.Auto;
+            RowDefinition rowBody = new RowDefinition(); rowBody.Height = new GridLength(1, GridUnitType.Star);
+            rootGrid.RowDefinitions.Add(rowTop);
+            rootGrid.RowDefinitions.Add(rowToolbar);
+            rootGrid.RowDefinitions.Add(rowInfoBar);
+            rootGrid.RowDefinitions.Add(rowBody);
+
+            StackPanel topLeft = CreateBrandHeaderWithTabs(HubActiveTab.SmartView);
+            Border topBar = BuildTopWindowBar(topLeft, null);
+            Grid.SetRow(topBar, 0);
+            rootGrid.Children.Add(topBar);
+
+            // 1. Toolbar superior (Item 13: pasta + busca + card/lista + atualizar, sem 3 pontos no topo)
+            Border toolbar = BuildSmartViewToolbar();
+            Grid.SetRow(toolbar, 1);
+            rootGrid.Children.Add(toolbar);
+
+            // 2. Info bar com pasta do SmartView e horário de atualização (Item 14: somente horário de atualização)
+            Border infoBar = BuildSmartViewInfoBar();
+            Grid.SetRow(infoBar, 2);
+            rootGrid.Children.Add(infoBar);
+
+            // 3. ScrollViewer e container de cards
+            _svScrollViewer = new ScrollViewer();
+            _svScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+            _svScrollViewer.Padding = new Thickness(20, 14, 20, 20);
+
+            _svCardsContainer = new StackPanel();
+            _svScrollViewer.Content = _svCardsContainer;
+
+            Grid.SetRow(_svScrollViewer, 3);
+            rootGrid.Children.Add(_svScrollViewer);
+
+            _pageHost.Content = rootGrid;
+
+            RenderizarCardsSmartView();
+            VerificarPortasSmartViewAsync();
+        }
+
+        private Border BuildSmartViewToolbar()
+        {
+            Border toolbar = new Border();
+            toolbar.Padding = new Thickness(20, 14, 20, 10);
+            toolbar.Background = UiTheme.BgWindow;
+
+            Grid toolGrid = new Grid();
+            ColumnDefinition cLeft = new ColumnDefinition(); cLeft.Width = GridLength.Auto;
+            ColumnDefinition cSearch = new ColumnDefinition(); cSearch.Width = new GridLength(1, GridUnitType.Star);
+            ColumnDefinition cRight = new ColumnDefinition(); cRight.Width = GridLength.Auto;
+            toolGrid.ColumnDefinitions.Add(cLeft);
+            toolGrid.ColumnDefinitions.Add(cSearch);
+            toolGrid.ColumnDefinitions.Add(cRight);
+
+            // 1. Ícone Pasta (à esquerda)
+            Button btnFolder = UiTheme.CreateActionButton(
+                UiTheme.CreateFolderIcon(Brushes.White, 16),
+                UiTheme.NeutralBtnHex,
+                UiTheme.NeutralBtnHoverHex);
+            btnFolder.Width = 38;
+            btnFolder.Height = 34;
+            btnFolder.Padding = new Thickness(0);
+            btnFolder.Margin = new Thickness(0, 0, 10, 0);
+            btnFolder.ToolTip = "Configurar pasta de instalação do SmartView";
+            btnFolder.Click += delegate
+            {
+                using (System.Windows.Forms.FolderBrowserDialog fbd = new System.Windows.Forms.FolderBrowserDialog())
+                {
+                    fbd.Description = "Selecione a pasta de instalação do SmartView";
+                    if (!string.IsNullOrEmpty(_smartViewDetectedFolder) && Directory.Exists(_smartViewDetectedFolder))
+                        fbd.SelectedPath = _smartViewDetectedFolder;
+
+                    if (fbd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                    {
+                        _smartViewDetectedFolder = fbd.SelectedPath;
+                        SalvarSmartViewPrefFolder(fbd.SelectedPath);
+                        if (_svFolderLabel != null) _svFolderLabel.Text = "Pasta: " + fbd.SelectedPath;
+                    }
+                }
+            };
+            Grid.SetColumn(btnFolder, 0);
+            toolGrid.Children.Add(btnFolder);
+
+            // 2. Barra de Busca
+            Border searchContainer = new Border();
+            searchContainer.Background = UiTheme.BgHeader;
+            searchContainer.BorderBrush = UiTheme.BorderSubtle;
+            searchContainer.BorderThickness = new Thickness(1);
+            searchContainer.CornerRadius = new CornerRadius(8);
+            searchContainer.Padding = new Thickness(12, 7, 12, 7);
+            searchContainer.Margin = new Thickness(0, 0, 10, 0);
+
+            DockPanel searchDock = new DockPanel();
+            UIElement lupaIcon = UiTheme.CreateSearchIcon();
+            DockPanel.SetDock(lupaIcon, Dock.Left);
+            searchDock.Children.Add(lupaIcon);
+
+            Grid searchInner = new Grid();
+            TextBlock searchPlaceholder = new TextBlock();
+            searchPlaceholder.Text = "Filtrar portas, URLs ou anotações do SmartView...";
+            searchPlaceholder.Foreground = UiTheme.TextMuted;
+            searchPlaceholder.FontSize = 13;
+            searchPlaceholder.VerticalAlignment = VerticalAlignment.Center;
+            searchPlaceholder.IsHitTestVisible = false;
+
+            TextBox txtSearch = new TextBox();
+            txtSearch.Background = Brushes.Transparent;
+            txtSearch.Foreground = UiTheme.TextPrimary;
+            txtSearch.CaretBrush = UiTheme.TextPrimary;
+            txtSearch.BorderThickness = new Thickness(0);
+            txtSearch.FontSize = 13;
+            txtSearch.VerticalAlignment = VerticalAlignment.Center;
+            txtSearch.TextChanged += delegate
+            {
+                searchPlaceholder.Visibility = string.IsNullOrEmpty(txtSearch.Text) ? Visibility.Visible : Visibility.Collapsed;
+                _svFilterText = txtSearch.Text;
+                RenderizarCardsSmartView();
+            };
+
+            searchInner.Children.Add(searchPlaceholder);
+            searchInner.Children.Add(txtSearch);
+            searchDock.Children.Add(searchInner);
+            searchContainer.Child = searchDock;
+            Grid.SetColumn(searchContainer, 1);
+            toolGrid.Children.Add(searchContainer);
+
+            // 3. Ferramentas à Direita: Card/Lista (anexo do usuário) + Atualizar (sem 3 pontos no topo)
+            StackPanel rightTools = new StackPanel();
+            rightTools.Orientation = Orientation.Horizontal;
+            rightTools.VerticalAlignment = VerticalAlignment.Center;
+
+            Border toggleSegmented = UiTheme.CreateViewModeSegmentedToggle(_isCardsViewMode, delegate(bool isCards)
+            {
+                _isCardsViewMode = isCards;
+                RenderizarCardsSmartView();
+            });
+            toggleSegmented.Margin = new Thickness(0, 0, 10, 0);
+            rightTools.Children.Add(toggleSegmented);
+
+            System.Windows.Shapes.Path spinIcon = (System.Windows.Shapes.Path)UiTheme.CreateThinRefreshIcon(UiTheme.AccentLightBlue);
+            Button btnReload = UiTheme.CreateFramelessIconButton(spinIcon, "Recarregar e testar portas 7017 e 7019");
+            btnReload.Click += delegate
+            {
+                RotateTransform rt = spinIcon.RenderTransform as RotateTransform;
+                if (rt == null) { rt = new RotateTransform(0); spinIcon.RenderTransform = rt; }
+                DoubleAnimation spin = new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(650));
+                spin.EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut };
+                rt.BeginAnimation(RotateTransform.AngleProperty, spin);
+                VerificarPortasSmartViewAsync();
+            };
+            rightTools.Children.Add(btnReload);
+
+            Grid.SetColumn(rightTools, 2);
+            toolGrid.Children.Add(rightTools);
+
+            toolbar.Child = toolGrid;
+            return toolbar;
+        }
+
+        private Border BuildSmartViewInfoBar()
+        {
+            Border infoBar = new Border();
+            infoBar.Padding = new Thickness(24, 8, 24, 0);
+
+            DockPanel dp = new DockPanel();
+
+            // Esquerda: Pasta do SmartView com botão copiar ao lado (Item 12)
+            StackPanel leftStack = new StackPanel();
+            leftStack.Orientation = Orientation.Horizontal;
+            leftStack.VerticalAlignment = VerticalAlignment.Center;
+            DockPanel.SetDock(leftStack, Dock.Left);
+
+            _svFolderLabel = new TextBlock();
+            string folderTxt = string.IsNullOrEmpty(_smartViewDetectedFolder) ? "Pasta: Localizando pelas portas..." : "Pasta: " + _smartViewDetectedFolder;
+            _svFolderLabel.Text = folderTxt;
+            _svFolderLabel.Foreground = UiTheme.TextMuted;
+            _svFolderLabel.FontSize = 12;
+            _svFolderLabel.Cursor = Cursors.Hand;
+            _svFolderLabel.ToolTip = "Clique para abrir no Windows Explorer";
+            _svFolderLabel.MouseLeftButtonUp += delegate
+            {
+                if (!string.IsNullOrEmpty(_smartViewDetectedFolder) && Directory.Exists(_smartViewDetectedFolder))
+                    AbrirNoExplorer(_smartViewDetectedFolder);
+            };
+            leftStack.Children.Add(_svFolderLabel);
+
+            Button btnCopyFolder = UiTheme.CreateFramelessIconButton(UiTheme.CreateCopyIcon(UiTheme.TextMuted, 12), "Copiar caminho da pasta");
+            btnCopyFolder.Margin = new Thickness(6, 0, 0, 0);
+            btnCopyFolder.Click += delegate
+            {
+                try { Clipboard.SetText(_smartViewDetectedFolder ?? ""); } catch { }
+            };
+            leftStack.Children.Add(btnCopyFolder);
+            dp.Children.Add(leftStack);
+
+            // Direita: Atualizado às HH:mm:ss (Item 14: sem ativos/inativos no SmartView)
+            _svLastUpdateLabel = new TextBlock();
+            _svLastUpdateLabel.Text = string.Format("Atualizado às {0:HH:mm:ss}", DateTime.Now);
+            _svLastUpdateLabel.Foreground = UiTheme.TextMuted;
+            _svLastUpdateLabel.FontSize = 12;
+            _svLastUpdateLabel.VerticalAlignment = VerticalAlignment.Center;
+            _svLastUpdateLabel.HorizontalAlignment = HorizontalAlignment.Right;
+            DockPanel.SetDock(_svLastUpdateLabel, Dock.Right);
+            dp.Children.Add(_svLastUpdateLabel);
+
+            infoBar.Child = dp;
+            return infoBar;
+        }
+
+        private void RenderizarCardsSmartView()
+        {
+            if (_svScrollViewer == null) return;
+
+            string filtro = (_svFilterText ?? "").Trim().ToLowerInvariant();
+
+            string nota7017 = "";
+            _smartViewNotes.TryGetValue(7017, out nota7017);
+            bool match7017 = string.IsNullOrEmpty(filtro) ||
+                             "7017".Contains(filtro) ||
+                             "smartview home".Contains(filtro) ||
+                             (!string.IsNullOrEmpty(nota7017) && nota7017.ToLowerInvariant().Contains(filtro));
+
+            string nota7019 = "";
+            _smartViewNotes.TryGetValue(7019, out nota7019);
+            bool match7019 = string.IsNullOrEmpty(filtro) ||
+                             "7019".Contains(filtro) ||
+                             "smartview diagnostic".Contains(filtro) ||
+                             (!string.IsNullOrEmpty(nota7019) && nota7019.ToLowerInvariant().Contains(filtro));
+
+            // Card 7017
+            _svCard7017 = BuildPortCard(
+                _smartViewPort7017,
+                "SmartView Home",
+                "http://localhost:7017",
+                "Serviço central de execução e processamento de relatórios SmartView",
+                ref _svCard7017Badge,
+                ref _svCard7017StatusText,
+                ref _svCard7017LatencyText,
+                "http://localhost:7017");
+
+            // Card 7019
+            _svCard7019 = BuildPortCard(
+                _smartViewPort7019,
+                "SmartView Diagnostic",
+                "http://localhost:7019/diagnostic",
+                "Diagnóstico e status interno da infraestrutura SmartView",
+                ref _svCard7019Badge,
+                ref _svCard7019StatusText,
+                ref _svCard7019LatencyText,
+                "http://localhost:7019/diagnostic");
+
+            _svCard7017.Visibility = match7017 ? Visibility.Visible : Visibility.Collapsed;
+            _svCard7019.Visibility = match7019 ? Visibility.Visible : Visibility.Collapsed;
+
+            if (_isCardsViewMode)
+            {
+                // Modo Cards: Grid com 2 colunas
+                Grid grid = new Grid();
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                Grid.SetColumn(_svCard7017, 0);
+                grid.Children.Add(_svCard7017);
+
+                Grid.SetColumn(_svCard7019, 2);
+                grid.Children.Add(_svCard7019);
+
+                _svCardsContainer = grid;
+                _svScrollViewer.Content = _svCardsContainer;
+            }
+            else
+            {
+                // Modo Lista: StackPanel vertical (largura total)
+                StackPanel sp = new StackPanel();
+                _svCard7017.Margin = new Thickness(0, 0, 0, 10);
+                _svCard7019.Margin = new Thickness(0, 0, 0, 10);
+                sp.Children.Add(_svCard7017);
+                sp.Children.Add(_svCard7019);
+
+                _svCardsContainer = sp;
+                _svScrollViewer.Content = _svCardsContainer;
+            }
+
+            AtualizarVisualPortasPadrao();
+        }
+
+        private Border BuildPortCard(
+            SmartViewPortStatus portStatus,
+            string customTitle,
+            string urlPath,
+            string description,
+            ref Border badgeRef,
+            ref TextBlock statusTextRef,
+            ref TextBlock latencyTextRef,
+            string targetUrl)
+        {
+            Border card = new Border();
+            card.Background = UiTheme.BgCard;
+            card.BorderBrush = UiTheme.BorderSubtle;
+            card.BorderThickness = new Thickness(1);
+            card.CornerRadius = new CornerRadius(12);
+            card.Padding = new Thickness(16, 14, 16, 14);
+
+            Grid cardGrid = new Grid();
+            cardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            cardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            // 4 Colunas no grid principal: [Badge Status + Comentario] | [Info + URL + Latencia] | [Botao Abrir Link] | [3 Pontos]
+            cardGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            cardGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            cardGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            cardGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            // ================= COLUNA 0: STATUS BADGE RUNNING / STOPPED NO CANTO ESQUERDO (Item 4) =================
+            StackPanel leftStack = new StackPanel();
+            leftStack.VerticalAlignment = VerticalAlignment.Center;
+            leftStack.Margin = new Thickness(0, 0, 14, 0);
+
+            Border statusBadge = new Border();
+            statusBadge.CornerRadius = new CornerRadius(10);
+            statusBadge.Padding = new Thickness(8, 2, 8, 2);
+            statusBadge.Background = portStatus.IsOpen ? UiTheme.AccentGreen : UiTheme.BrushFromHex("#475569");
+            statusBadge.HorizontalAlignment = HorizontalAlignment.Left;
+
+            TextBlock statusText = new TextBlock();
+            statusText.Text = portStatus.IsOpen ? "RUNNING" : "STOPPED";
+            statusText.FontSize = 10;
+            statusText.FontWeight = FontWeights.Bold;
+            statusText.Foreground = Brushes.White;
+            statusBadge.Child = statusText;
+            leftStack.Children.Add(statusBadge);
+
+            badgeRef = statusBadge;
+            statusTextRef = statusText;
+
+            // Botão Comentário abaixo do RUNNING (Item 4 & 11)
+            Button btnComment = UiTheme.CreateActionButton(
+                UiTheme.CreateCommentBubbleIcon(UiTheme.TextSecondary, 13),
+                UiTheme.NeutralBtnHex,
+                UiTheme.NeutralBtnHoverHex);
+            btnComment.Width = 34;
+            btnComment.Height = 26;
+            btnComment.Margin = new Thickness(0, 6, 0, 0);
+            btnComment.ToolTip = "Adicionar / editar comentário (máx 100 caracteres)";
+            btnComment.Click += delegate { EditarNotaSmartView(portStatus.Port, customTitle); };
+            leftStack.Children.Add(btnComment);
+
+            Grid.SetRow(leftStack, 0);
+            Grid.SetColumn(leftStack, 0);
+            cardGrid.Children.Add(leftStack);
+
+            // ================= COLUNA 1: INFO (PORTA, TITULO, URL, DESCRICAO, LATENCIA) =================
+            StackPanel infoStack = new StackPanel();
+            infoStack.VerticalAlignment = VerticalAlignment.Center;
+            infoStack.Margin = new Thickness(0, 0, 12, 0);
+
+            // Linha com Porta + Título + Copiar (Item 12)
+            WrapPanel titleWrap = new WrapPanel();
+            titleWrap.VerticalAlignment = VerticalAlignment.Center;
+
+            Border portPill = new Border();
+            portPill.Background = UiTheme.PrimaryBlueBrush;
+            portPill.CornerRadius = new CornerRadius(6);
+            portPill.Padding = new Thickness(7, 2, 7, 2);
+            portPill.Margin = new Thickness(0, 0, 8, 0);
+
+            TextBlock portPillTxt = new TextBlock();
+            portPillTxt.Text = ":" + portStatus.Port;
+            portPillTxt.FontSize = 11;
+            portPillTxt.FontWeight = FontWeights.Bold;
+            portPillTxt.Foreground = Brushes.White;
+            portPill.Child = portPillTxt;
+            titleWrap.Children.Add(portPill);
+
+            TextBlock titleLbl = new TextBlock();
+            titleLbl.Text = customTitle ?? portStatus.Label;
+            titleLbl.FontSize = 14;
+            titleLbl.FontWeight = FontWeights.Bold;
+            titleLbl.Foreground = UiTheme.TextPrimary;
+            titleLbl.VerticalAlignment = VerticalAlignment.Center;
+            titleWrap.Children.Add(titleLbl);
+
+            Button btnCopyTitle = UiTheme.CreateFramelessIconButton(
+                UiTheme.CreateCopyIcon(UiTheme.TextMuted, 13),
+                "Copiar endereço");
+            btnCopyTitle.Margin = new Thickness(6, 0, 0, 0);
+            btnCopyTitle.Click += delegate
+            {
+                try { Clipboard.SetText(targetUrl ?? urlPath ?? ""); } catch { }
+            };
+            titleWrap.Children.Add(btnCopyTitle);
+
+            infoStack.Children.Add(titleWrap);
+
+            // URL Clicável
+            TextBlock lblUrl = new TextBlock();
+            lblUrl.Text = urlPath ?? ("http://localhost:" + portStatus.Port);
+            lblUrl.FontSize = 11;
+            lblUrl.Foreground = UiTheme.AccentLightBlue;
+            lblUrl.Cursor = Cursors.Hand;
+            lblUrl.Margin = new Thickness(0, 3, 0, 4);
+            lblUrl.ToolTip = "Clique para abrir: " + lblUrl.Text;
+            lblUrl.MouseLeftButtonUp += delegate
+            {
+                try { Process.Start(lblUrl.Text); } catch { }
+            };
+            infoStack.Children.Add(lblUrl);
+
+            // Descrição da porta
+            TextBlock desc = new TextBlock();
+            desc.Text = description ?? portStatus.Description;
+            desc.FontSize = 12;
+            desc.Foreground = UiTheme.TextSecondary;
+            desc.Margin = new Thickness(0, 0, 0, 4);
+            infoStack.Children.Add(desc);
+
+            // Latência TCP
+            TextBlock latencyText = new TextBlock();
+            latencyText.Text = portStatus.IsOpen
+                ? string.Format("Latência: {0}ms • Protocolo TCP", portStatus.LatencyMs)
+                : "Serviço não detectado na porta";
+            latencyText.FontSize = 11;
+            latencyText.Foreground = portStatus.IsOpen ? UiTheme.AccentLightBlue : UiTheme.TextMuted;
+            infoStack.Children.Add(latencyText);
+            latencyTextRef = latencyText;
+
+            Grid.SetRow(infoStack, 0);
+            Grid.SetColumn(infoStack, 1);
+            cardGrid.Children.Add(infoStack);
+
+            // ================= COLUNA 2: BOTAO ABRIR COMPACTO HIPERLINKADO (Item 5) =================
+            StackPanel accessStack = new StackPanel();
+            accessStack.Orientation = Orientation.Horizontal;
+            accessStack.VerticalAlignment = VerticalAlignment.Center;
+            accessStack.Margin = new Thickness(0, 0, 10, 0);
+
+            Button btnLink = UiTheme.CreateWebLinkButton("Abrir", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
+            btnLink.ToolTip = "Abrir " + (targetUrl ?? urlPath);
+            btnLink.Click += delegate
+            {
+                try { Process.Start(targetUrl ?? urlPath ?? string.Format("http://localhost:{0}", portStatus.Port)); } catch { }
+            };
+            accessStack.Children.Add(btnLink);
+
+            Grid.SetRow(accessStack, 0);
+            Grid.SetColumn(accessStack, 2);
+            cardGrid.Children.Add(accessStack);
+
+            // ================= COLUNA 3: TRES PONTOS VERTICAIS NO CARD (Item 12: sem copiar) =================
+            Button btnDots = UiTheme.CreateFramelessIconButton(
+                UiTheme.CreateThreeDotsIcon(UiTheme.TextSecondary, 16),
+                "Mais opções do SmartView");
+            btnDots.VerticalAlignment = VerticalAlignment.Center;
+
+            ContextMenu menuDots = UiTheme.CreateDarkContextMenu();
+
+            menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Logs e Monitoramento", UiTheme.CreateCopyIcon(UiTheme.AccentLightBlue, 14), delegate
+            {
+                string logsDir = ObterDiretorioLogsSmartView();
+                AbrirTelaCompletaLogs("SmartView", logsDir, _smartViewPid, "smartview");
+            }));
+
+            menuDots.Items.Add(new Separator { Background = UiTheme.BorderSubtle, Margin = new Thickness(4, 2, 4, 2) });
+
+            menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Abrir pasta no Explorer", UiTheme.CreateFolderIcon(UiTheme.TextSecondary, 14), delegate
+            {
+                if (!string.IsNullOrEmpty(_smartViewDetectedFolder) && Directory.Exists(_smartViewDetectedFolder))
+                    AbrirNoExplorer(_smartViewDetectedFolder);
+            }));
+
+            btnDots.ContextMenu = menuDots;
+            btnDots.Click += delegate
+            {
+                menuDots.PlacementTarget = btnDots;
+                menuDots.Placement = PlacementMode.Bottom;
+                menuDots.IsOpen = true;
+            };
+
+            Grid.SetRow(btnDots, 0);
+            Grid.SetColumn(btnDots, 3);
+            cardGrid.Children.Add(btnDots);
+
+            // ================= LINHA 1: BANNER DE NOTA / COMENTARIO (Item 4 & 11) =================
+            string noteText = "";
+            if (_smartViewNotes.TryGetValue(portStatus.Port, out noteText) && !string.IsNullOrWhiteSpace(noteText))
+            {
+                Border noteBanner = new Border();
+                noteBanner.Background = UiTheme.NoteBannerBg;
+                noteBanner.BorderBrush = UiTheme.BorderSubtle;
+                noteBanner.BorderThickness = new Thickness(1);
+                noteBanner.CornerRadius = new CornerRadius(7);
+                noteBanner.Padding = new Thickness(10, 6, 10, 6);
+                noteBanner.Margin = new Thickness(0, 10, 0, 0);
+                noteBanner.Cursor = Cursors.Hand;
+                noteBanner.ToolTip = "Clique para editar anotação";
+                noteBanner.MouseLeftButtonUp += delegate { EditarNotaSmartView(portStatus.Port, customTitle); };
+
+                TextBlock noteLbl = new TextBlock();
+                noteLbl.Text = "💬 " + noteText;
+                noteLbl.Foreground = UiTheme.TextPrimary;
+                noteLbl.FontSize = 12;
+                noteLbl.TextWrapping = TextWrapping.Wrap;
+                noteBanner.Child = noteLbl;
+
+                Grid.SetRow(noteBanner, 1);
+                Grid.SetColumn(noteBanner, 0);
+                Grid.SetColumnSpan(noteBanner, 4);
+                cardGrid.Children.Add(noteBanner);
+            }
+
+            card.Child = cardGrid;
+            return card;
+        }
+
+        private void EditarNotaSmartView(int port, string label)
+        {
+            string atual = "";
+            _smartViewNotes.TryGetValue(port, out atual);
+
+            Window dlg = new Window();
+            dlg.Title = "Anotação — " + label;
+            dlg.Icon = TotvsLogo.CreateTotvsWindowImageSource(_cachedSvgPath);
+            dlg.Owner = this;
+            dlg.Width = 440;
+            dlg.SizeToContent = SizeToContent.Height;
+            dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            dlg.WindowStyle = WindowStyle.None;
+            dlg.ResizeMode = ResizeMode.NoResize;
+            dlg.Background = UiTheme.BgHeader;
+            dlg.FontFamily = new FontFamily("Segoe UI");
+            UiTheme.ApplyWindowChromeState(dlg, false);
+
+            Border outer = new Border();
+            outer.Background = UiTheme.BgHeader;
+            outer.BorderBrush = UiTheme.BorderSubtle;
+            outer.BorderThickness = new Thickness(1);
+            outer.CornerRadius = new CornerRadius(12);
+            outer.Padding = new Thickness(20, 16, 20, 18);
+            outer.MouseLeftButtonDown += delegate(object s, MouseButtonEventArgs e)
+            {
+                if (e.ClickCount == 1)
+                {
+                    try { dlg.DragMove(); } catch { }
+                }
+            };
+
+            StackPanel stack = new StackPanel();
+
+            DockPanel topRow = new DockPanel();
+            topRow.Margin = new Thickness(0, 0, 0, 10);
+            Button btnClose = UiTheme.CreateWindowButton("✕", "#DC2626");
+            btnClose.Width = 28;
+            btnClose.Height = 26;
+            DockPanel.SetDock(btnClose, Dock.Right);
+            btnClose.Click += delegate { dlg.Close(); };
+            topRow.Children.Add(btnClose);
+
+            TextBlock lblTitle = new TextBlock();
+            lblTitle.Text = "Anotação para " + label + " (:" + port + ")";
+            lblTitle.Foreground = UiTheme.TextPrimary;
+            lblTitle.FontSize = 14;
+            lblTitle.FontWeight = FontWeights.Bold;
+            lblTitle.VerticalAlignment = VerticalAlignment.Center;
+            topRow.Children.Add(lblTitle);
+            stack.Children.Add(topRow);
+
+            TextBox txtNote = new TextBox();
+            txtNote.Text = atual ?? "";
+            txtNote.MaxLength = 100;
+            txtNote.AcceptsReturn = true;
+            txtNote.TextWrapping = TextWrapping.Wrap;
+            txtNote.Height = 84;
+            txtNote.Foreground = UiTheme.TextPrimary;
+            txtNote.Background = UiTheme.BgInput;
+            txtNote.CaretBrush = UiTheme.TextPrimary;
+            txtNote.BorderBrush = UiTheme.BorderSubtle;
+            txtNote.BorderThickness = new Thickness(1);
+            txtNote.Padding = new Thickness(8, 6, 8, 6);
+            txtNote.FontSize = 12;
+            txtNote.Margin = new Thickness(0, 0, 0, 8);
+            stack.Children.Add(txtNote);
+
+            DockPanel footerRow = new DockPanel();
+            footerRow.Margin = new Thickness(0, 0, 0, 6);
+
+            TextBlock lblCount = new TextBlock();
+            lblCount.Text = string.Format("{0}/100 caracteres", (txtNote.Text ?? "").Length);
+            lblCount.Foreground = UiTheme.TextMuted;
+            lblCount.FontSize = 11;
+            lblCount.VerticalAlignment = VerticalAlignment.Center;
+            DockPanel.SetDock(lblCount, Dock.Left);
+            footerRow.Children.Add(lblCount);
+
+            txtNote.TextChanged += delegate
+            {
+                lblCount.Text = string.Format("{0}/100 caracteres", (txtNote.Text ?? "").Length);
+            };
+
+            StackPanel btnsRow = new StackPanel();
+            btnsRow.Orientation = Orientation.Horizontal;
+            btnsRow.HorizontalAlignment = HorizontalAlignment.Right;
+            DockPanel.SetDock(btnsRow, Dock.Right);
+
+            Button btnClear = UiTheme.CreateActionButton("Limpar", UiTheme.NeutralBtnHex, "#DC2626");
+            btnClear.Margin = new Thickness(0, 0, 8, 0);
+            btnClear.Click += delegate
+            {
+                _smartViewNotes.Remove(port);
+                SalvarNotasSmartViewAppData();
+                dlg.Close();
+                RenderizarCardsSmartView();
+            };
+
+            Button btnSave = UiTheme.CreateActionButton("Salvar", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
+            btnSave.Click += delegate
+            {
+                string val = (txtNote.Text ?? "").Trim();
+                if (string.IsNullOrEmpty(val))
+                    _smartViewNotes.Remove(port);
+                else
+                    _smartViewNotes[port] = val;
+
+                SalvarNotasSmartViewAppData();
+                dlg.Close();
+                RenderizarCardsSmartView();
+            };
+
+            btnsRow.Children.Add(btnClear);
+            btnsRow.Children.Add(btnSave);
+            footerRow.Children.Add(btnsRow);
+            stack.Children.Add(footerRow);
+
+            outer.Child = stack;
+            dlg.Content = outer;
+            dlg.ShowDialog();
+        }
+
+        private string ObterDiretorioLogsSmartView()
+        {
+            string root = _smartViewDetectedFolder;
+            if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
+            {
+                if (Directory.Exists(@"C:\TOTVS\smart-view"))
+                    root = @"C:\TOTVS\smart-view";
+            }
+
+            if (!string.IsNullOrEmpty(root) && Directory.Exists(root))
+            {
+                string directLogs = Path.Combine(root, "logs");
+                if (Directory.Exists(directLogs)) return directLogs;
+
+                string deploysDir = Path.Combine(root, "deployments");
+                if (Directory.Exists(deploysDir))
+                {
+                    try
+                    {
+                        foreach (string sub in Directory.GetDirectories(deploysDir))
+                        {
+                            string logSub = Path.Combine(sub, "logs");
+                            if (Directory.Exists(logSub)) return logSub;
+                            if (Directory.GetFiles(sub, "*.log").Length > 0) return sub;
+                        }
+                    }
+                    catch { }
+                }
+
+                return root;
+            }
+
+            return _smartViewDetectedFolder;
+        }
+
+        private void VerificarPortasSmartViewAsync()
+        {
+            if (_isCheckingSmartView) return;
+            _isCheckingSmartView = true;
+
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                TestarPortaTcp(_smartViewPort7017);
+                TestarPortaTcp(_smartViewPort7019);
+
+                // Detecta pasta e PID do SmartView pela porta (Item 7)
+                int pid = NativeWin32.GetProcessIdByTcpPort(7017);
+                if (pid == 0) pid = NativeWin32.GetProcessIdByTcpPort(7019);
+                _smartViewPid = pid;
+                if (pid > 0 && string.IsNullOrEmpty(_smartViewDetectedFolder))
+                {
+                    string exePath = NativeWin32.GetProcessImagePathSafe(pid);
+                    if (!string.IsNullOrEmpty(exePath))
+                    {
+                        _smartViewDetectedFolder = Path.GetDirectoryName(exePath);
+                        SalvarSmartViewPrefFolder(_smartViewDetectedFolder);
+                    }
+                }
+
+                _isCheckingSmartView = false;
+
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    AtualizarVisualPortasPadrao();
+                    if (_svFolderLabel != null)
+                    {
+                        _svFolderLabel.Text = string.IsNullOrEmpty(_smartViewDetectedFolder)
+                            ? "Pasta: Localizando pelas portas..."
+                            : "Pasta: " + _smartViewDetectedFolder;
+                    }
+                    if (_svLastUpdateLabel != null)
+                    {
+                        _svLastUpdateLabel.Text = string.Format("Atualizado às {0:HH:mm:ss}", DateTime.Now);
+                    }
+                }));
+            });
+        }
+
+        private void TestarPortaTcp(SmartViewPortStatus port)
+        {
+            string host = string.IsNullOrEmpty(port.Host) ? "127.0.0.1" : port.Host;
+            if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase))
+                host = "127.0.0.1";
+
+            Stopwatch sw = Stopwatch.StartNew();
+            bool connected = false;
+            string err = "";
+
+            try
+            {
+                using (TcpClient client = new TcpClient())
+                {
+                    IAsyncResult ar = client.BeginConnect(host, port.Port, null, null);
+                    bool success = ar.AsyncWaitHandle.WaitOne(800, false);
+                    if (success && client.Connected)
+                    {
+                        client.EndConnect(ar);
+                        connected = true;
+                    }
+                    else
+                    {
+                        connected = false;
+                        err = "Timeout (800ms)";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                connected = false;
+                err = ex.Message;
+            }
+            finally
+            {
+                sw.Stop();
+            }
+
+            port.IsOpen = connected;
+            port.LatencyMs = connected ? sw.ElapsedMilliseconds : -1;
+            port.ErrorMessage = err;
+            port.LastChecked = DateTime.Now;
+        }
+
+        private void AtualizarVisualPortasPadrao()
+        {
+            AtualizarBadgeEStatus(_smartViewPort7017, _svCard7017Badge, _svCard7017StatusText, _svCard7017LatencyText);
+            AtualizarBadgeEStatus(_smartViewPort7019, _svCard7019Badge, _svCard7019StatusText, _svCard7019LatencyText);
+        }
+
+        private void AtualizarBadgeEStatus(SmartViewPortStatus port, Border badge, TextBlock statusText, TextBlock latencyText)
+        {
+            if (badge != null)
+                badge.Background = port.IsOpen ? UiTheme.AccentGreen : UiTheme.BrushFromHex("#475569");
+
+            if (statusText != null)
+                statusText.Text = port.IsOpen ? "RUNNING" : "STOPPED";
+
+            if (latencyText != null)
+            {
+                latencyText.Text = port.IsOpen
+                    ? string.Format("Latência: {0}ms • Protocolo TCP", port.LatencyMs)
+                    : "Serviço não detectado na porta";
+                latencyText.Foreground = port.IsOpen ? UiTheme.AccentLightBlue : UiTheme.TextMuted;
+            }
+        }
+    }
+}

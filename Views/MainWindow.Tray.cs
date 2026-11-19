@@ -56,7 +56,11 @@ namespace TOTVSHub
 
             _trayIcon = new System.Windows.Forms.NotifyIcon();
             _trayIcon.Icon = TotvsLogo.CreateTotvsTrayIcon(_cachedSvgPath);
+#if CORP
+            _trayIcon.Text = "TOTVSHub Corp";
+#else
             _trayIcon.Text = "TOTVSHub";
+#endif
             _trayIcon.Visible = true;
             _trayIcon.DoubleClick += delegate { RestaurarJanelaPrincipal(); };
 
@@ -184,7 +188,11 @@ namespace TOTVSHub
             if (_trayMenu == null) return;
             _trayMenu.Items.Clear();
 
+#if CORP
+            var openItem = new System.Windows.Forms.ToolStripMenuItem("Abrir TOTVSHub Corp");
+#else
             var openItem = new System.Windows.Forms.ToolStripMenuItem("Abrir TOTVSHub");
+#endif
             openItem.Font = new System.Drawing.Font(_trayMenu.Font, System.Drawing.FontStyle.Bold);
             openItem.ForeColor = Color.White;
             openItem.Click += delegate { RestaurarJanelaPrincipal(); };

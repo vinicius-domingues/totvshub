@@ -22,7 +22,11 @@ namespace TOTVSHub
             ResultChoice = DialogChoice.Cancel;
             bool toggleState = initialToggleState;
 
+#if CORP
+            Title = title ?? "TOTVSHub Corp";
+#else
             Title = title ?? "TOTVSHub";
+#endif
             Icon = TotvsLogo.CreateTotvsWindowImageSource(null);
             Width = 460;
             SizeToContent = SizeToContent.Height;
@@ -83,7 +87,11 @@ namespace TOTVSHub
             badgeStack.Children.Add(miniLogo);
 
             TextBlock iconTxt = new TextBlock();
+#if CORP
+            iconTxt.Text = "TOTVSHub Corp";
+#else
             iconTxt.Text = "TOTVSHub";
+#endif
             iconTxt.Foreground = Brushes.White;
             iconTxt.FontWeight = FontWeights.Bold;
             iconTxt.FontSize = 11;
@@ -139,6 +147,19 @@ namespace TOTVSHub
                     toggleState = val;
                 });
                 DockPanel.SetDock(toggleCtrl, Dock.Right);
+
+                toggleCard.Cursor = Cursors.Hand;
+                toggleCard.MouseLeftButtonDown += delegate(object s, MouseButtonEventArgs e)
+                {
+                    e.Handled = true;
+                };
+                toggleCard.MouseLeftButtonUp += delegate(object s, MouseButtonEventArgs e)
+                {
+                    e.Handled = true;
+                    FrameworkElement fe = toggleCtrl as FrameworkElement;
+                    Action doToggle = fe != null ? fe.Tag as Action : null;
+                    if (doToggle != null) doToggle();
+                };
 
                 TextBlock toggleText = new TextBlock();
                 toggleText.Text = togglePrompt;
