@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.IO;
 using System.Text;
@@ -17,7 +17,6 @@ namespace TOTVSHub
     {
         public const string DownloadsTotvsWhiteSvgPath = @"C:\Users\vinicius.domingues\Downloads\totvs_white.svg";
 
-        // Conteudo exato do arquivo oficial totvs_white.svg embarcado no codigo
         public const string EmbeddedTotvsWhiteSvg =
 @"<?xml version=""1.0"" standalone=""no""?>
 <!DOCTYPE svg PUBLIC ""-//W3C//DTD SVG 20010904//EN""
@@ -51,7 +50,6 @@ fill=""#ffffff"" stroke=""none"">
 </g>
 </svg>";
 
-        // Garante que o SVG oficial totvs_white.svg esteja salvo em %APPDATA%\TOTVSHub\totvs_white.svg
         public static string EnsureTotvsWhiteSvgInAppData(string appDataDir)
         {
             string cachedSvgPath = Path.Combine(appDataDir, "totvs_white.svg");
@@ -100,7 +98,6 @@ fill=""#ffffff"" stroke=""none"">
 
         private static Geometry _cachedLogoGeometry = null;
 
-        // Extrai e constroi a geometria fiel do totvs_white.svg (aplicando a inversao de eixo Y do Potrace)
         public static Geometry BuildTotvsLogoGeometry(string cachedSvgPath)
         {
             if (_cachedLogoGeometry != null)
@@ -149,39 +146,20 @@ fill=""#ffffff"" stroke=""none"">
             return _cachedLogoGeometry;
         }
 
-        // Renderiza o simbolo vetorial branco do totvs_white.svg para o topo e telas do app
         public static UIElement CreateTotvsWhiteSvgLogo(string cachedSvgPath, double targetSize)
         {
             System.Windows.Shapes.Path logoPath = new System.Windows.Shapes.Path();
             logoPath.Data = BuildTotvsLogoGeometry(cachedSvgPath);
             logoPath.Fill = Brushes.White;
             logoPath.Stretch = Stretch.Uniform;
+            logoPath.Width = targetSize;
+            logoPath.Height = targetSize;
             logoPath.VerticalAlignment = VerticalAlignment.Center;
             logoPath.HorizontalAlignment = HorizontalAlignment.Center;
 
-            if (UiTheme.IsDark)
-            {
-                logoPath.Width = targetSize;
-                logoPath.Height = targetSize;
-                return logoPath;
-            }
-            else
-            {
-                // No tema claro, envolve o logo branco (#FFFFFF) em um badge escuro elegante para manter o logo 100% branco e visivel
-                Border darkBadge = new Border();
-                darkBadge.Width = targetSize + 8;
-                darkBadge.Height = targetSize + 8;
-                darkBadge.CornerRadius = new CornerRadius((targetSize + 8) * 0.24);
-                darkBadge.Background = UiTheme.BrushFromHex("#0F172A");
-                darkBadge.VerticalAlignment = VerticalAlignment.Center;
-                logoPath.Width = targetSize - 2;
-                logoPath.Height = targetSize - 2;
-                darkBadge.Child = logoPath;
-                return darkBadge;
-            }
+            return logoPath;
         }
 
-        // Renderiza o icone oficial em BitmapSource WPF (para Window.Icon, .ico e Bandeja do Windows)
         public static BitmapSource RenderTotvsIconBitmapSource(string cachedSvgPath, int size)
         {
             Grid root = new Grid();
@@ -189,12 +167,18 @@ fill=""#ffffff"" stroke=""none"">
             root.Height = size;
             root.Background = Brushes.Transparent;
 
+            double strokeThickness = Math.Max(1.5, size * 0.045);
+            Brush darkBlueBrush = (SolidColorBrush)(new BrushConverter().ConvertFrom("#0B1E38"));
+
             System.Windows.Shapes.Path logoPath = new System.Windows.Shapes.Path();
             logoPath.Data = BuildTotvsLogoGeometry(cachedSvgPath);
             logoPath.Fill = Brushes.White;
+            logoPath.Stroke = darkBlueBrush;
+            logoPath.StrokeThickness = strokeThickness;
+            logoPath.StrokeLineJoin = PenLineJoin.Round;
             logoPath.Stretch = Stretch.Uniform;
-            logoPath.Width = size * 0.90;
-            logoPath.Height = size * 0.90;
+            logoPath.Width = size * 0.88;
+            logoPath.Height = size * 0.88;
             logoPath.HorizontalAlignment = HorizontalAlignment.Center;
             logoPath.VerticalAlignment = VerticalAlignment.Center;
 
@@ -240,7 +224,6 @@ fill=""#ffffff"" stroke=""none"">
             return RenderTotvsIconBitmapSource(cachedSvgPath, 64);
         }
 
-        // Gera um arquivo .ico multi-resolucao (16, 32, 48, 256 px) fiel ao totvs_white.svg
         public static void WriteMultiSizeIcoFile(string cachedSvgPath, string icoOutputPath)
         {
             int[] sizes = new int[] { 16, 32, 48, 256 };
@@ -261,23 +244,23 @@ fill=""#ffffff"" stroke=""none"">
             using (FileStream fs = new FileStream(icoOutputPath, FileMode.Create, FileAccess.Write))
             using (BinaryWriter bw = new BinaryWriter(fs))
             {
-                // ICONDIR header
-                bw.Write((ushort)0); // Reserved
-                bw.Write((ushort)1); // Type: 1 = ICO
-                bw.Write((ushort)sizes.Length); // Count
+
+                bw.Write((ushort)0);
+                bw.Write((ushort)1);
+                bw.Write((ushort)sizes.Length);
 
                 int offset = 6 + (16 * sizes.Length);
                 for (int i = 0; i < sizes.Length; i++)
                 {
                     int s = sizes[i];
-                    bw.Write((byte)(s >= 256 ? 0 : s)); // Width
-                    bw.Write((byte)(s >= 256 ? 0 : s)); // Height
-                    bw.Write((byte)0);                  // ColorCount
-                    bw.Write((byte)0);                  // Reserved
-                    bw.Write((ushort)1);                // Planes
-                    bw.Write((ushort)32);               // BitCount
-                    bw.Write((uint)pngPayloads[i].Length); // BytesInRes
-                    bw.Write((uint)offset);             // ImageOffset
+                    bw.Write((byte)(s >= 256 ? 0 : s));
+                    bw.Write((byte)(s >= 256 ? 0 : s));
+                    bw.Write((byte)0);
+                    bw.Write((byte)0);
+                    bw.Write((ushort)1);
+                    bw.Write((ushort)32);
+                    bw.Write((uint)pngPayloads[i].Length);
+                    bw.Write((uint)offset);
                     offset += pngPayloads[i].Length;
                 }
 

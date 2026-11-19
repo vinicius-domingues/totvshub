@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,9 +12,7 @@ namespace TOTVSHub
 {
     public partial class MainWindow : Window
     {
-        // =====================================================================
-        // TELA INTEIRA: CONFIGURACOES (COM TODOS OS TOGGLES, LINKS E DOUBLE CHECK)
-        // =====================================================================
+
         private void ShowSettingsView()
         {
             _isInDashboardView = false;
@@ -80,13 +78,11 @@ namespace TOTVSHub
             StackPanel contentStack = new StackPanel();
             contentStack.MaxWidth = 860;
 
-            // --- Secao 1: Aparencia e Sistema (Todos em Toggle) ---
             contentStack.Children.Add(CreateSettingsSectionHeader("Aparência e Comportamento"));
 
             Border cardGeneral = CreateSettingsCard();
             StackPanel genStack = new StackPanel();
 
-            // Toggle: Tema da Interface (Escuro / Claro)
             DockPanel themeRow = new DockPanel();
             themeRow.Margin = new Thickness(0, 0, 0, 14);
             UIElement toggleTheme = UiTheme.CreateModernToggleSwitch(tempDark, "Escuro", "Claro", delegate(bool val)
@@ -102,7 +98,6 @@ namespace TOTVSHub
             themeRow.Children.Add(themeLabels);
             genStack.Children.Add(themeRow);
 
-            // Toggle: Iniciar com o Windows (Recomendado)
             DockPanel startRow = new DockPanel();
             startRow.Margin = new Thickness(0, 0, 0, 14);
             UIElement toggleAutoStart = UiTheme.CreateModernToggleSwitch(tempAutoStart, "Sim", "Não", delegate(bool val)
@@ -118,7 +113,6 @@ namespace TOTVSHub
             startRow.Children.Add(startLabels);
             genStack.Children.Add(startRow);
 
-            // Toggle: Ignorar pastas .old
             DockPanel ignoreOldRow = new DockPanel();
             ignoreOldRow.Margin = new Thickness(0, 0, 0, 14);
             UIElement toggleIgnoreOld = UiTheme.CreateModernToggleSwitch(tempIgnoreOld, "Sim", "Não", delegate(bool val)
@@ -134,23 +128,6 @@ namespace TOTVSHub
             ignoreOldRow.Children.Add(ignoreOldLabels);
             genStack.Children.Add(ignoreOldRow);
 
-            // Toggle: Mostrar usuario que abriu o PID
-            DockPanel showUserRow = new DockPanel();
-            showUserRow.Margin = new Thickness(0, 0, 0, 14);
-            UIElement toggleShowUser = UiTheme.CreateModernToggleSwitch(tempShowUser, "Sim", "Não", delegate(bool val)
-            {
-                tempShowUser = val;
-            });
-            DockPanel.SetDock(toggleShowUser, Dock.Right);
-
-            StackPanel showUserLabels = new StackPanel();
-            showUserLabels.Children.Add(CreateSettingsTitle("Mostrar usuário do processo (PID)"));
-            showUserLabels.Children.Add(CreateSettingsDesc("Exibe nos cards o usuário do Windows que está executando o AppServer"));
-            showUserRow.Children.Add(toggleShowUser);
-            showUserRow.Children.Add(showUserLabels);
-            genStack.Children.Add(showUserRow);
-
-            // Toggle: Ver comentarios no .ini (padrao desmarcado)
             DockPanel showCommentsRow = new DockPanel();
             UIElement toggleShowComments = UiTheme.CreateModernToggleSwitch(tempShowComments, "Sim", "Não", delegate(bool val)
             {
@@ -168,7 +145,6 @@ namespace TOTVSHub
             cardGeneral.Child = genStack;
             contentStack.Children.Add(cardGeneral);
 
-            // --- Secao 2: Tempos de Monitoramento e Abertura ---
             contentStack.Children.Add(CreateSettingsSectionHeader("Tempos de Monitoramento e Abertura"));
 
             Border cardTimers = CreateSettingsCard();
@@ -191,14 +167,13 @@ namespace TOTVSHub
             TextBox txtBrowserSec = CreateNumericSettingBox(_browserDelaySeconds.ToString());
             timersStack.Children.Add(CreateTimerRow(
                 "Atraso para abrir aba no navegador (segundos)",
-                "Tempo de espera após iniciar o AppServer antes de abrir o navegador (padrão: 4s)",
+                "Tempo de espera após iniciar o AppServer antes de abrir o navegador (padrão: 3s)",
                 txtBrowserSec,
                 false));
 
             cardTimers.Child = timersStack;
             contentStack.Children.Add(cardTimers);
 
-            // --- Secao 3: Botoes de Acesso Rapido (Formulas de Link ao lado de Protheus e REST) ---
             contentStack.Children.Add(CreateSettingsSectionHeader("Botões de Acesso Rápido (Links por Fórmula)"));
 
             Border cardLinks = CreateSettingsCard();
@@ -208,7 +183,6 @@ namespace TOTVSHub
             linksHint.Margin = new Thickness(0, 0, 0, 12);
             linksCardStack.Children.Add(linksHint);
 
-            // Exemplo fixo travado em dois inputs idênticos à inclusão de novas fórmulas
             Border exampleBox = new Border();
             exampleBox.Background = UiTheme.BgInput;
             exampleBox.BorderBrush = UiTheme.BorderSubtle;
@@ -227,7 +201,6 @@ namespace TOTVSHub
             exampleGrid.ColumnDefinitions.Add(eg2);
             exampleGrid.ColumnDefinitions.Add(eg3);
 
-            // Coluna 0: Nome no card
             StackPanel exColName = new StackPanel();
             exColName.Margin = new Thickness(0, 0, 8, 0);
 
@@ -248,7 +221,6 @@ namespace TOTVSHub
             Grid.SetColumn(exColName, 0);
             exampleGrid.Children.Add(exColName);
 
-            // Coluna 1: Hyperlink ou fórmula
             StackPanel exColFormula = new StackPanel();
             exColFormula.Margin = new Thickness(0, 0, 8, 0);
 
@@ -269,7 +241,6 @@ namespace TOTVSHub
             Grid.SetColumn(exColFormula, 1);
             exampleGrid.Children.Add(exColFormula);
 
-            // Coluna 2: Selo de bloqueio alinhado na base
             Border lockBadge = new Border();
             lockBadge.Background = UiTheme.TagBg;
             lockBadge.BorderBrush = UiTheme.BorderSubtle;
@@ -290,7 +261,6 @@ namespace TOTVSHub
 
             exampleStack.Children.Add(exampleGrid);
 
-            // Prévia do botão pronto exatamente como aparece no card
             StackPanel exBtnPreviewRow = new StackPanel();
             exBtnPreviewRow.Orientation = Orientation.Horizontal;
             exBtnPreviewRow.VerticalAlignment = VerticalAlignment.Center;
@@ -314,7 +284,6 @@ namespace TOTVSHub
             exampleBox.Child = exampleStack;
             linksCardStack.Children.Add(exampleBox);
 
-            // Lista editavel dos botoes criados pelo usuario
             StackPanel userLinksPanel = new StackPanel();
             linksCardStack.Children.Add(userLinksPanel);
 
@@ -381,7 +350,6 @@ namespace TOTVSHub
                     updateBtnPreview();
                     userBtnPreviewRow.Children.Add(userBtnHost);
 
-                    // Coluna 0: Nome no card
                     StackPanel colName = new StackPanel();
                     colName.Margin = new Thickness(0, 0, 8, 0);
 
@@ -405,7 +373,6 @@ namespace TOTVSHub
                     Grid.SetColumn(colName, 0);
                     editFieldsGrid.Children.Add(colName);
 
-                    // Coluna 1: Hyperlink ou fórmula
                     StackPanel colFormula = new StackPanel();
                     colFormula.Margin = new Thickness(0, 0, 8, 0);
 
@@ -442,7 +409,6 @@ namespace TOTVSHub
 
             renderUserLinks();
 
-            // Formulario para adicionar novo botao personalizado
             Grid addLinkGrid = new Grid();
             addLinkGrid.Margin = new Thickness(0, 8, 0, 0);
             ColumnDefinition alc1 = new ColumnDefinition(); alc1.Width = new GridLength(160);
@@ -452,7 +418,6 @@ namespace TOTVSHub
             addLinkGrid.ColumnDefinitions.Add(alc2);
             addLinkGrid.ColumnDefinitions.Add(alc3);
 
-            // Coluna 0: Nome no card
             StackPanel addColName = new StackPanel();
             addColName.Margin = new Thickness(0, 0, 8, 0);
 
@@ -466,11 +431,11 @@ namespace TOTVSHub
 
             TextBox txtNewBtnLabel;
             FrameworkElement boxNewBtnLabel = CreateTextSettingBoxContainer("Digite aqui", out txtNewBtnLabel);
+            txtNewBtnLabel.Text = "Digite aqui";
             addColName.Children.Add(boxNewBtnLabel);
             Grid.SetColumn(addColName, 0);
             addLinkGrid.Children.Add(addColName);
 
-            // Coluna 1: Hyperlink ou fórmula
             StackPanel addColFormula = new StackPanel();
             addColFormula.Margin = new Thickness(0, 0, 8, 0);
 
@@ -506,7 +471,7 @@ namespace TOTVSHub
 
                 tempLinks.Add(new CustomLinkButton(lbl, form, false));
                 renderUserLinks();
-                txtNewBtnLabel.Text = "";
+                txtNewBtnLabel.Text = "Digite aqui";
                 txtNewBtnFormula.Text = "";
             };
             Grid.SetColumn(btnAddLink, 2);
@@ -514,7 +479,6 @@ namespace TOTVSHub
 
             linksCardStack.Children.Add(addLinkGrid);
 
-            // Prévia ao vivo do novo botão que está sendo digitado
             StackPanel addBtnPreviewRow = new StackPanel();
             addBtnPreviewRow.Orientation = Orientation.Horizontal;
             addBtnPreviewRow.VerticalAlignment = VerticalAlignment.Center;
@@ -532,7 +496,7 @@ namespace TOTVSHub
             ContentControl addBtnHost = new ContentControl();
             Action updateAddPreview = delegate
             {
-                string previewText = !string.IsNullOrWhiteSpace(txtNewBtnLabel.Text) ? txtNewBtnLabel.Text.Trim() : "Novo Botão";
+                string previewText = !string.IsNullOrWhiteSpace(txtNewBtnLabel.Text) ? txtNewBtnLabel.Text.Trim() : "Digite aqui";
                 Button btnPreview = UiTheme.CreateWebLinkButton(previewText, UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
                 btnPreview.ToolTip = "Prévia de como este botão aparecerá no card";
                 addBtnHost.Content = btnPreview;
@@ -545,13 +509,11 @@ namespace TOTVSHub
             cardLinks.Child = linksCardStack;
             contentStack.Children.Add(cardLinks);
 
-            // --- Secao 4: Regras de Verificacao de Duplicidade (Alertas) ---
             contentStack.Children.Add(CreateSettingsSectionHeader("Regras de Verificação de Duplicidade (Alertas)"));
 
             Border cardRules = CreateSettingsCard();
             StackPanel rulesCardStack = new StackPanel();
 
-            // Toggle: Desconsiderar duplicidade entre ambientes da mesma subpasta (padrao ativado)
             DockPanel sameSubRow = new DockPanel();
             sameSubRow.Margin = new Thickness(0, 0, 0, 14);
             UIElement toggleSameSub = UiTheme.CreateModernToggleSwitch(tempIgnoreSameSubfolder, "Sim", "Não", delegate(bool val)
@@ -625,7 +587,7 @@ namespace TOTVSHub
                     else
                     {
                         TextBlock arrowLbl = new TextBlock();
-                        arrowLbl.Text = "  >  ";
+                        arrowLbl.Text = " : ";
                         arrowLbl.Foreground = UiTheme.TextMuted;
                         arrowLbl.FontWeight = FontWeights.Bold;
                         arrowLbl.FontSize = 13;
@@ -664,7 +626,7 @@ namespace TOTVSHub
             addRuleGrid.Children.Add(txtNewSec);
 
             TextBlock sepArrow = new TextBlock();
-            sepArrow.Text = "  >  ";
+            sepArrow.Text = "  :  ";
             sepArrow.Foreground = UiTheme.TextMuted;
             sepArrow.FontWeight = FontWeights.Bold;
             sepArrow.FontSize = 14;
@@ -711,7 +673,6 @@ namespace TOTVSHub
             cardRules.Child = rulesCardStack;
             contentStack.Children.Add(cardRules);
 
-            // --- Secao 5: Sobre (Restaurar Padrao ao lado esquerdo de Verificar Atualizacoes) ---
             contentStack.Children.Add(CreateSettingsSectionHeader("Sobre"));
 
             Border cardAbout = CreateSettingsCard();
@@ -725,7 +686,6 @@ namespace TOTVSHub
             aboutRightBtns.VerticalAlignment = VerticalAlignment.Center;
             DockPanel.SetDock(aboutRightBtns, Dock.Right);
 
-            // Restaurar padrao a ESQUERDA de Verificar atualizacoes, com Double Check Popup
             Button btnRestoreDefault = UiTheme.CreateActionButton("Restaurar padrão", "#DC2626", "#EF4444");
             btnRestoreDefault.Margin = new Thickness(0, 0, 8, 0);
             btnRestoreDefault.ToolTip = "Desoculta tudo e volta todas as configurações para o padrão";
@@ -751,7 +711,7 @@ namespace TOTVSHub
                 _rootPath = @"C:\bases";
                 _pollIntervalSeconds = 60;
                 _scanBasesMinutes = 60;
-                _browserDelaySeconds = 4;
+                _browserDelaySeconds = 3;
                 _ignoreOldFolders = true;
                 _showProcessUser = true;
                 _showIniComments = false;
@@ -846,7 +806,6 @@ namespace TOTVSHub
             Grid.SetRow(scroll, 1);
             root.Children.Add(scroll);
 
-            // Barra Inferior apenas com Salvar
             Border bottomBar = new Border();
             bottomBar.Background = UiTheme.BgHeader;
             bottomBar.BorderBrush = UiTheme.BorderSubtle;
@@ -915,7 +874,6 @@ namespace TOTVSHub
             _pageHost.Content = root;
         }
 
-        // Renderiza visualmente a formula diferenciando string literal e variavel <SECAO:CHAVE> ou {SECAO:CHAVE}
         private UIElement RenderFormulaVisualPills(string formula)
         {
             WrapPanel sp = new WrapPanel();

@@ -1,7 +1,10 @@
 *.lnk
 *.log
+*.old
 out.txt
 err.txt
 graphify-out/
 .agents/
-
+tools/
+Dist_Protected/
+Output/
