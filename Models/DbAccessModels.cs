@@ -6,9 +6,10 @@ namespace TOTVSHub
 {
     public enum HubActiveTab
     {
-        Ambientes = 0,
-        DbAccess = 1,
-        SmartView = 2
+        HomeOverview = 0,
+        Ambientes = 1,
+        DbAccess = 2,
+        SmartView = 3
     }
 
     public class DbAccessConfig
@@ -34,6 +35,9 @@ namespace TOTVSHub
         public string StatusSummary { get; set; }
         public List<DbAccessEnvironment> Environments { get; set; }
         public List<IniSection> RawSections { get; set; }
+        public TextBlock CpuText { get; set; }
+        public TextBlock RamText { get; set; }
+        public Border CardBorder { get; set; }
 
         public DbAccessConfig()
         {

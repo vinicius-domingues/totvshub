@@ -16,7 +16,7 @@ namespace TOTVSHub
 {
     public static class UiTheme
     {
-        public const string AppVersion = "2.6.0";
+        public const string AppVersion = "2.7.0";
         public const string DefaultUpdateDriveUrl = "https://drive.google.com";
 
         // Tom azul unico padronizado para todos os botoes azuis e toggles

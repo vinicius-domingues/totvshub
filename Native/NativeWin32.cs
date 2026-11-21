@@ -262,11 +262,14 @@ namespace TOTVSHub
             ramMb = 0;
             if (pid <= 0) return;
 
-            // 1. Tenta via Win32 API com PROCESS_QUERY_LIMITED_INFORMATION (funciona entre diferentes usuários e serviços)
             IntPtr hProc = IntPtr.Zero;
             try
             {
-                hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+                uint access = PROCESS_QUERY_LIMITED_INFORMATION | 0x0010 | 0x0400;
+                hProc = OpenProcess(access, false, pid);
+                if (hProc == IntPtr.Zero)
+                    hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+
                 if (hProc != IntPtr.Zero)
                 {
                     PROCESS_MEMORY_COUNTERS_EX counters;
@@ -298,7 +301,6 @@ namespace TOTVSHub
 
                         lastCpuTime = totalProcessorTime;
                         lastSampleTime = now;
-                        return;
                     }
                 }
             }
@@ -308,36 +310,42 @@ namespace TOTVSHub
                 if (hProc != IntPtr.Zero) CloseHandle(hProc);
             }
 
-            // 2. Fallback padrão via .NET Process caso Win32 falhe
-            try
+            if (ramMb == 0 || lastCpuTime == TimeSpan.Zero)
             {
-                using (Process p = Process.GetProcessById(pid))
+                try
                 {
-                    if (p.HasExited) return;
-
-                    if (ramMb == 0)
-                        ramMb = p.WorkingSet64 / (1024 * 1024);
-
-                    DateTime now = DateTime.UtcNow;
-                    TimeSpan totalProcessorTime = p.TotalProcessorTime;
-
-                    if (lastSampleTime > DateTime.MinValue && now > lastSampleTime)
+                    using (Process p = Process.GetProcessById(pid))
                     {
-                        double elapsedMs = (now - lastSampleTime).TotalMilliseconds;
-                        double cpuUsedMs = (totalProcessorTime - lastCpuTime).TotalMilliseconds;
-                        if (elapsedMs > 0)
+                        if (!p.HasExited)
                         {
-                            cpuPercent = Math.Round((cpuUsedMs / (elapsedMs * Environment.ProcessorCount)) * 100.0, 1);
-                            if (cpuPercent < 0) cpuPercent = 0;
-                            if (cpuPercent > 100) cpuPercent = 100;
+                            if (ramMb == 0)
+                                ramMb = p.WorkingSet64 / (1024 * 1024);
+
+                            if (lastCpuTime == TimeSpan.Zero)
+                            {
+                                DateTime now = DateTime.UtcNow;
+                                TimeSpan totalProcessorTime = p.TotalProcessorTime;
+
+                                if (lastSampleTime > DateTime.MinValue && now > lastSampleTime)
+                                {
+                                    double elapsedMs = (now - lastSampleTime).TotalMilliseconds;
+                                    double cpuUsedMs = (totalProcessorTime - lastCpuTime).TotalMilliseconds;
+                                    if (elapsedMs > 0)
+                                    {
+                                        cpuPercent = Math.Round((cpuUsedMs / (elapsedMs * Environment.ProcessorCount)) * 100.0, 1);
+                                        if (cpuPercent < 0) cpuPercent = 0;
+                                        if (cpuPercent > 100) cpuPercent = 100;
+                                    }
+                                }
+
+                                lastCpuTime = totalProcessorTime;
+                                lastSampleTime = now;
+                            }
                         }
                     }
-
-                    lastCpuTime = totalProcessorTime;
-                    lastSampleTime = now;
                 }
+                catch { }
             }
-            catch { }
         }
 
         public static IntPtr MultiMonitorWndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

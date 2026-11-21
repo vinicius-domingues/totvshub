@@ -919,13 +919,11 @@ namespace TOTVSHub
             ColumnDefinition colLeft = new ColumnDefinition(); colLeft.Width = GridLength.Auto;
             ColumnDefinition colInfo = new ColumnDefinition(); colInfo.Width = new GridLength(1, GridUnitType.Star);
             ColumnDefinition colPower = new ColumnDefinition(); colPower.Width = GridLength.Auto;
-            ColumnDefinition colActions = new ColumnDefinition(); colActions.Width = GridLength.Auto;
             ColumnDefinition colDots = new ColumnDefinition(); colDots.Width = GridLength.Auto;
 
             cardGrid.ColumnDefinitions.Add(colLeft);
             cardGrid.ColumnDefinitions.Add(colInfo);
             cardGrid.ColumnDefinitions.Add(colPower);
-            cardGrid.ColumnDefinitions.Add(colActions);
             cardGrid.ColumnDefinitions.Add(colDots);
 
             // ================= COLUNA 0: STATUS BADGE + PID + EDITAR INI =================
@@ -1063,10 +1061,13 @@ namespace TOTVSHub
             pathStack.Children.Add(btnCopyPath);
             infoStack.Children.Add(pathStack);
 
-            // Tags (máximo 4 por linha - Item 8)
+            Grid metaContainer = new Grid();
+            metaContainer.Margin = new Thickness(0, 0, 0, 4);
+            metaContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            metaContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
             UniformGrid metaGrid = new UniformGrid();
-            metaGrid.Columns = 4;
-            metaGrid.Margin = new Thickness(0, 0, 0, 4);
+            metaGrid.Columns = 2;
 
             int monPort = _dbAccessConfig.MonitorPort > 0 ? _dbAccessConfig.MonitorPort : 7890;
             metaGrid.Children.Add(CreateMetaPill("Porta", monPort.ToString()));
@@ -1076,9 +1077,11 @@ namespace TOTVSHub
             HashSet<string> dbmsSet = new HashSet<string>(_dbAccessConfig.Environments.Select(e => e.Dbms).Where(d => !string.IsNullOrEmpty(d)), StringComparer.OrdinalIgnoreCase);
             if (dbmsSet.Count > 0)
                 metaGrid.Children.Add(CreateMetaPill("DBMS", string.Join(", ", dbmsSet.ToArray())));
-            infoStack.Children.Add(metaGrid);
 
-            // Consumo de CPU e RAM
+            Grid.SetColumn(metaGrid, 0);
+            metaContainer.Children.Add(metaGrid);
+            infoStack.Children.Add(metaContainer);
+
             StackPanel metricsStack = new StackPanel();
             metricsStack.Orientation = Orientation.Horizontal;
             metricsStack.Margin = new Thickness(0, 6, 0, 0);
@@ -1092,12 +1095,13 @@ namespace TOTVSHub
             cpuBadge.Margin = new Thickness(0, 0, 6, 0);
 
             TextBlock cpuTxt = new TextBlock();
-            cpuTxt.Text = _dbAccessConfig.IsRunning ? string.Format("⚡ CPU: {0:0.0}%", _dbAccessConfig.CpuPercent) : "⚡ CPU: -";
+            cpuTxt.Text = _dbAccessConfig.IsRunning ? string.Format("CPU: {0:0.0}%", _dbAccessConfig.CpuPercent) : "CPU: -";
             cpuTxt.FontSize = 10;
             cpuTxt.FontWeight = FontWeights.SemiBold;
             cpuTxt.Foreground = _dbAccessConfig.IsRunning ? UiTheme.AccentLightBlue : UiTheme.TextMuted;
             cpuBadge.Child = cpuTxt;
             metricsStack.Children.Add(cpuBadge);
+            _dbAccessConfig.CpuText = cpuTxt;
 
             Border ramBadge = new Border();
             ramBadge.Background = UiTheme.BrushFromHex("#0F172A");
@@ -1107,12 +1111,14 @@ namespace TOTVSHub
             ramBadge.Padding = new Thickness(6, 2, 6, 2);
 
             TextBlock ramTxt = new TextBlock();
-            ramTxt.Text = _dbAccessConfig.IsRunning ? string.Format("💾 RAM: {0} MB", _dbAccessConfig.RamMb) : "💾 RAM: -";
+            ramTxt.Text = _dbAccessConfig.IsRunning ? string.Format("RAM: {0} MB", _dbAccessConfig.RamMb) : "RAM: -";
             ramTxt.FontSize = 10;
             ramTxt.FontWeight = FontWeights.SemiBold;
             ramTxt.Foreground = _dbAccessConfig.IsRunning ? UiTheme.AccentGreen : UiTheme.TextMuted;
             ramBadge.Child = ramTxt;
             metricsStack.Children.Add(ramBadge);
+            _dbAccessConfig.RamText = ramTxt;
+            _dbAccessConfig.CardBorder = card;
 
             infoStack.Children.Add(metricsStack);
 
@@ -1120,7 +1126,6 @@ namespace TOTVSHub
             Grid.SetColumn(infoStack, 1);
             cardGrid.Children.Add(infoStack);
 
-            // ================= COLUNA 2: BOTOES DE ENERGIA =================
             StackPanel powerStack = new StackPanel();
             powerStack.Orientation = Orientation.Vertical;
             powerStack.VerticalAlignment = VerticalAlignment.Center;
@@ -1156,52 +1161,6 @@ namespace TOTVSHub
             Grid.SetColumn(powerStack, 2);
             cardGrid.Children.Add(powerStack);
 
-            // ================= COLUNA 3: BOTOES DE ACAO (Item 1: Atualizar Binario, Ocultar, Comentario) =================
-            StackPanel extraStack = new StackPanel();
-            extraStack.Orientation = Orientation.Horizontal;
-            extraStack.VerticalAlignment = VerticalAlignment.Center;
-            extraStack.Margin = new Thickness(0, 0, 8, 0);
-
-            Button btnUpdateBin = UiTheme.CreateActionButton("🔄 Atualizar Binário", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
-            btnUpdateBin.Height = 28;
-            btnUpdateBin.FontSize = 11;
-            btnUpdateBin.Padding = new Thickness(10, 0, 10, 0);
-            btnUpdateBin.Margin = new Thickness(0, 0, 4, 0);
-            btnUpdateBin.ToolTip = "Trocar / atualizar binários do DBAccess";
-            btnUpdateBin.Click += delegate
-            {
-                MessageBox.Show(this, "Funcionalidade em desenvolvimento:\nTroca e atualização automática de binários do DBAccess em breve!", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Information);
-            };
-            extraStack.Children.Add(btnUpdateBin);
-
-            Button btnHide = UiTheme.CreateActionButton(isHidden ? "👁 Desocultar" : "👁 Ocultar", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
-            btnHide.Height = 28;
-            btnHide.FontSize = 11;
-            btnHide.Padding = new Thickness(10, 0, 10, 0);
-            btnHide.Margin = new Thickness(0, 0, 4, 0);
-            btnHide.ToolTip = isHidden ? "Tornar DBAccess visível na lista ativa" : "Ocultar DBAccess";
-            btnHide.Click += delegate
-            {
-                if (_hiddenDbAccessEnvs.Contains("DBAccess")) _hiddenDbAccessEnvs.Remove("DBAccess");
-                else _hiddenDbAccessEnvs.Add("DBAccess");
-                SalvarOcultosDbAccessAppData();
-                RenderizarCardsDbAccess();
-            };
-            extraStack.Children.Add(btnHide);
-
-            Button btnComment = UiTheme.CreateActionButton("💬 Comentário", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
-            btnComment.Height = 28;
-            btnComment.FontSize = 11;
-            btnComment.Padding = new Thickness(10, 0, 10, 0);
-            btnComment.ToolTip = "Adicionar ou editar anotação do DBAccess (máx. 100 caracteres)";
-            btnComment.Click += delegate { EditarNotaDbAccess(); };
-            extraStack.Children.Add(btnComment);
-
-            Grid.SetRow(extraStack, 0);
-            Grid.SetColumn(extraStack, 3);
-            cardGrid.Children.Add(extraStack);
-
-            // ================= COLUNA 4: TRES PONTOS VERTICAIS =================
             Button btnDots = UiTheme.CreateFramelessIconButton(UiTheme.CreateThreeDotsIcon(UiTheme.TextSecondary, 16), "Mais opções do DBAccess");
             btnDots.VerticalAlignment = VerticalAlignment.Top;
             btnDots.HorizontalAlignment = HorizontalAlignment.Right;
@@ -1224,7 +1183,20 @@ namespace TOTVSHub
                 MessageBox.Show(this, "Funcionalidade em desenvolvimento:\nTroca e atualização automática de binários em breve!", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Information);
             }));
 
+            menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Comentário", UiTheme.CreateCommentBubbleIcon(UiTheme.TextSecondary, 14), delegate
+            {
+                EditarNotaDbAccess();
+            }));
+
             menuDots.Items.Add(new Separator { Background = UiTheme.BorderSubtle, Margin = new Thickness(4, 2, 4, 2) });
+
+            menuDots.Items.Add(UiTheme.CreateDarkMenuItem(isHidden ? "Desocultar DBAccess" : "Ocultar DBAccess", isHidden ? UiTheme.CreateEyeOffIcon(UiTheme.TextSecondary, 14) : UiTheme.CreateEyeIcon(UiTheme.TextSecondary, 14), delegate
+            {
+                if (_hiddenDbAccessEnvs.Contains("DBAccess")) _hiddenDbAccessEnvs.Remove("DBAccess");
+                else _hiddenDbAccessEnvs.Add("DBAccess");
+                SalvarOcultosDbAccessAppData();
+                RenderizarCardsDbAccess();
+            }));
 
             menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Abrir pasta no Explorer", UiTheme.CreateFolderIcon(UiTheme.TextSecondary, 14), delegate
             {
@@ -1240,7 +1212,7 @@ namespace TOTVSHub
             };
 
             Grid.SetRow(btnDots, 0);
-            Grid.SetColumn(btnDots, 4);
+            Grid.SetColumn(btnDots, 3);
             cardGrid.Children.Add(btnDots);
 
             // Banner de anotação/comentário se houver (Item 1 & 11)
@@ -1265,7 +1237,7 @@ namespace TOTVSHub
                 noteBanner.Child = noteLbl;
 
                 Grid.SetRow(noteBanner, 1);
-                Grid.SetColumnSpan(noteBanner, 5);
+                Grid.SetColumnSpan(noteBanner, 4);
                 cardGrid.Children.Add(noteBanner);
             }
 

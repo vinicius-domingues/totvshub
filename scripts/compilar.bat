@@ -26,7 +26,7 @@ if not defined ICO_ARG if exist "totvs_white.ico" set "ICO_ARG=/win32icon:totvs_
 set "MANIFEST_ARG="
 if exist "assets\app.manifest" set "MANIFEST_ARG=/win32manifest:assets\app.manifest"
 
-set "SOURCES=Program.cs Models\Models.cs Models\DbAccessModels.cs Native\NativeWin32.cs Theme\UiTheme.cs Theme\TotvsLogo.cs Dialogs\Dialogs.cs Views\AlertCenterWindow.cs Views\MainWindow.Core.cs Views\MainWindow.Onboarding.cs Views\MainWindow.Tray.cs Views\MainWindow.Home.cs Views\MainWindow.Scanner.cs Views\MainWindow.Settings.cs Views\MainWindow.IniEditor.cs Views\MainWindow.DbAccess.cs Views\MainWindow.SmartView.cs Views\MainWindow.Tabs.cs Views\MainWindow.Logs.cs"
+set "SOURCES=Program.cs Models\Models.cs Models\DbAccessModels.cs Native\NativeWin32.cs Theme\UiTheme.cs Theme\TotvsLogo.cs Dialogs\Dialogs.cs Views\AlertCenterWindow.cs Views\MainWindow.Core.cs Views\MainWindow.Onboarding.cs Views\MainWindow.Tray.cs Views\MainWindow.Home.cs Views\MainWindow.Scanner.cs Views\MainWindow.Settings.cs Views\MainWindow.IniEditor.cs Views\MainWindow.DbAccess.cs Views\MainWindow.SmartView.cs Views\MainWindow.Tabs.cs Views\MainWindow.Logs.cs Views\MainWindow.Overview.cs"
 
 set "REFS=/reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Management.dll /reference:System.ServiceProcess.dll /reference:System.Windows.Forms.dll /reference:System.Xaml.dll /reference:"%WPF%\PresentationCore.dll" /reference:"%WPF%\PresentationFramework.dll" /reference:"%WPF%\WindowsBase.dll""
 

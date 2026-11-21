@@ -145,6 +145,39 @@ namespace TOTVSHub
             cardGeneral.Child = genStack;
             contentStack.Children.Add(cardGeneral);
 
+            contentStack.Children.Add(CreateSettingsSectionHeader("Pastas do Sistema"));
+
+            Border cardFolders = CreateSettingsCard();
+            StackPanel foldersStack = new StackPanel();
+
+            string tempRootPath = _rootPath;
+            string tempDbAccessPath = _dbAccessConfig.FolderPath;
+            string tempSmartViewPath = _smartViewDetectedFolder;
+
+            foldersStack.Children.Add(CreateFolderSettingRow(
+                "Bases Protheus / AppServer",
+                "Pasta raiz onde ficam as bases dos ambientes e arquivos appserver.ini",
+                tempRootPath,
+                delegate(string p) { tempRootPath = p; },
+                true));
+
+            foldersStack.Children.Add(CreateFolderSettingRow(
+                "DBAccess",
+                "Pasta de instalação do DBAccess (contém dbaccess.ini e executável)",
+                tempDbAccessPath,
+                delegate(string p) { tempDbAccessPath = p; },
+                true));
+
+            foldersStack.Children.Add(CreateFolderSettingRow(
+                "SmartView",
+                "Pasta de instalação e execução do SmartView",
+                tempSmartViewPath,
+                delegate(string p) { tempSmartViewPath = p; },
+                false));
+
+            cardFolders.Child = foldersStack;
+            contentStack.Children.Add(cardFolders);
+
             contentStack.Children.Add(CreateSettingsSectionHeader("Tempos de Monitoramento e Abertura"));
 
             Border cardTimers = CreateSettingsCard();
@@ -834,6 +867,27 @@ namespace TOTVSHub
                 _conflictRules = tempRules;
                 _customLinks = tempLinks;
 
+                bool rootChanged = false;
+                if (!string.IsNullOrEmpty(tempRootPath) && !string.Equals(tempRootPath, _rootPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    _rootPath = tempRootPath;
+                    File.WriteAllText(_configPath, _rootPath, Encoding.UTF8);
+                    rootChanged = true;
+                }
+
+                if (!string.IsNullOrEmpty(tempDbAccessPath) && !string.Equals(tempDbAccessPath, _dbAccessConfig.FolderPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    _dbAccessConfig.FolderPath = tempDbAccessPath;
+                    _dbAccessConfig.IniPath = Path.Combine(tempDbAccessPath, "dbaccess.ini");
+                    SalvarDbAccessPathAppData(tempDbAccessPath);
+                }
+
+                if (!string.IsNullOrEmpty(tempSmartViewPath) && !string.Equals(tempSmartViewPath, _smartViewDetectedFolder, StringComparison.OrdinalIgnoreCase))
+                {
+                    _smartViewDetectedFolder = tempSmartViewPath;
+                    SalvarSmartViewPrefFolder(tempSmartViewPath);
+                }
+
                 File.WriteAllText(_timersPrefPath, string.Format("{0};{1};{2}", _pollIntervalSeconds, _scanBasesMinutes, _browserDelaySeconds), Encoding.UTF8);
                 File.WriteAllText(_startupPrefPath, tempAutoStart ? "1" : "0", Encoding.UTF8);
                 AplicarRegistroWindowsStartup(tempAutoStart);
@@ -860,7 +914,7 @@ namespace TOTVSHub
                 else
                 {
                     ShowDashboardView();
-                    if (oldIgnoreChanged)
+                    if (oldIgnoreChanged || rootChanged)
                     {
                         CarregarAmbientesAsync(true);
                     }
@@ -1077,6 +1131,67 @@ namespace TOTVSHub
 
             dp.Children.Add(inputBox);
             dp.Children.Add(labels);
+            return dp;
+        }
+
+        private DockPanel CreateFolderSettingRow(string title, string desc, string currentPath, Action<string> onPathChanged, bool bottomMargin)
+        {
+            DockPanel dp = new DockPanel();
+            if (bottomMargin) dp.Margin = new Thickness(0, 0, 0, 14);
+
+            StackPanel rightControls = new StackPanel();
+            rightControls.Orientation = Orientation.Horizontal;
+            rightControls.VerticalAlignment = VerticalAlignment.Center;
+            DockPanel.SetDock(rightControls, Dock.Right);
+
+            TextBox txtPath = new TextBox();
+            txtPath.Text = currentPath ?? "";
+            txtPath.Width = 320;
+            txtPath.Height = 30;
+            txtPath.Foreground = UiTheme.TextPrimary;
+            txtPath.Background = UiTheme.BgInput;
+            txtPath.CaretBrush = UiTheme.TextPrimary;
+            txtPath.BorderBrush = UiTheme.BorderSubtle;
+            txtPath.BorderThickness = new Thickness(1);
+            txtPath.Padding = new Thickness(8, 0, 8, 0);
+            txtPath.VerticalContentAlignment = VerticalAlignment.Center;
+            txtPath.FontSize = 12;
+            txtPath.Margin = new Thickness(0, 0, 6, 0);
+            txtPath.TextChanged += delegate
+            {
+                if (onPathChanged != null) onPathChanged(txtPath.Text.Trim());
+            };
+            rightControls.Children.Add(txtPath);
+
+            Button btnBrowse = UiTheme.CreateActionButton("Alterar...", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
+            btnBrowse.Height = 30;
+            btnBrowse.FontSize = 11;
+            btnBrowse.Padding = new Thickness(12, 0, 12, 0);
+            btnBrowse.Click += delegate
+            {
+                using (System.Windows.Forms.FolderBrowserDialog fbd = new System.Windows.Forms.FolderBrowserDialog())
+                {
+                    fbd.Description = "Selecione: " + title;
+                    if (!string.IsNullOrEmpty(txtPath.Text) && Directory.Exists(txtPath.Text))
+                        fbd.SelectedPath = txtPath.Text;
+
+                    if (fbd.ShowDialog() == System.Windows.Forms.DialogResult.OK && !string.IsNullOrWhiteSpace(fbd.SelectedPath))
+                    {
+                        txtPath.Text = fbd.SelectedPath;
+                        if (onPathChanged != null) onPathChanged(fbd.SelectedPath);
+                    }
+                }
+            };
+            rightControls.Children.Add(btnBrowse);
+
+            dp.Children.Add(rightControls);
+
+            StackPanel labels = new StackPanel();
+            labels.VerticalAlignment = VerticalAlignment.Center;
+            labels.Children.Add(CreateSettingsTitle(title));
+            labels.Children.Add(CreateSettingsDesc(desc));
+            dp.Children.Add(labels);
+
             return dp;
         }
     }

@@ -546,8 +546,8 @@ namespace TOTVSHub
             titleLeft.Orientation = Orientation.Horizontal;
             titleLeft.VerticalAlignment = VerticalAlignment.Center;
             titleLeft.Cursor = Cursors.Hand;
-            titleLeft.ToolTip = "Ir para Ambientes";
-            titleLeft.MouseLeftButtonUp += delegate { SwitchToTab(HubActiveTab.Ambientes); };
+            titleLeft.ToolTip = "Central de Visão Geral (Home)";
+            titleLeft.MouseLeftButtonUp += delegate { SwitchToTab(HubActiveTab.HomeOverview); };
 
             titleLeft.Children.Add(TotvsLogo.CreateTotvsWhiteSvgLogo(_cachedSvgPath, 24));
 

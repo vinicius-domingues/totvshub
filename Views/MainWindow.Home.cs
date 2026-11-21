@@ -394,8 +394,8 @@ namespace TOTVSHub
             pill.BorderBrush = UiTheme.BorderSubtle;
             pill.BorderThickness = new Thickness(1);
             pill.CornerRadius = new CornerRadius(5);
-            pill.Padding = new Thickness(7, 2, 7, 2);
-            pill.Margin = new Thickness(0, 0, 6, 4);
+            pill.Padding = new Thickness(5, 1.5, 5, 1.5);
+            pill.Margin = new Thickness(0, 0, 4, 3);
             pill.Cursor = Cursors.Hand;
             pill.ToolTip = string.Format("Clique para copiar {0}: {1}", label, value);
 
@@ -406,13 +406,13 @@ namespace TOTVSHub
             TextBlock lbl = new TextBlock();
             lbl.Text = label + ": ";
             lbl.Foreground = UiTheme.TextMuted;
-            lbl.FontSize = 11;
+            lbl.FontSize = 9.5;
             lbl.FontWeight = FontWeights.SemiBold;
 
             TextBlock val = new TextBlock();
             val.Text = string.IsNullOrWhiteSpace(value) ? "-" : value;
             val.Foreground = UiTheme.TextPrimary;
-            val.FontSize = 11;
+            val.FontSize = 9.5;
             val.FontWeight = FontWeights.Bold;
 
             row.Children.Add(lbl);
@@ -465,12 +465,11 @@ namespace TOTVSHub
             leftToolsColumn.Orientation = Orientation.Vertical;
             leftToolsColumn.VerticalAlignment = VerticalAlignment.Center;
             leftToolsColumn.HorizontalAlignment = HorizontalAlignment.Center;
-            leftToolsColumn.Width = 96;
+            leftToolsColumn.Width = 104;
             leftToolsColumn.Margin = new Thickness(0, 0, 16, 0);
 
-            // Status no topo da coluna esquerda (96px para casar exatamente com a tag de usuario)
             Border statusBadge = new Border();
-            statusBadge.Width = 96;
+            statusBadge.Width = 104;
             statusBadge.Height = 26;
             statusBadge.CornerRadius = new CornerRadius(10);
             statusBadge.Padding = new Thickness(6, 3, 6, 3);
@@ -503,9 +502,8 @@ namespace TOTVSHub
             amb.StatusText = statusTxt;
             leftToolsColumn.Children.Add(statusBadge);
 
-            // Tag opcional do usuario do processo (PID) - Casa o tamanho do running com o do usuario com ... se for grande
             Border userBadge = new Border();
-            userBadge.Width = 96;
+            userBadge.Width = 104;
             userBadge.Height = 24;
             userBadge.Background = UiTheme.BrushFromHex("#0C4A6E");
             userBadge.BorderBrush = UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex);
@@ -520,7 +518,7 @@ namespace TOTVSHub
             userTxt.Foreground = UiTheme.AccentLightBlue;
             userTxt.FontSize = 10;
             userTxt.FontWeight = FontWeights.Bold;
-            userTxt.MaxWidth = 88;
+            userTxt.MaxWidth = 96;
             userTxt.TextTrimming = TextTrimming.CharacterEllipsis;
             userTxt.TextAlignment = TextAlignment.Center;
             userTxt.VerticalAlignment = VerticalAlignment.Center;
@@ -529,7 +527,6 @@ namespace TOTVSHub
             amb.UserTagText = userTxt;
             leftToolsColumn.Children.Add(userBadge);
 
-            // Linha com 3 botões em 3 colunas: [Editar INI] [D-1] [RPOCustom] (Item 7)
             Grid mainButtonsGrid = new Grid();
             mainButtonsGrid.Width = 104;
             mainButtonsGrid.Margin = new Thickness(0, 8, 0, 0);
@@ -669,10 +666,13 @@ namespace TOTVSHub
 
             infoColumn.Children.Add(pathStack);
 
-            // Tags de facil visualizacao: Portas + SpecialKey, DBAlias e DBPort (maximo 4 por linha - Item 8)
+            Grid metaContainer = new Grid();
+            metaContainer.Margin = new Thickness(0, 0, 0, 4);
+            metaContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            metaContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
             UniformGrid metaGrid = new UniformGrid();
-            metaGrid.Columns = 4;
-            metaGrid.Margin = new Thickness(0, 0, 0, 4);
+            metaGrid.Columns = 2;
             metaGrid.Children.Add(CreateMetaPill("WebApp", !string.IsNullOrEmpty(amb.WebAppPort) ? amb.WebAppPort : "-"));
             metaGrid.Children.Add(CreateMetaPill("TCP", !string.IsNullOrEmpty(amb.TcpPort) ? amb.TcpPort : "-"));
             if (!string.IsNullOrEmpty(amb.RestPort))
@@ -686,9 +686,11 @@ namespace TOTVSHub
             metaGrid.Children.Add(CreateMetaPill("SpecialKey", !string.IsNullOrEmpty(amb.SpecialKey) ? amb.SpecialKey : "-"));
             metaGrid.Children.Add(CreateMetaPill("DBAlias", !string.IsNullOrEmpty(amb.DBAlias) ? amb.DBAlias : "-"));
             metaGrid.Children.Add(CreateMetaPill("DBPort", !string.IsNullOrEmpty(amb.DBPort) ? amb.DBPort : "-"));
-            infoColumn.Children.Add(metaGrid);
 
-            // Consumo de CPU e RAM abaixo das tags (Item 11)
+            Grid.SetColumn(metaGrid, 0);
+            metaContainer.Children.Add(metaGrid);
+            infoColumn.Children.Add(metaContainer);
+
             StackPanel metricsStack = new StackPanel();
             metricsStack.Orientation = Orientation.Horizontal;
             metricsStack.Margin = new Thickness(0, 6, 0, 0);
@@ -702,7 +704,7 @@ namespace TOTVSHub
             cpuBadge.Margin = new Thickness(0, 0, 6, 0);
 
             TextBlock cpuTxt = new TextBlock();
-            cpuTxt.Text = amb.State == EnvRunState.Active ? string.Format("⚡ CPU: {0:0.0}%", amb.CpuPercent) : "⚡ CPU: -";
+            cpuTxt.Text = amb.State == EnvRunState.Active ? string.Format("CPU: {0:0.0}%", amb.CpuPercent) : "CPU: -";
             cpuTxt.FontSize = 10;
             cpuTxt.FontWeight = FontWeights.SemiBold;
             cpuTxt.Foreground = amb.State == EnvRunState.Active ? UiTheme.AccentLightBlue : UiTheme.TextMuted;
@@ -718,7 +720,7 @@ namespace TOTVSHub
             ramBadge.Padding = new Thickness(6, 2, 6, 2);
 
             TextBlock ramTxt = new TextBlock();
-            ramTxt.Text = amb.State == EnvRunState.Active ? string.Format("💾 RAM: {0} MB", amb.RamMb) : "💾 RAM: -";
+            ramTxt.Text = amb.State == EnvRunState.Active ? string.Format("RAM: {0} MB", amb.RamMb) : "RAM: -";
             ramTxt.FontSize = 10;
             ramTxt.FontWeight = FontWeights.SemiBold;
             ramTxt.Foreground = amb.State == EnvRunState.Active ? UiTheme.AccentGreen : UiTheme.TextMuted;
@@ -1203,12 +1205,12 @@ namespace TOTVSHub
 
             if (amb.CpuUsageText != null)
             {
-                amb.CpuUsageText.Text = amb.State == EnvRunState.Active ? string.Format("⚡ CPU: {0:0.0}%", amb.CpuPercent) : "⚡ CPU: -";
+                amb.CpuUsageText.Text = amb.State == EnvRunState.Active ? string.Format("CPU: {0:0.0}%", amb.CpuPercent) : "CPU: -";
                 amb.CpuUsageText.Foreground = amb.State == EnvRunState.Active ? UiTheme.AccentLightBlue : UiTheme.TextMuted;
             }
             if (amb.RamUsageText != null)
             {
-                amb.RamUsageText.Text = amb.State == EnvRunState.Active ? string.Format("💾 RAM: {0} MB", amb.RamMb) : "💾 RAM: -";
+                amb.RamUsageText.Text = amb.State == EnvRunState.Active ? string.Format("RAM: {0} MB", amb.RamMb) : "RAM: -";
                 amb.RamUsageText.Foreground = amb.State == EnvRunState.Active ? UiTheme.AccentGreen : UiTheme.TextMuted;
             }
         }
@@ -1231,10 +1233,11 @@ namespace TOTVSHub
 
             if (_statsLabel != null)
             {
-                _statsLabel.Text = string.Format("{0} de {1} ativos ({2} ocultos)",
-                    ativosCount,
-                    totalVisiveis,
-                    _hiddenDirs.Count);
+                string ativoTxt = (ativosCount == 1) ? "ativo" : "ativos";
+                string ocultoTxt = (_hiddenDirs.Count == 1) ? "oculto" : "ocultos";
+                _statsLabel.Text = _hiddenDirs.Count > 0
+                    ? string.Format("{0} de {1} {2} ({3} {4})", ativosCount, totalVisiveis, ativoTxt, _hiddenDirs.Count, ocultoTxt)
+                    : string.Format("{0} de {1} {2}", ativosCount, totalVisiveis, ativoTxt);
             }
         }
 

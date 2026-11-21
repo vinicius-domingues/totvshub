@@ -385,7 +385,7 @@ namespace TOTVSHub
             _cpuSparklineCanvas.ClipToBounds = true;
             _cpuSparklineCanvas.Margin = new Thickness(0, 4, 0, 0);
 
-            Border cardCpu = CriarCardMetricaComGrafico("⚡ CPU", _logCardCpuValue, _cpuSparklineCanvas, "Uso do processador pelo serviço em tempo real");
+            Border cardCpu = CriarCardMetricaComGrafico("CPU", _logCardCpuValue, _cpuSparklineCanvas, "Uso do processador pelo serviço em tempo real");
             Grid.SetColumn(cardCpu, 0);
             grid.Children.Add(cardCpu);
 
@@ -401,7 +401,7 @@ namespace TOTVSHub
             _ramSparklineCanvas.ClipToBounds = true;
             _ramSparklineCanvas.Margin = new Thickness(0, 4, 0, 0);
 
-            Border cardRam = CriarCardMetricaComGrafico("💾 RAM", _logCardRamValue, _ramSparklineCanvas, "Memória física de trabalho (Working Set)");
+            Border cardRam = CriarCardMetricaComGrafico("RAM", _logCardRamValue, _ramSparklineCanvas, "Memória física de trabalho (Working Set)");
             Grid.SetColumn(cardRam, 2);
             grid.Children.Add(cardRam);
 

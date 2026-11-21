@@ -252,18 +252,9 @@ namespace TOTVSHub
             Grid.SetColumn(searchContainer, 1);
             toolGrid.Children.Add(searchContainer);
 
-            // 3. Ferramentas à Direita: Card/Lista (anexo do usuário) + Atualizar (sem 3 pontos no topo)
             StackPanel rightTools = new StackPanel();
             rightTools.Orientation = Orientation.Horizontal;
             rightTools.VerticalAlignment = VerticalAlignment.Center;
-
-            Border toggleSegmented = UiTheme.CreateViewModeSegmentedToggle(_isCardsViewMode, delegate(bool isCards)
-            {
-                _isCardsViewMode = isCards;
-                RenderizarCardsSmartView();
-            });
-            toggleSegmented.Margin = new Thickness(0, 0, 10, 0);
-            rightTools.Children.Add(toggleSegmented);
 
             System.Windows.Shapes.Path spinIcon = (System.Windows.Shapes.Path)UiTheme.CreateThinRefreshIcon(UiTheme.AccentLightBlue);
             Button btnReload = UiTheme.CreateFramelessIconButton(spinIcon, "Recarregar e testar portas 7017 e 7019");
@@ -299,16 +290,18 @@ namespace TOTVSHub
             DockPanel.SetDock(leftStack, Dock.Left);
 
             _svFolderLabel = new TextBlock();
-            string folderTxt = string.IsNullOrEmpty(_smartViewDetectedFolder) ? "Pasta: Localizando pelas portas..." : "Pasta: " + _smartViewDetectedFolder;
+            string folderTxt = string.IsNullOrEmpty(_smartViewDetectedFolder) ? "Pasta: Não foi possível localizar pelas portas. Selecione a pasta acima" : "Pasta: " + _smartViewDetectedFolder;
             _svFolderLabel.Text = folderTxt;
             _svFolderLabel.Foreground = UiTheme.TextMuted;
             _svFolderLabel.FontSize = 12;
             _svFolderLabel.Cursor = Cursors.Hand;
-            _svFolderLabel.ToolTip = "Clique para abrir no Windows Explorer";
+            _svFolderLabel.ToolTip = string.IsNullOrEmpty(_smartViewDetectedFolder) ? "Clique para selecionar a pasta de instalação do SmartView" : "Clique para abrir no Windows Explorer";
             _svFolderLabel.MouseLeftButtonUp += delegate
             {
                 if (!string.IsNullOrEmpty(_smartViewDetectedFolder) && Directory.Exists(_smartViewDetectedFolder))
                     AbrirNoExplorer(_smartViewDetectedFolder);
+                else
+                    SelecionarPastaSmartViewDialog();
             };
             leftStack.Children.Add(_svFolderLabel);
 
@@ -380,35 +373,19 @@ namespace TOTVSHub
             _svCard7017.Visibility = match7017 ? Visibility.Visible : Visibility.Collapsed;
             _svCard7019.Visibility = match7019 ? Visibility.Visible : Visibility.Collapsed;
 
-            if (_isCardsViewMode)
-            {
-                // Modo Cards: Grid com 2 colunas
-                Grid grid = new Grid();
-                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
-                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            Grid grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-                Grid.SetColumn(_svCard7017, 0);
-                grid.Children.Add(_svCard7017);
+            Grid.SetColumn(_svCard7017, 0);
+            grid.Children.Add(_svCard7017);
 
-                Grid.SetColumn(_svCard7019, 2);
-                grid.Children.Add(_svCard7019);
+            Grid.SetColumn(_svCard7019, 2);
+            grid.Children.Add(_svCard7019);
 
-                _svCardsContainer = grid;
-                _svScrollViewer.Content = _svCardsContainer;
-            }
-            else
-            {
-                // Modo Lista: StackPanel vertical (largura total)
-                StackPanel sp = new StackPanel();
-                _svCard7017.Margin = new Thickness(0, 0, 0, 10);
-                _svCard7019.Margin = new Thickness(0, 0, 0, 10);
-                sp.Children.Add(_svCard7017);
-                sp.Children.Add(_svCard7019);
-
-                _svCardsContainer = sp;
-                _svScrollViewer.Content = _svCardsContainer;
-            }
+            _svCardsContainer = grid;
+            _svScrollViewer.Content = _svCardsContainer;
 
             AtualizarVisualPortasPadrao();
         }
@@ -440,7 +417,6 @@ namespace TOTVSHub
             cardGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             cardGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            // ================= COLUNA 0: STATUS BADGE RUNNING / STOPPED NO CANTO ESQUERDO (Item 4) =================
             StackPanel leftStack = new StackPanel();
             leftStack.VerticalAlignment = VerticalAlignment.Center;
             leftStack.Margin = new Thickness(0, 0, 14, 0);
@@ -462,44 +438,16 @@ namespace TOTVSHub
             badgeRef = statusBadge;
             statusTextRef = statusText;
 
-            // Botão Comentário abaixo do RUNNING (Item 4 & 11)
-            Button btnComment = UiTheme.CreateActionButton(
-                UiTheme.CreateCommentBubbleIcon(UiTheme.TextSecondary, 13),
-                UiTheme.NeutralBtnHex,
-                UiTheme.NeutralBtnHoverHex);
-            btnComment.Width = 34;
-            btnComment.Height = 26;
-            btnComment.Margin = new Thickness(0, 6, 0, 0);
-            btnComment.ToolTip = "Adicionar / editar comentário (máx 100 caracteres)";
-            btnComment.Click += delegate { EditarNotaSmartView(portStatus.Port, customTitle); };
-            leftStack.Children.Add(btnComment);
-
             Grid.SetRow(leftStack, 0);
             Grid.SetColumn(leftStack, 0);
             cardGrid.Children.Add(leftStack);
 
-            // ================= COLUNA 1: INFO (PORTA, TITULO, URL, DESCRICAO, LATENCIA) =================
             StackPanel infoStack = new StackPanel();
             infoStack.VerticalAlignment = VerticalAlignment.Center;
             infoStack.Margin = new Thickness(0, 0, 12, 0);
 
-            // Linha com Porta + Título + Copiar (Item 12)
             WrapPanel titleWrap = new WrapPanel();
             titleWrap.VerticalAlignment = VerticalAlignment.Center;
-
-            Border portPill = new Border();
-            portPill.Background = UiTheme.PrimaryBlueBrush;
-            portPill.CornerRadius = new CornerRadius(6);
-            portPill.Padding = new Thickness(7, 2, 7, 2);
-            portPill.Margin = new Thickness(0, 0, 8, 0);
-
-            TextBlock portPillTxt = new TextBlock();
-            portPillTxt.Text = ":" + portStatus.Port;
-            portPillTxt.FontSize = 11;
-            portPillTxt.FontWeight = FontWeights.Bold;
-            portPillTxt.Foreground = Brushes.White;
-            portPill.Child = portPillTxt;
-            titleWrap.Children.Add(portPill);
 
             TextBlock titleLbl = new TextBlock();
             titleLbl.Text = customTitle ?? portStatus.Label;
@@ -521,7 +469,6 @@ namespace TOTVSHub
 
             infoStack.Children.Add(titleWrap);
 
-            // URL Clicável
             TextBlock lblUrl = new TextBlock();
             lblUrl.Text = urlPath ?? ("http://localhost:" + portStatus.Port);
             lblUrl.FontSize = 11;
@@ -535,7 +482,6 @@ namespace TOTVSHub
             };
             infoStack.Children.Add(lblUrl);
 
-            // Descrição da porta
             TextBlock desc = new TextBlock();
             desc.Text = description ?? portStatus.Description;
             desc.FontSize = 12;
@@ -543,7 +489,6 @@ namespace TOTVSHub
             desc.Margin = new Thickness(0, 0, 0, 4);
             infoStack.Children.Add(desc);
 
-            // Latência TCP
             TextBlock latencyText = new TextBlock();
             latencyText.Text = portStatus.IsOpen
                 ? string.Format("Latência: {0}ms • Protocolo TCP", portStatus.LatencyMs)
@@ -557,11 +502,23 @@ namespace TOTVSHub
             Grid.SetColumn(infoStack, 1);
             cardGrid.Children.Add(infoStack);
 
-            // ================= COLUNA 2: BOTAO ABRIR COMPACTO HIPERLINKADO (Item 5) =================
             StackPanel accessStack = new StackPanel();
             accessStack.Orientation = Orientation.Horizontal;
             accessStack.VerticalAlignment = VerticalAlignment.Center;
             accessStack.Margin = new Thickness(0, 0, 10, 0);
+
+            Button btnLogs = UiTheme.CreateActionButton("Logs e Monitoramento", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
+            btnLogs.Height = 28;
+            btnLogs.FontSize = 11;
+            btnLogs.Padding = new Thickness(10, 0, 10, 0);
+            btnLogs.Margin = new Thickness(0, 0, 8, 0);
+            btnLogs.ToolTip = "Visualizar logs e monitoramento do SmartView";
+            btnLogs.Click += delegate
+            {
+                string logsDir = ObterDiretorioLogsSmartView();
+                AbrirTelaCompletaLogs("SmartView", logsDir, _smartViewPid, "smartview");
+            };
+            accessStack.Children.Add(btnLogs);
 
             Button btnLink = UiTheme.CreateWebLinkButton("Abrir", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
             btnLink.ToolTip = "Abrir " + (targetUrl ?? urlPath);
@@ -575,13 +532,19 @@ namespace TOTVSHub
             Grid.SetColumn(accessStack, 2);
             cardGrid.Children.Add(accessStack);
 
-            // ================= COLUNA 3: TRES PONTOS VERTICAIS NO CARD (Item 12: sem copiar) =================
             Button btnDots = UiTheme.CreateFramelessIconButton(
                 UiTheme.CreateThreeDotsIcon(UiTheme.TextSecondary, 16),
                 "Mais opções do SmartView");
-            btnDots.VerticalAlignment = VerticalAlignment.Center;
+            btnDots.VerticalAlignment = VerticalAlignment.Top;
+            btnDots.HorizontalAlignment = HorizontalAlignment.Right;
+            btnDots.Margin = new Thickness(4, -4, 0, 0);
 
             ContextMenu menuDots = UiTheme.CreateDarkContextMenu();
+
+            menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Comentário", UiTheme.CreateCommentBubbleIcon(UiTheme.TextSecondary, 14), delegate
+            {
+                EditarNotaSmartView(portStatus.Port, customTitle);
+            }));
 
             menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Logs e Monitoramento", UiTheme.CreateCopyIcon(UiTheme.AccentLightBlue, 14), delegate
             {
@@ -595,6 +558,8 @@ namespace TOTVSHub
             {
                 if (!string.IsNullOrEmpty(_smartViewDetectedFolder) && Directory.Exists(_smartViewDetectedFolder))
                     AbrirNoExplorer(_smartViewDetectedFolder);
+                else
+                    SelecionarPastaSmartViewDialog();
             }));
 
             btnDots.ContextMenu = menuDots;
@@ -830,9 +795,16 @@ namespace TOTVSHub
                     AtualizarVisualPortasPadrao();
                     if (_svFolderLabel != null)
                     {
-                        _svFolderLabel.Text = string.IsNullOrEmpty(_smartViewDetectedFolder)
-                            ? "Pasta: Localizando pelas portas..."
-                            : "Pasta: " + _smartViewDetectedFolder;
+                        if (string.IsNullOrEmpty(_smartViewDetectedFolder))
+                        {
+                            _svFolderLabel.Text = "Pasta: Não foi possível localizar pelas portas. Selecione a pasta acima";
+                            _svFolderLabel.ToolTip = "Clique para selecionar a pasta de instalação do SmartView";
+                        }
+                        else
+                        {
+                            _svFolderLabel.Text = "Pasta: " + _smartViewDetectedFolder;
+                            _svFolderLabel.ToolTip = "Clique para abrir no Windows Explorer";
+                        }
                     }
                     if (_svLastUpdateLabel != null)
                     {
@@ -840,6 +812,28 @@ namespace TOTVSHub
                     }
                 }));
             });
+        }
+
+        private void SelecionarPastaSmartViewDialog()
+        {
+            using (System.Windows.Forms.FolderBrowserDialog fbd = new System.Windows.Forms.FolderBrowserDialog())
+            {
+                fbd.Description = "Selecione a pasta de instalação do SmartView";
+                if (!string.IsNullOrEmpty(_smartViewDetectedFolder) && Directory.Exists(_smartViewDetectedFolder))
+                    fbd.SelectedPath = _smartViewDetectedFolder;
+
+                if (fbd.ShowDialog() == System.Windows.Forms.DialogResult.OK && !string.IsNullOrWhiteSpace(fbd.SelectedPath))
+                {
+                    _smartViewDetectedFolder = fbd.SelectedPath;
+                    SalvarSmartViewPrefFolder(_smartViewDetectedFolder);
+                    if (_svFolderLabel != null)
+                    {
+                        _svFolderLabel.Text = "Pasta: " + _smartViewDetectedFolder;
+                        _svFolderLabel.ToolTip = "Clique para abrir no Windows Explorer";
+                    }
+                    VerificarPortasSmartViewAsync();
+                }
+            }
         }
 
         private void TestarPortaTcp(SmartViewPortStatus port)

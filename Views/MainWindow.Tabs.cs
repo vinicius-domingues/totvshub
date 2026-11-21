@@ -22,6 +22,9 @@ namespace TOTVSHub
             _currentTab = tab;
             switch (tab)
             {
+                case HubActiveTab.HomeOverview:
+                    ShowHomeOverviewView();
+                    break;
                 case HubActiveTab.Ambientes:
                     ShowDashboardView();
                     break;

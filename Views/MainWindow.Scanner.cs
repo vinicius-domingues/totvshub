@@ -548,6 +548,7 @@ namespace TOTVSHub
                 try
                 {
                     SincronizarEstadoProcessosEServicos(snapshot, fetchUser);
+                    TestarStatusDbAccess();
                 }
                 finally
                 {
@@ -556,6 +557,16 @@ namespace TOTVSHub
                         try
                         {
                             AtualizarResumoEVisualCards();
+                            if (_dbAccessConfig.CpuText != null)
+                            {
+                                _dbAccessConfig.CpuText.Text = _dbAccessConfig.IsRunning ? string.Format("CPU: {0:0.0}%", _dbAccessConfig.CpuPercent) : "CPU: -";
+                                _dbAccessConfig.CpuText.Foreground = _dbAccessConfig.IsRunning ? UiTheme.AccentLightBlue : UiTheme.TextMuted;
+                            }
+                            if (_dbAccessConfig.RamText != null)
+                            {
+                                _dbAccessConfig.RamText.Text = _dbAccessConfig.IsRunning ? string.Format("RAM: {0} MB", _dbAccessConfig.RamMb) : "RAM: -";
+                                _dbAccessConfig.RamText.Foreground = _dbAccessConfig.IsRunning ? UiTheme.AccentGreen : UiTheme.TextMuted;
+                            }
                         }
                         finally
                         {
