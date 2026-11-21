@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using Path = System.IO.Path;
 
 namespace TOTVSHub
 {
@@ -27,7 +29,7 @@ namespace TOTVSHub
             rootGrid.Children.Add(topBar);
 
             Border headerBorder = new Border();
-            headerBorder.Padding = new Thickness(24, 14, 24, 12);
+            headerBorder.Padding = new Thickness(20, 12, 20, 10);
             headerBorder.Background = UiTheme.BgHeader;
             headerBorder.BorderBrush = UiTheme.BorderSubtle;
             headerBorder.BorderThickness = new Thickness(0, 0, 0, 1);
@@ -39,14 +41,14 @@ namespace TOTVSHub
 
             TextBlock titleMain = new TextBlock();
             titleMain.Text = "Central de Visão Geral";
-            titleMain.FontSize = 18;
+            titleMain.FontSize = 17;
             titleMain.FontWeight = FontWeights.Bold;
             titleMain.Foreground = UiTheme.TextPrimary;
             headerLeft.Children.Add(titleMain);
 
             TextBlock titleSub = new TextBlock();
-            titleSub.Text = "Monitoramento de consumo e streaming de logs em tempo real dos serviços ativos";
-            titleSub.FontSize = 12;
+            titleSub.Text = "Monitoramento consolidado de consumo e logs em tempo real dos serviços ativos";
+            titleSub.FontSize = 11.5;
             titleSub.Foreground = UiTheme.TextMuted;
             titleSub.Margin = new Thickness(0, 2, 0, 0);
             headerLeft.Children.Add(titleSub);
@@ -59,32 +61,19 @@ namespace TOTVSHub
             headerRight.VerticalAlignment = VerticalAlignment.Center;
             DockPanel.SetDock(headerRight, Dock.Right);
 
-            Border badgeCount = new Border();
-            badgeCount.Background = UiTheme.BrushFromHex("#064E3B");
-            badgeCount.BorderBrush = UiTheme.AccentGreen;
-            badgeCount.BorderThickness = new Thickness(1);
-            badgeCount.CornerRadius = new CornerRadius(12);
-            badgeCount.Padding = new Thickness(10, 4, 10, 4);
-            badgeCount.Margin = new Thickness(0, 0, 10, 0);
-
-            _overviewActiveCountText = new TextBlock();
-            _overviewActiveCountText.Text = "Calculando ativos...";
-            _overviewActiveCountText.FontSize = 11;
-            _overviewActiveCountText.FontWeight = FontWeights.Bold;
-            _overviewActiveCountText.Foreground = UiTheme.AccentGreen;
-            badgeCount.Child = _overviewActiveCountText;
-            headerRight.Children.Add(badgeCount);
-
-            Button btnRefresh = UiTheme.CreateActionButton("Atualizar", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
-            btnRefresh.Height = 28;
-            btnRefresh.FontSize = 11;
-            btnRefresh.Padding = new Thickness(12, 0, 12, 0);
-            btnRefresh.Click += delegate
+            System.Windows.Shapes.Path spinIcon = (System.Windows.Shapes.Path)UiTheme.CreateThinRefreshIcon(UiTheme.AccentLightBlue);
+            Button btnReload = UiTheme.CreateFramelessIconButton(spinIcon, "Atualizar dados e gráficos da Central");
+            btnReload.Click += delegate
             {
+                RotateTransform rt = spinIcon.RenderTransform as RotateTransform;
+                if (rt == null) { rt = new RotateTransform(0); spinIcon.RenderTransform = rt; }
+                DoubleAnimation spin = new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(650));
+                spin.EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut };
+                rt.BeginAnimation(RotateTransform.AngleProperty, spin);
                 AtualizarListaOverview();
                 CarregarLogOverviewAsync(true);
             };
-            headerRight.Children.Add(btnRefresh);
+            headerRight.Children.Add(btnReload);
 
             headerDock.Children.Add(headerRight);
             headerBorder.Child = headerDock;
@@ -93,10 +82,12 @@ namespace TOTVSHub
             rootGrid.Children.Add(headerBorder);
 
             Grid bodyGrid = new Grid();
-            bodyGrid.Margin = new Thickness(24, 14, 24, 16);
-            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(420) });
+            bodyGrid.Margin = new Thickness(20, 14, 20, 16);
+            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(33, GridUnitType.Star) });
             bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
-            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34, GridUnitType.Star) });
+            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
+            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(33, GridUnitType.Star) });
 
             ScrollViewer leftScroll = new ScrollViewer();
             leftScroll.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
@@ -107,8 +98,12 @@ namespace TOTVSHub
             Grid.SetColumn(leftScroll, 0);
             bodyGrid.Children.Add(leftScroll);
 
+            Border centerChartsPanel = CriarPainelConsumoGraficosOverview();
+            Grid.SetColumn(centerChartsPanel, 2);
+            bodyGrid.Children.Add(centerChartsPanel);
+
             Border rightLogPanel = CriarPainelLogsOverview();
-            Grid.SetColumn(rightLogPanel, 2);
+            Grid.SetColumn(rightLogPanel, 4);
             bodyGrid.Children.Add(rightLogPanel);
 
             Grid.SetRow(bodyGrid, 2);
@@ -119,6 +114,194 @@ namespace TOTVSHub
             AtualizarListaOverview();
             CarregarLogOverviewAsync(true);
             IniciarOverviewTimer();
+        }
+
+        private Border CriarPainelConsumoGraficosOverview()
+        {
+            Border panel = new Border();
+            panel.Background = UiTheme.BgCard;
+            panel.BorderBrush = UiTheme.BorderSubtle;
+            panel.BorderThickness = new Thickness(1);
+            panel.CornerRadius = new CornerRadius(10);
+            panel.Padding = new Thickness(16, 14, 16, 14);
+
+            ScrollViewer scroll = new ScrollViewer();
+            scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+            scroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
+
+            StackPanel sp = new StackPanel();
+
+            TextBlock title = new TextBlock();
+            title.Text = "Consumo Consolidado";
+            title.FontSize = 14;
+            title.FontWeight = FontWeights.Bold;
+            title.Foreground = UiTheme.TextPrimary;
+            sp.Children.Add(title);
+
+            TextBlock sub = new TextBlock();
+            sub.Text = "Somatória de recursos de todos os serviços rodando";
+            sub.FontSize = 11;
+            sub.Foreground = UiTheme.TextMuted;
+            sub.Margin = new Thickness(0, 2, 0, 12);
+            sp.Children.Add(sub);
+
+            Border cardCpu = new Border();
+            cardCpu.Background = UiTheme.BrushFromHex("#0B0F19");
+            cardCpu.BorderBrush = UiTheme.BorderSubtle;
+            cardCpu.BorderThickness = new Thickness(1);
+            cardCpu.CornerRadius = new CornerRadius(8);
+            cardCpu.Padding = new Thickness(12, 10, 12, 12);
+            cardCpu.Margin = new Thickness(0, 0, 0, 10);
+
+            StackPanel spCpu = new StackPanel();
+            TextBlock lblCpuHeader = new TextBlock();
+            lblCpuHeader.Text = "CPU CONSOLIDADA";
+            lblCpuHeader.FontSize = 10;
+            lblCpuHeader.FontWeight = FontWeights.Bold;
+            lblCpuHeader.Foreground = UiTheme.AccentLightBlue;
+            lblCpuHeader.Margin = new Thickness(0, 0, 0, 6);
+            spCpu.Children.Add(lblCpuHeader);
+
+            UIElement donutCpu = CriarDonutChart(UiTheme.AccentLightBlue, out _overviewTotalCpuArc, out _overviewTotalCpuCenterText, "TOTAL CPU");
+            spCpu.Children.Add(donutCpu);
+
+            Border cpuBarTrack = new Border();
+            cpuBarTrack.Height = 7;
+            cpuBarTrack.Background = UiTheme.BrushFromHex("#1E293B");
+            cpuBarTrack.CornerRadius = new CornerRadius(3.5);
+            cpuBarTrack.Margin = new Thickness(0, 8, 0, 4);
+
+            _overviewTotalCpuBarFill = new Border();
+            _overviewTotalCpuBarFill.Height = 7;
+            _overviewTotalCpuBarFill.Background = UiTheme.AccentLightBlue;
+            _overviewTotalCpuBarFill.CornerRadius = new CornerRadius(3.5);
+            _overviewTotalCpuBarFill.HorizontalAlignment = HorizontalAlignment.Left;
+            _overviewTotalCpuBarFill.Width = 2;
+            cpuBarTrack.Child = _overviewTotalCpuBarFill;
+            spCpu.Children.Add(cpuBarTrack);
+
+            _overviewTotalCpuSummaryText = new TextBlock();
+            _overviewTotalCpuSummaryText.Text = "0.0% de uso total";
+            _overviewTotalCpuSummaryText.FontSize = 10.5;
+            _overviewTotalCpuSummaryText.Foreground = UiTheme.TextMuted;
+            _overviewTotalCpuSummaryText.HorizontalAlignment = HorizontalAlignment.Center;
+            spCpu.Children.Add(_overviewTotalCpuSummaryText);
+
+            cardCpu.Child = spCpu;
+            sp.Children.Add(cardCpu);
+
+            Border cardRam = new Border();
+            cardRam.Background = UiTheme.BrushFromHex("#0B0F19");
+            cardRam.BorderBrush = UiTheme.BorderSubtle;
+            cardRam.BorderThickness = new Thickness(1);
+            cardRam.CornerRadius = new CornerRadius(8);
+            cardRam.Padding = new Thickness(12, 10, 12, 12);
+            cardRam.Margin = new Thickness(0, 0, 0, 12);
+
+            StackPanel spRam = new StackPanel();
+            TextBlock lblRamHeader = new TextBlock();
+            lblRamHeader.Text = "MEMÓRIA RAM CONSOLIDADA";
+            lblRamHeader.FontSize = 10;
+            lblRamHeader.FontWeight = FontWeights.Bold;
+            lblRamHeader.Foreground = UiTheme.AccentGreen;
+            lblRamHeader.Margin = new Thickness(0, 0, 0, 6);
+            spRam.Children.Add(lblRamHeader);
+
+            UIElement donutRam = CriarDonutChart(UiTheme.AccentGreen, out _overviewTotalRamArc, out _overviewTotalRamCenterText, "TOTAL RAM");
+            spRam.Children.Add(donutRam);
+
+            Border ramBarTrack = new Border();
+            ramBarTrack.Height = 7;
+            ramBarTrack.Background = UiTheme.BrushFromHex("#1E293B");
+            ramBarTrack.CornerRadius = new CornerRadius(3.5);
+            ramBarTrack.Margin = new Thickness(0, 8, 0, 4);
+
+            _overviewTotalRamBarFill = new Border();
+            _overviewTotalRamBarFill.Height = 7;
+            _overviewTotalRamBarFill.Background = UiTheme.AccentGreen;
+            _overviewTotalRamBarFill.CornerRadius = new CornerRadius(3.5);
+            _overviewTotalRamBarFill.HorizontalAlignment = HorizontalAlignment.Left;
+            _overviewTotalRamBarFill.Width = 2;
+            ramBarTrack.Child = _overviewTotalRamBarFill;
+            spRam.Children.Add(ramBarTrack);
+
+            _overviewTotalRamSummaryText = new TextBlock();
+            _overviewTotalRamSummaryText.Text = "0 MB alocados";
+            _overviewTotalRamSummaryText.FontSize = 10.5;
+            _overviewTotalRamSummaryText.Foreground = UiTheme.TextMuted;
+            _overviewTotalRamSummaryText.HorizontalAlignment = HorizontalAlignment.Center;
+            spRam.Children.Add(_overviewTotalRamSummaryText);
+
+            cardRam.Child = spRam;
+            sp.Children.Add(cardRam);
+
+            TextBlock lblDistTitle = new TextBlock();
+            lblDistTitle.Text = "Distribuição por Serviço";
+            lblDistTitle.FontSize = 12;
+            lblDistTitle.FontWeight = FontWeights.SemiBold;
+            lblDistTitle.Foreground = UiTheme.TextSecondary;
+            lblDistTitle.Margin = new Thickness(0, 0, 0, 6);
+            sp.Children.Add(lblDistTitle);
+
+            _overviewBreakdownStack = new StackPanel();
+            sp.Children.Add(_overviewBreakdownStack);
+
+            scroll.Content = sp;
+            panel.Child = scroll;
+            return panel;
+        }
+
+        private UIElement CriarDonutChart(Brush strokeBrush, out System.Windows.Shapes.Path arcPath, out TextBlock centerValText, string label)
+        {
+            Grid container = new Grid();
+            container.Width = 130;
+            container.Height = 130;
+            container.HorizontalAlignment = HorizontalAlignment.Center;
+
+            System.Windows.Shapes.Ellipse bgCircle = new System.Windows.Shapes.Ellipse();
+            bgCircle.Width = 100;
+            bgCircle.Height = 100;
+            bgCircle.Stroke = UiTheme.BrushFromHex("#1E293B");
+            bgCircle.StrokeThickness = 10;
+            bgCircle.HorizontalAlignment = HorizontalAlignment.Center;
+            bgCircle.VerticalAlignment = VerticalAlignment.Center;
+            container.Children.Add(bgCircle);
+
+            System.Windows.Shapes.Path arc = new System.Windows.Shapes.Path();
+            arc.Width = 130;
+            arc.Height = 130;
+            arc.Stroke = strokeBrush;
+            arc.StrokeThickness = 10;
+            arc.StrokeStartLineCap = PenLineCap.Round;
+            arc.StrokeEndLineCap = PenLineCap.Round;
+            arc.HorizontalAlignment = HorizontalAlignment.Left;
+            arc.VerticalAlignment = VerticalAlignment.Top;
+            container.Children.Add(arc);
+            arcPath = arc;
+
+            StackPanel centerStack = new StackPanel();
+            centerStack.HorizontalAlignment = HorizontalAlignment.Center;
+            centerStack.VerticalAlignment = VerticalAlignment.Center;
+
+            TextBlock val = new TextBlock();
+            val.Text = "0%";
+            val.FontSize = 17;
+            val.FontWeight = FontWeights.Bold;
+            val.Foreground = UiTheme.TextPrimary;
+            val.HorizontalAlignment = HorizontalAlignment.Center;
+            centerStack.Children.Add(val);
+            centerValText = val;
+
+            TextBlock lbl = new TextBlock();
+            lbl.Text = label;
+            lbl.FontSize = 9;
+            lbl.FontWeight = FontWeights.SemiBold;
+            lbl.Foreground = UiTheme.TextMuted;
+            lbl.HorizontalAlignment = HorizontalAlignment.Center;
+            centerStack.Children.Add(lbl);
+
+            container.Children.Add(centerStack);
+            return container;
         }
 
         private Border CriarPainelLogsOverview()
@@ -146,6 +329,7 @@ namespace TOTVSHub
             _overviewLogTitle.FontSize = 14;
             _overviewLogTitle.FontWeight = FontWeights.Bold;
             _overviewLogTitle.Foreground = UiTheme.TextPrimary;
+            _overviewLogTitle.TextTrimming = TextTrimming.CharacterEllipsis;
             titles.Children.Add(_overviewLogTitle);
 
             _overviewLogPathText = new TextBlock();
@@ -162,27 +346,37 @@ namespace TOTVSHub
             StackPanel actions = new StackPanel();
             actions.Orientation = Orientation.Horizontal;
             actions.VerticalAlignment = VerticalAlignment.Center;
+            actions.HorizontalAlignment = HorizontalAlignment.Right;
             DockPanel.SetDock(actions, Dock.Right);
 
-            _overviewAutoScrollBtn = UiTheme.CreateActionButton(_overviewAutoScroll ? "Auto-scroll: ON" : "Auto-scroll: OFF", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
+            _overviewAutoScrollBtn = UiTheme.CreateActionButton(
+                UiTheme.CreateScrollIcon(Brushes.White, 13),
+                _overviewAutoScroll ? "#0284C7" : UiTheme.NeutralBtnHex,
+                _overviewAutoScroll ? "#0369A1" : UiTheme.NeutralBtnHoverHex);
+            _overviewAutoScrollBtn.Width = 30;
             _overviewAutoScrollBtn.Height = 26;
-            _overviewAutoScrollBtn.FontSize = 11;
-            _overviewAutoScrollBtn.Padding = new Thickness(10, 0, 10, 0);
-            _overviewAutoScrollBtn.Margin = new Thickness(0, 0, 6, 0);
+            _overviewAutoScrollBtn.Padding = new Thickness(0);
+            _overviewAutoScrollBtn.Margin = new Thickness(0, 0, 4, 0);
+            _overviewAutoScrollBtn.ToolTip = _overviewAutoScroll ? "Auto-scroll: Ativado (Clique para pausar)" : "Auto-scroll: Pausado (Clique para ativar)";
             _overviewAutoScrollBtn.Click += delegate
             {
                 _overviewAutoScroll = !_overviewAutoScroll;
-                _overviewAutoScrollBtn.Content = _overviewAutoScroll ? "Auto-scroll: ON" : "Auto-scroll: OFF";
+                _overviewAutoScrollBtn.Background = UiTheme.BrushFromHex(_overviewAutoScroll ? "#0284C7" : UiTheme.NeutralBtnHex);
+                _overviewAutoScrollBtn.ToolTip = _overviewAutoScroll ? "Auto-scroll: Ativado (Clique para pausar)" : "Auto-scroll: Pausado (Clique para ativar)";
                 if (_overviewAutoScroll && _overviewLogConsole != null)
                     _overviewLogConsole.ScrollToEnd();
             };
             actions.Children.Add(_overviewAutoScrollBtn);
 
-            Button btnCopy = UiTheme.CreateActionButton("Copiar", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
+            Button btnCopy = UiTheme.CreateActionButton(
+                UiTheme.CreateCopyIcon(Brushes.White, 13),
+                UiTheme.NeutralBtnHex,
+                UiTheme.NeutralBtnHoverHex);
+            btnCopy.Width = 30;
             btnCopy.Height = 26;
-            btnCopy.FontSize = 11;
-            btnCopy.Padding = new Thickness(10, 0, 10, 0);
-            btnCopy.Margin = new Thickness(0, 0, 6, 0);
+            btnCopy.Padding = new Thickness(0);
+            btnCopy.Margin = new Thickness(0, 0, 4, 0);
+            btnCopy.ToolTip = "Copiar todo o log";
             btnCopy.Click += delegate
             {
                 try
@@ -194,10 +388,14 @@ namespace TOTVSHub
             };
             actions.Children.Add(btnCopy);
 
-            Button btnOpenFolder = UiTheme.CreateActionButton("Abrir Pasta", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
+            Button btnOpenFolder = UiTheme.CreateActionButton(
+                UiTheme.CreateFolderIcon(Brushes.White, 13),
+                UiTheme.NeutralBtnHex,
+                UiTheme.NeutralBtnHoverHex);
+            btnOpenFolder.Width = 30;
             btnOpenFolder.Height = 26;
-            btnOpenFolder.FontSize = 11;
-            btnOpenFolder.Padding = new Thickness(10, 0, 10, 0);
+            btnOpenFolder.Padding = new Thickness(0);
+            btnOpenFolder.ToolTip = "Abrir pasta de logs no Windows Explorer";
             btnOpenFolder.Click += delegate
             {
                 if (!string.IsNullOrEmpty(_selectedOverviewLogPath) && Directory.Exists(_selectedOverviewLogPath))
