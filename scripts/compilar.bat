@@ -55,6 +55,10 @@ popd
 
 if !CSC_CORP_ERR!==0 (
     echo [SUCESSO] TOTVSHub_Corp.exe gerado com sucesso!
+    if not exist "Release_All" mkdir "Release_All"
+    if not exist "Release_Corp" mkdir "Release_Corp"
+    copy /y "TOTVSHub.exe" "Release_All\TOTVSHub.exe" >nul 2>&1
+    copy /y "TOTVSHub_Corp.exe" "Release_Corp\TOTVSHub.exe" >nul 2>&1
 ) else (
     echo [ERRO] Falha na compilacao de TOTVSHub_Corp.exe.
     if "%NOPAUSE%"=="" pause
