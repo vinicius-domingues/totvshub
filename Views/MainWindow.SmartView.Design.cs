@@ -304,13 +304,17 @@ namespace TOTVSHub
 
             StackPanel leftStack = new StackPanel();
             leftStack.VerticalAlignment = VerticalAlignment.Center;
+            leftStack.HorizontalAlignment = HorizontalAlignment.Center;
+            leftStack.Width = 96;
             leftStack.Margin = new Thickness(0, 0, 14, 0);
 
             Border statusBadge = new Border();
+            statusBadge.Width = 96;
+            statusBadge.Height = 26;
             statusBadge.CornerRadius = new CornerRadius(10);
-            statusBadge.Padding = new Thickness(8, 2, 8, 2);
+            statusBadge.Padding = new Thickness(6, 3, 6, 3);
             statusBadge.Background = portStatus.IsOpen ? UiTheme.AccentGreen : UiTheme.BrushFromHex("#475569");
-            statusBadge.HorizontalAlignment = HorizontalAlignment.Left;
+            statusBadge.HorizontalAlignment = HorizontalAlignment.Center;
 
             TextBlock statusText = new TextBlock();
             statusText.Text = portStatus.IsOpen ? "RUNNING" : "STOPPED";
@@ -322,6 +326,43 @@ namespace TOTVSHub
 
             badgeRef = statusBadge;
             statusTextRef = statusText;
+
+            StackPanel actionRow = new StackPanel();
+            actionRow.Orientation = Orientation.Horizontal;
+            actionRow.HorizontalAlignment = HorizontalAlignment.Center;
+            actionRow.Margin = new Thickness(0, 8, 0, 0);
+
+            Button btnLogsSquare = UiTheme.CreateActionButton(
+                UiTheme.CreateHistoryIcon(UiTheme.AccentLightBlue, 13),
+                UiTheme.NeutralBtnHex,
+                UiTheme.NeutralBtnHoverHex);
+            btnLogsSquare.Width = 34;
+            btnLogsSquare.Height = 26;
+            btnLogsSquare.Padding = new Thickness(0);
+            btnLogsSquare.Margin = new Thickness(0, 0, 4, 0);
+            btnLogsSquare.ToolTip = "Logs e Monitoramento do SmartView";
+            btnLogsSquare.Click += delegate
+            {
+                string logsDir = ObterDiretorioLogsSmartView();
+                AbrirTelaCompletaLogs("SmartView", logsDir, _smartViewPid, "smartview");
+            };
+
+            Button btnCommentSquare = UiTheme.CreateActionButton(
+                UiTheme.CreateCommentBubbleIcon(UiTheme.TextSecondary, 13),
+                UiTheme.NeutralBtnHex,
+                UiTheme.NeutralBtnHoverHex);
+            btnCommentSquare.Width = 34;
+            btnCommentSquare.Height = 26;
+            btnCommentSquare.Padding = new Thickness(0);
+            btnCommentSquare.ToolTip = "Adicionar / editar anotação";
+            btnCommentSquare.Click += delegate
+            {
+                EditarNotaSmartView(portStatus.Port, customTitle);
+            };
+
+            actionRow.Children.Add(btnLogsSquare);
+            actionRow.Children.Add(btnCommentSquare);
+            leftStack.Children.Add(actionRow);
 
             Grid.SetRow(leftStack, 0);
             Grid.SetColumn(leftStack, 0);
@@ -391,19 +432,6 @@ namespace TOTVSHub
             accessStack.Orientation = Orientation.Horizontal;
             accessStack.VerticalAlignment = VerticalAlignment.Center;
             accessStack.Margin = new Thickness(0, 0, 10, 0);
-
-            Button btnLogs = UiTheme.CreateActionButton("Logs e Monitoramento", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
-            btnLogs.Height = 28;
-            btnLogs.FontSize = 11;
-            btnLogs.Padding = new Thickness(10, 0, 10, 0);
-            btnLogs.Margin = new Thickness(0, 0, 8, 0);
-            btnLogs.ToolTip = "Visualizar logs e monitoramento do SmartView";
-            btnLogs.Click += delegate
-            {
-                string logsDir = ObterDiretorioLogsSmartView();
-                AbrirTelaCompletaLogs("SmartView", logsDir, _smartViewPid, "smartview");
-            };
-            accessStack.Children.Add(btnLogs);
 
             Button btnLink = UiTheme.CreateWebLinkButton("Abrir", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
             btnLink.ToolTip = "Abrir " + (targetUrl ?? urlPath);

@@ -258,27 +258,41 @@ namespace TOTVSHub
         private Border BuildDbAccessInfoBar()
                 {
                     Border infoBar = new Border();
-                    infoBar.Padding = new Thickness(24, 8, 24, 0);
-        
+                    infoBar.Padding = new Thickness(20, 10, 20, 0);
+
                     DockPanel dp = new DockPanel();
-        
-                    _dbAccessStatusCountLabel = new TextBlock();
-                    _dbAccessStatusCountLabel.Text = _dbAccessConfig.IsRunning ? "1 ativo  •  0 inativos" : "0 ativos  •  1 inativo";
-                    _dbAccessStatusCountLabel.Foreground = UiTheme.TextMuted;
-                    _dbAccessStatusCountLabel.FontSize = 12;
-                    _dbAccessStatusCountLabel.VerticalAlignment = VerticalAlignment.Center;
-                    DockPanel.SetDock(_dbAccessStatusCountLabel, Dock.Left);
-                    dp.Children.Add(_dbAccessStatusCountLabel);
-        
+
+                    StackPanel rightStatsStack = new StackPanel();
+                    rightStatsStack.Orientation = Orientation.Horizontal;
+                    DockPanel.SetDock(rightStatsStack, Dock.Right);
+
                     _dbAccessLastUpdateLabel = new TextBlock();
-                    _dbAccessLastUpdateLabel.Text = string.Format("Atualizado às {0:HH:mm:ss}", DateTime.Now);
                     _dbAccessLastUpdateLabel.Foreground = UiTheme.TextMuted;
                     _dbAccessLastUpdateLabel.FontSize = 12;
-                    _dbAccessLastUpdateLabel.VerticalAlignment = VerticalAlignment.Center;
-                    _dbAccessLastUpdateLabel.HorizontalAlignment = HorizontalAlignment.Right;
-                    DockPanel.SetDock(_dbAccessLastUpdateLabel, Dock.Right);
-                    dp.Children.Add(_dbAccessLastUpdateLabel);
-        
+                    _dbAccessLastUpdateLabel.Margin = new Thickness(0, 0, 10, 0);
+                    _dbAccessLastUpdateLabel.Text = string.Format("Atualizado em {0:dd/MM/yyyy HH:mm:ss}  •", _dbAccessLastUpdatedTime);
+
+                    _dbAccessStatusCountLabel = new TextBlock();
+                    _dbAccessStatusCountLabel.Foreground = UiTheme.TextPrimary;
+                    _dbAccessStatusCountLabel.FontSize = 12;
+                    _dbAccessStatusCountLabel.FontWeight = FontWeights.SemiBold;
+                    int total = 1;
+                    int ativos = _dbAccessConfig.IsRunning ? 1 : 0;
+                    int ocultos = _hiddenDbAccessEnvs.Contains("DBAccess") ? 1 : 0;
+                    _dbAccessStatusCountLabel.Text = string.Format("{0} de {1} ativo{2} ({3} oculto{4})",
+                        ativos, total, ativos == 1 ? "" : "s", ocultos, ocultos == 1 ? "" : "s");
+
+                    rightStatsStack.Children.Add(_dbAccessLastUpdateLabel);
+                    rightStatsStack.Children.Add(_dbAccessStatusCountLabel);
+
+                    TextBlock dbRootLabel = new TextBlock();
+                    dbRootLabel.Foreground = UiTheme.TextMuted;
+                    dbRootLabel.FontSize = 12;
+                    dbRootLabel.Text = "Diretório: " + (_dbAccessConfig.FolderPath ?? "");
+
+                    dp.Children.Add(rightStatsStack);
+                    dp.Children.Add(dbRootLabel);
+
                     infoBar.Child = dp;
                     return infoBar;
                 }
@@ -441,24 +455,27 @@ namespace TOTVSHub
                 {
                     if (_dbAccessCardsContainer == null) return;
                     _dbAccessCardsContainer.Children.Clear();
-        
-                    
-                    if (_dbAccessStatusCountLabel != null)
-                    {
-                        _dbAccessStatusCountLabel.Text = _dbAccessConfig.IsRunning ? "1 ativo  •  0 inativos" : "0 ativos  •  1 inativo";
-                    }
+
+                    int total = 1;
+                    int ativos = _dbAccessConfig.IsRunning ? 1 : 0;
+                    int ocultos = _hiddenDbAccessEnvs.Contains("DBAccess") ? 1 : 0;
+
                     if (_dbAccessLastUpdateLabel != null)
                     {
-                        _dbAccessLastUpdateLabel.Text = string.Format("Atualizado às {0:HH:mm:ss}", DateTime.Now);
+                        _dbAccessLastUpdateLabel.Text = string.Format("Atualizado em {0:dd/MM/yyyy HH:mm:ss}  •", _dbAccessLastUpdatedTime);
                     }
-        
-                    
+                    if (_dbAccessStatusCountLabel != null)
+                    {
+                        _dbAccessStatusCountLabel.Text = string.Format("{0} de {1} ativo{2} ({3} oculto{4})",
+                            ativos, total, ativos == 1 ? "" : "s", ocultos, ocultos == 1 ? "" : "s");
+                    }
+
                     Border cardUnico = CriarCardDbAccessUnico();
                     if (cardUnico != null)
                     {
                         _dbAccessCardsContainer.Children.Add(cardUnico);
                     }
-        
+
                     AtualizarBannerDbAccess();
                 }
 
@@ -467,7 +484,7 @@ namespace TOTVSHub
                     bool isHidden = _hiddenDbAccessEnvs.Contains("DBAccess");
                     if (isHidden && !_dbAccessShowingHidden)
                         return null;
-        
+
                     Border card = new Border();
                     card.Background = _dbAccessConfig.IsRunning ? UiTheme.BgCardConsoleActive : UiTheme.BgCard;
                     card.BorderBrush = _dbAccessConfig.IsRunning ? UiTheme.AccentGreen : UiTheme.BorderSubtle;
@@ -476,33 +493,30 @@ namespace TOTVSHub
                     card.Padding = new Thickness(16, 14, 16, 14);
                     card.Margin = new Thickness(0, 0, 0, 10);
                     card.HorizontalAlignment = HorizontalAlignment.Stretch;
-        
+
                     Grid cardGrid = new Grid();
                     RowDefinition rMain = new RowDefinition(); rMain.Height = GridLength.Auto;
                     RowDefinition rNote = new RowDefinition(); rNote.Height = GridLength.Auto;
                     cardGrid.RowDefinitions.Add(rMain);
                     cardGrid.RowDefinitions.Add(rNote);
-        
+
                     ColumnDefinition colLeft = new ColumnDefinition(); colLeft.Width = GridLength.Auto;
                     ColumnDefinition colInfo = new ColumnDefinition(); colInfo.Width = new GridLength(1, GridUnitType.Star);
-                    ColumnDefinition colPower = new ColumnDefinition(); colPower.Width = GridLength.Auto;
-                    ColumnDefinition colDots = new ColumnDefinition(); colDots.Width = GridLength.Auto;
-        
+                    ColumnDefinition colPowerDots = new ColumnDefinition(); colPowerDots.Width = GridLength.Auto;
+
                     cardGrid.ColumnDefinitions.Add(colLeft);
                     cardGrid.ColumnDefinitions.Add(colInfo);
-                    cardGrid.ColumnDefinitions.Add(colPower);
-                    cardGrid.ColumnDefinitions.Add(colDots);
-        
-                    
+                    cardGrid.ColumnDefinitions.Add(colPowerDots);
+
                     StackPanel leftStack = new StackPanel();
                     leftStack.Orientation = Orientation.Vertical;
                     leftStack.VerticalAlignment = VerticalAlignment.Center;
                     leftStack.HorizontalAlignment = HorizontalAlignment.Center;
-                    leftStack.Width = 96;
+                    leftStack.Width = 104;
                     leftStack.Margin = new Thickness(0, 0, 16, 0);
-        
+
                     Border statusBadge = new Border();
-                    statusBadge.Width = 96;
+                    statusBadge.Width = 104;
                     statusBadge.Height = 26;
                     statusBadge.CornerRadius = new CornerRadius(10);
                     statusBadge.Padding = new Thickness(6, 3, 6, 3);
@@ -510,12 +524,12 @@ namespace TOTVSHub
                     statusBadge.BorderThickness = new Thickness(1);
                     statusBadge.Background = _dbAccessConfig.IsRunning ? UiTheme.BrushFromHex("#064E3B") : UiTheme.TagBg;
                     statusBadge.BorderBrush = _dbAccessConfig.IsRunning ? UiTheme.AccentGreen : UiTheme.BorderSubtle;
-        
+
                     StackPanel statusInner = new StackPanel();
                     statusInner.Orientation = Orientation.Horizontal;
                     statusInner.HorizontalAlignment = HorizontalAlignment.Center;
                     statusInner.VerticalAlignment = VerticalAlignment.Center;
-        
+
                     Border statusDot = new Border();
                     statusDot.Width = 7;
                     statusDot.Height = 7;
@@ -523,7 +537,7 @@ namespace TOTVSHub
                     statusDot.Margin = new Thickness(0, 0, 5, 0);
                     statusDot.Background = _dbAccessConfig.IsRunning ? UiTheme.AccentGreen : UiTheme.TextMuted;
                     statusInner.Children.Add(statusDot);
-        
+
                     TextBlock statusTxt = new TextBlock();
                     statusTxt.Text = _dbAccessConfig.IsRunning ? "RUNNING" : "STOPPED";
                     statusTxt.FontSize = 11;
@@ -532,12 +546,11 @@ namespace TOTVSHub
                     statusInner.Children.Add(statusTxt);
                     statusBadge.Child = statusInner;
                     leftStack.Children.Add(statusBadge);
-        
-                    
+
                     if (_dbAccessConfig.IsRunning && _dbAccessConfig.ProcessId > 0)
                     {
                         Border pidBadge = new Border();
-                        pidBadge.Width = 96;
+                        pidBadge.Width = 104;
                         pidBadge.Height = 24;
                         pidBadge.Background = UiTheme.BrushFromHex("#0C4A6E");
                         pidBadge.BorderBrush = UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex);
@@ -545,7 +558,7 @@ namespace TOTVSHub
                         pidBadge.CornerRadius = new CornerRadius(5);
                         pidBadge.Padding = new Thickness(4, 2, 4, 2);
                         pidBadge.Margin = new Thickness(0, 4, 0, 0);
-        
+
                         TextBlock pidTxt = new TextBlock();
                         pidTxt.Text = "PID " + _dbAccessConfig.ProcessId;
                         pidTxt.Foreground = UiTheme.AccentLightBlue;
@@ -556,32 +569,41 @@ namespace TOTVSHub
                         pidBadge.Child = pidTxt;
                         leftStack.Children.Add(pidBadge);
                     }
-        
-                    
+
+                    Grid mainButtonsGrid = new Grid();
+                    mainButtonsGrid.Width = 104;
+                    mainButtonsGrid.Margin = new Thickness(0, 8, 0, 0);
+                    mainButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    mainButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    mainButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
                     Button btnEditIni = UiTheme.CreateActionButton(
                         UiTheme.CreatePencilIcon(UiTheme.TextSecondary, 13),
                         UiTheme.NeutralBtnHex,
                         UiTheme.NeutralBtnHoverHex);
-                    btnEditIni.Width = 34;
+                    btnEditIni.Width = double.NaN;
                     btnEditIni.Height = 26;
-                    btnEditIni.Margin = new Thickness(0, 6, 0, 0);
+                    btnEditIni.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    btnEditIni.Padding = new Thickness(0);
+                    btnEditIni.Margin = new Thickness(0, 0, 2, 0);
                     btnEditIni.ToolTip = "Editar dbaccess.ini com o Editor Visual";
                     btnEditIni.Click += delegate { ShowDbAccessIniEditorView(); };
-                    leftStack.Children.Add(btnEditIni);
-        
+                    Grid.SetColumn(btnEditIni, 0);
+                    mainButtonsGrid.Children.Add(btnEditIni);
+
+                    leftStack.Children.Add(mainButtonsGrid);
+
                     Grid.SetRow(leftStack, 0);
                     Grid.SetColumn(leftStack, 0);
                     cardGrid.Children.Add(leftStack);
-        
-                    
+
                     StackPanel infoStack = new StackPanel();
                     infoStack.VerticalAlignment = VerticalAlignment.Center;
                     infoStack.Margin = new Thickness(0, 0, 12, 0);
-        
-                    
+
                     WrapPanel titleWrap = new WrapPanel();
                     titleWrap.VerticalAlignment = VerticalAlignment.Center;
-        
+
                     TextBlock title = new TextBlock();
                     title.Text = "DBAccess";
                     title.FontSize = 15;
@@ -590,7 +612,7 @@ namespace TOTVSHub
                     title.Margin = new Thickness(0, 0, 6, 0);
                     title.VerticalAlignment = VerticalAlignment.Center;
                     titleWrap.Children.Add(title);
-        
+
                     Button btnCopyName = UiTheme.CreateFramelessIconButton(
                         UiTheme.CreateCopyIcon(UiTheme.TextMuted, 13),
                         "Copiar nome DBAccess");
@@ -600,12 +622,11 @@ namespace TOTVSHub
                     btnCopyName.Click += delegate { try { Clipboard.SetText("DBAccess"); } catch { } };
                     titleWrap.Children.Add(btnCopyName);
                     infoStack.Children.Add(titleWrap);
-        
-                    
+
                     StackPanel pathStack = new StackPanel();
                     pathStack.Orientation = Orientation.Horizontal;
                     pathStack.Margin = new Thickness(0, 3, 0, 6);
-        
+
                     TextBlock lblFolder = new TextBlock();
                     lblFolder.Text = _dbAccessConfig.FolderPath ?? "";
                     lblFolder.FontSize = 11;
@@ -617,7 +638,7 @@ namespace TOTVSHub
                     lblFolder.MouseLeave += delegate { lblFolder.Foreground = UiTheme.TextMuted; lblFolder.TextDecorations = null; };
                     lblFolder.MouseLeftButtonUp += delegate { AbrirNoExplorer(_dbAccessConfig.FolderPath); };
                     pathStack.Children.Add(lblFolder);
-        
+
                     Button btnCopyPath = UiTheme.CreateFramelessIconButton(
                         UiTheme.CreateCopyIcon(UiTheme.TextMuted, 11),
                         "Copiar caminho do DBAccess");
@@ -627,32 +648,33 @@ namespace TOTVSHub
                     btnCopyPath.Click += delegate { try { Clipboard.SetText(_dbAccessConfig.FolderPath ?? ""); } catch { } };
                     pathStack.Children.Add(btnCopyPath);
                     infoStack.Children.Add(pathStack);
-        
+
                     Grid metaContainer = new Grid();
-                    metaContainer.Margin = new Thickness(0, 0, 0, 4);
+                    metaContainer.Margin = new Thickness(0, 2, 0, 4);
                     metaContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                     metaContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        
-                    UniformGrid metaGrid = new UniformGrid();
-                    metaGrid.Columns = 2;
-        
+
+                    WrapPanel metaWrap = new WrapPanel();
+                    metaWrap.Orientation = Orientation.Horizontal;
+                    metaWrap.HorizontalAlignment = HorizontalAlignment.Left;
+
                     int monPort = _dbAccessConfig.MonitorPort > 0 ? _dbAccessConfig.MonitorPort : 7890;
-                    metaGrid.Children.Add(CreateMetaPill("Porta", monPort.ToString()));
-                    metaGrid.Children.Add(CreateMetaPill("License", _dbAccessConfig.LicenseServer + ":" + _dbAccessConfig.LicensePort));
-                    metaGrid.Children.Add(CreateMetaPill("Aliases", _dbAccessConfig.Environments.Count + " configurados"));
-        
+                    metaWrap.Children.Add(CreateMetaPill("Porta", monPort.ToString()));
+                    metaWrap.Children.Add(CreateMetaPill("License", _dbAccessConfig.LicenseServer + ":" + _dbAccessConfig.LicensePort));
+                    metaWrap.Children.Add(CreateMetaPill("Aliases", _dbAccessConfig.Environments.Count + " configurados"));
+
                     HashSet<string> dbmsSet = new HashSet<string>(_dbAccessConfig.Environments.Select(e => e.Dbms).Where(d => !string.IsNullOrEmpty(d)), StringComparer.OrdinalIgnoreCase);
                     if (dbmsSet.Count > 0)
-                        metaGrid.Children.Add(CreateMetaPill("DBMS", string.Join(", ", dbmsSet.ToArray())));
-        
-                    Grid.SetColumn(metaGrid, 0);
-                    metaContainer.Children.Add(metaGrid);
+                        metaWrap.Children.Add(CreateMetaPill("DBMS", string.Join(", ", dbmsSet.ToArray())));
+
+                    Grid.SetColumn(metaWrap, 0);
+                    metaContainer.Children.Add(metaWrap);
                     infoStack.Children.Add(metaContainer);
-        
+
                     StackPanel metricsStack = new StackPanel();
                     metricsStack.Orientation = Orientation.Horizontal;
                     metricsStack.Margin = new Thickness(0, 6, 0, 0);
-        
+
                     Border cpuBadge = new Border();
                     cpuBadge.Background = UiTheme.BrushFromHex("#0F172A");
                     cpuBadge.BorderBrush = UiTheme.BorderSubtle;
@@ -660,7 +682,7 @@ namespace TOTVSHub
                     cpuBadge.CornerRadius = new CornerRadius(5);
                     cpuBadge.Padding = new Thickness(6, 2, 6, 2);
                     cpuBadge.Margin = new Thickness(0, 0, 6, 0);
-        
+
                     TextBlock cpuTxt = new TextBlock();
                     cpuTxt.Text = _dbAccessConfig.IsRunning ? string.Format("CPU: {0:0.0}%", _dbAccessConfig.CpuPercent) : "CPU: -";
                     cpuTxt.FontSize = 10;
@@ -669,14 +691,14 @@ namespace TOTVSHub
                     cpuBadge.Child = cpuTxt;
                     metricsStack.Children.Add(cpuBadge);
                     _dbAccessConfig.CpuText = cpuTxt;
-        
+
                     Border ramBadge = new Border();
                     ramBadge.Background = UiTheme.BrushFromHex("#0F172A");
                     ramBadge.BorderBrush = UiTheme.BorderSubtle;
                     ramBadge.BorderThickness = new Thickness(1);
                     ramBadge.CornerRadius = new CornerRadius(5);
                     ramBadge.Padding = new Thickness(6, 2, 6, 2);
-        
+
                     TextBlock ramTxt = new TextBlock();
                     ramTxt.Text = _dbAccessConfig.IsRunning ? string.Format("RAM: {0} MB", _dbAccessConfig.RamMb) : "RAM: -";
                     ramTxt.FontSize = 10;
@@ -686,77 +708,36 @@ namespace TOTVSHub
                     metricsStack.Children.Add(ramBadge);
                     _dbAccessConfig.RamText = ramTxt;
                     _dbAccessConfig.CardBorder = card;
-        
+
                     infoStack.Children.Add(metricsStack);
-        
+
                     Grid.SetRow(infoStack, 0);
                     Grid.SetColumn(infoStack, 1);
                     cardGrid.Children.Add(infoStack);
-        
-                    StackPanel powerStack = new StackPanel();
-                    powerStack.Orientation = Orientation.Vertical;
-                    powerStack.VerticalAlignment = VerticalAlignment.Center;
-                    powerStack.HorizontalAlignment = HorizontalAlignment.Center;
-                    powerStack.Margin = new Thickness(12, 0, 12, 0);
-        
-                    Button btnStart = UiTheme.CreateActionButton(UiTheme.CreatePlayIcon(Brushes.White, 13), "#059669", "#10B981");
-                    btnStart.Width = 34; btnStart.Height = 26; btnStart.Padding = new Thickness(0); btnStart.Margin = new Thickness(0, 2, 0, 2);
-                    btnStart.ToolTip = "Iniciar DBAccess";
-                    btnStart.IsEnabled = !_dbAccessConfig.IsRunning;
-                    btnStart.Opacity = _dbAccessConfig.IsRunning ? 0.3 : 1.0;
-                    btnStart.Click += delegate { IniciarDbAccessAsync(); };
-        
-                    Button btnRestart = UiTheme.CreateActionButton(UiTheme.CreateRestartIcon(Brushes.White, 13), "#D97706", "#F59E0B");
-                    btnRestart.Width = 34; btnRestart.Height = 26; btnRestart.Padding = new Thickness(0); btnRestart.Margin = new Thickness(0, 2, 0, 2);
-                    btnRestart.ToolTip = "Reiniciar DBAccess";
-                    btnRestart.IsEnabled = _dbAccessConfig.IsRunning;
-                    btnRestart.Opacity = _dbAccessConfig.IsRunning ? 1.0 : 0.3;
-                    btnRestart.Click += delegate { ReiniciarDbAccessAsync(); };
-        
-                    Button btnStop = UiTheme.CreateActionButton(UiTheme.CreateStopXIcon(Brushes.White, 13), "#DC2626", "#EF4444");
-                    btnStop.Width = 34; btnStop.Height = 26; btnStop.Padding = new Thickness(0); btnStop.Margin = new Thickness(0, 2, 0, 2);
-                    btnStop.ToolTip = "Parar DBAccess";
-                    btnStop.IsEnabled = _dbAccessConfig.IsRunning;
-                    btnStop.Opacity = _dbAccessConfig.IsRunning ? 1.0 : 0.3;
-                    btnStop.Click += delegate { PararDbAccessAsync(); };
-        
-                    powerStack.Children.Add(btnStart);
-                    powerStack.Children.Add(btnRestart);
-                    powerStack.Children.Add(btnStop);
-        
-                    Grid.SetRow(powerStack, 0);
-                    Grid.SetColumn(powerStack, 2);
-                    cardGrid.Children.Add(powerStack);
-        
-                    Button btnDots = UiTheme.CreateFramelessIconButton(UiTheme.CreateThreeDotsIcon(UiTheme.TextSecondary, 16), "Mais opções do DBAccess");
-                    btnDots.VerticalAlignment = VerticalAlignment.Top;
+
+                    StackPanel powerDotsStack = new StackPanel();
+                    powerDotsStack.Orientation = Orientation.Vertical;
+                    powerDotsStack.VerticalAlignment = VerticalAlignment.Center;
+                    powerDotsStack.HorizontalAlignment = HorizontalAlignment.Right;
+
+                    Button btnDots = UiTheme.CreateFramelessIconButton(
+                        UiTheme.CreateThreeDotsIcon(UiTheme.TextSecondary, 16),
+                        "Mais opções do DBAccess");
                     btnDots.HorizontalAlignment = HorizontalAlignment.Right;
-                    btnDots.Margin = new Thickness(4, -4, 0, 0);
-        
+                    btnDots.Margin = new Thickness(0, 0, 0, 6);
+
                     ContextMenu menuDots = UiTheme.CreateDarkContextMenu();
-        
-                    menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Logs", UiTheme.CreateCopyIcon(UiTheme.AccentLightBlue, 14), delegate
-                    {
-                        AbrirTelaCompletaLogs("DBAccess", _dbAccessConfig.FolderPath, _dbAccessConfig.ProcessId, "dbaccess");
-                    }));
-        
-                    menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Editar INI", UiTheme.CreatePencilIcon(UiTheme.TextSecondary, 14), delegate
-                    {
-                        ShowDbAccessIniEditorView();
-                    }));
-        
-                    menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Atualizar Binário", UiTheme.CreateThinRefreshIcon(UiTheme.TextSecondary), delegate
-                    {
-                        MessageBox.Show(this, "Funcionalidade em desenvolvimento:\nTroca e atualização automática de binários em breve!", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Information);
-                    }));
-        
+
                     menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Comentário", UiTheme.CreateCommentBubbleIcon(UiTheme.TextSecondary, 14), delegate
                     {
                         EditarNotaDbAccess();
                     }));
-        
-                    menuDots.Items.Add(new Separator { Background = UiTheme.BorderSubtle, Margin = new Thickness(4, 2, 4, 2) });
-        
+
+                    menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Atualizar Binário", UiTheme.CreateThinRefreshIcon(UiTheme.TextSecondary), delegate
+                    {
+                        MessageBox.Show(this, "Funcionalidade em desenvolvimento:\nTroca e atualização automática de binários em breve!", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }));
+
                     menuDots.Items.Add(UiTheme.CreateDarkMenuItem(isHidden ? "Desocultar DBAccess" : "Ocultar DBAccess", isHidden ? UiTheme.CreateEyeOffIcon(UiTheme.TextSecondary, 14) : UiTheme.CreateEyeIcon(UiTheme.TextSecondary, 14), delegate
                     {
                         if (_hiddenDbAccessEnvs.Contains("DBAccess")) _hiddenDbAccessEnvs.Remove("DBAccess");
@@ -764,12 +745,24 @@ namespace TOTVSHub
                         SalvarOcultosDbAccessAppData();
                         RenderizarCardsDbAccess();
                     }));
-        
+
+                    menuDots.Items.Add(new Separator { Background = UiTheme.BorderSubtle, Margin = new Thickness(4, 2, 4, 2) });
+
+                    menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Logs e Monitoramento", UiTheme.CreateCopyIcon(UiTheme.AccentLightBlue, 14), delegate
+                    {
+                        AbrirTelaCompletaLogs("DBAccess", _dbAccessConfig.FolderPath, _dbAccessConfig.ProcessId, "dbaccess");
+                    }));
+
+                    menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Editar INI", UiTheme.CreatePencilIcon(UiTheme.TextSecondary, 14), delegate
+                    {
+                        ShowDbAccessIniEditorView();
+                    }));
+
                     menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Abrir pasta no Explorer", UiTheme.CreateFolderIcon(UiTheme.TextSecondary, 14), delegate
                     {
                         AbrirNoExplorer(_dbAccessConfig.FolderPath);
                     }));
-        
+
                     btnDots.ContextMenu = menuDots;
                     btnDots.Click += delegate
                     {
@@ -777,12 +770,37 @@ namespace TOTVSHub
                         menuDots.Placement = PlacementMode.Bottom;
                         menuDots.IsOpen = true;
                     };
-        
-                    Grid.SetRow(btnDots, 0);
-                    Grid.SetColumn(btnDots, 3);
-                    cardGrid.Children.Add(btnDots);
-        
-                    
+
+                    Button btnStart = UiTheme.CreateActionButton(UiTheme.CreatePlayIcon(Brushes.White, 13), "#059669", "#10B981");
+                    btnStart.Width = 34; btnStart.Height = 26; btnStart.Padding = new Thickness(0); btnStart.Margin = new Thickness(0, 2, 0, 2);
+                    btnStart.ToolTip = "Iniciar DBAccess";
+                    btnStart.IsEnabled = !_dbAccessConfig.IsRunning;
+                    btnStart.Opacity = _dbAccessConfig.IsRunning ? 0.3 : 1.0;
+                    btnStart.Click += delegate { IniciarDbAccessAsync(); };
+
+                    Button btnRestart = UiTheme.CreateActionButton(UiTheme.CreateRestartIcon(Brushes.White, 13), "#D97706", "#F59E0B");
+                    btnRestart.Width = 34; btnRestart.Height = 26; btnRestart.Padding = new Thickness(0); btnRestart.Margin = new Thickness(0, 2, 0, 2);
+                    btnRestart.ToolTip = "Reiniciar DBAccess";
+                    btnRestart.IsEnabled = _dbAccessConfig.IsRunning;
+                    btnRestart.Opacity = _dbAccessConfig.IsRunning ? 1.0 : 0.3;
+                    btnRestart.Click += delegate { ReiniciarDbAccessAsync(); };
+
+                    Button btnStop = UiTheme.CreateActionButton(UiTheme.CreateStopXIcon(Brushes.White, 13), "#DC2626", "#EF4444");
+                    btnStop.Width = 34; btnStop.Height = 26; btnStop.Padding = new Thickness(0); btnStop.Margin = new Thickness(0, 2, 0, 2);
+                    btnStop.ToolTip = "Parar DBAccess";
+                    btnStop.IsEnabled = _dbAccessConfig.IsRunning;
+                    btnStop.Opacity = _dbAccessConfig.IsRunning ? 1.0 : 0.3;
+                    btnStop.Click += delegate { PararDbAccessAsync(); };
+
+                    powerDotsStack.Children.Add(btnDots);
+                    powerDotsStack.Children.Add(btnStart);
+                    powerDotsStack.Children.Add(btnRestart);
+                    powerDotsStack.Children.Add(btnStop);
+
+                    Grid.SetRow(powerDotsStack, 0);
+                    Grid.SetColumn(powerDotsStack, 2);
+                    cardGrid.Children.Add(powerDotsStack);
+
                     if (!string.IsNullOrWhiteSpace(_dbAccessNote))
                     {
                         Border noteBanner = new Border();
@@ -795,19 +813,19 @@ namespace TOTVSHub
                         noteBanner.Cursor = Cursors.Hand;
                         noteBanner.ToolTip = "Clique para editar anotação";
                         noteBanner.MouseLeftButtonUp += delegate { EditarNotaDbAccess(); };
-        
+
                         TextBlock noteLbl = new TextBlock();
                         noteLbl.Text = "📝 " + _dbAccessNote;
                         noteLbl.Foreground = UiTheme.NoteTextFg;
                         noteLbl.FontSize = 12;
                         noteLbl.TextWrapping = TextWrapping.Wrap;
                         noteBanner.Child = noteLbl;
-        
+
                         Grid.SetRow(noteBanner, 1);
-                        Grid.SetColumnSpan(noteBanner, 4);
+                        Grid.SetColumnSpan(noteBanner, 3);
                         cardGrid.Children.Add(noteBanner);
                     }
-        
+
                     card.Child = cardGrid;
                     return card;
                 }

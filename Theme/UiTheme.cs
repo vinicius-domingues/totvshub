@@ -804,11 +804,9 @@ namespace TOTVSHub
             return icon;
         }
 
-        // Botao de icone PURO (sem texto) para D-1 e RPOCustom (outline cinza quando inativo, verde quando ativo)
         public static Button CreateRpoPureIconButton(UIElement icon, bool isActive)
         {
             Button btn = new Button();
-            btn.Width = 34;
             btn.Height = 26;
             btn.Padding = new Thickness(0);
             btn.Cursor = Cursors.Hand;

@@ -391,31 +391,57 @@ namespace TOTVSHub
                     pill.BorderBrush = UiTheme.BorderSubtle;
                     pill.BorderThickness = new Thickness(1);
                     pill.CornerRadius = new CornerRadius(5);
-                    pill.Padding = new Thickness(5, 1.5, 5, 1.5);
-                    pill.Margin = new Thickness(0, 0, 4, 3);
+                    pill.Padding = new Thickness(6, 2, 6, 2);
+                    pill.Margin = new Thickness(0, 0, 5, 4);
                     pill.Cursor = Cursors.Hand;
+                    pill.HorizontalAlignment = HorizontalAlignment.Left;
                     pill.ToolTip = string.Format("Clique para copiar {0}: {1}", label, value);
-        
-                    StackPanel row = new StackPanel();
-                    row.Orientation = Orientation.Horizontal;
-                    row.VerticalAlignment = VerticalAlignment.Center;
-        
+
+                    DockPanel dp = new DockPanel();
+                    dp.LastChildFill = true;
+
+                    FrameworkElement copyIcon = UiTheme.CreateCopyIcon(UiTheme.TextMuted, 9) as FrameworkElement;
+                    if (copyIcon != null)
+                    {
+                        copyIcon.VerticalAlignment = VerticalAlignment.Center;
+                        copyIcon.Margin = new Thickness(5, 0, 0, 0);
+                        DockPanel.SetDock(copyIcon, Dock.Right);
+                        dp.Children.Add(copyIcon);
+                    }
+
+                    StackPanel textSp = new StackPanel();
+                    textSp.Orientation = Orientation.Horizontal;
+                    textSp.VerticalAlignment = VerticalAlignment.Center;
+
                     TextBlock lbl = new TextBlock();
                     lbl.Text = label + ": ";
                     lbl.Foreground = UiTheme.TextMuted;
                     lbl.FontSize = 9.5;
                     lbl.FontWeight = FontWeights.SemiBold;
-        
+
                     TextBlock val = new TextBlock();
                     val.Text = string.IsNullOrWhiteSpace(value) ? "-" : value;
                     val.Foreground = UiTheme.TextPrimary;
                     val.FontSize = 9.5;
                     val.FontWeight = FontWeights.Bold;
-        
-                    row.Children.Add(lbl);
-                    row.Children.Add(val);
-                    pill.Child = row;
-        
+
+                    textSp.Children.Add(lbl);
+                    textSp.Children.Add(val);
+                    dp.Children.Add(textSp);
+
+                    pill.Child = dp;
+
+                    pill.MouseEnter += delegate
+                    {
+                        pill.BorderBrush = UiTheme.AccentLightBlue;
+                        pill.Background = UiTheme.BgInput;
+                    };
+                    pill.MouseLeave += delegate
+                    {
+                        pill.BorderBrush = UiTheme.BorderSubtle;
+                        pill.Background = UiTheme.TagBg;
+                    };
+
                     pill.MouseLeftButtonUp += delegate
                     {
                         try
@@ -424,7 +450,7 @@ namespace TOTVSHub
                         }
                         catch { }
                     };
-        
+
                     return pill;
                 }
 
@@ -530,26 +556,29 @@ namespace TOTVSHub
                     mainButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                     mainButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                     mainButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        
-                    
+
                     Button btnConfig = UiTheme.CreateActionButton(
                         UiTheme.CreatePencilIcon(UiTheme.TextSecondary, 13),
                         UiTheme.NeutralBtnHex,
                         UiTheme.NeutralBtnHoverHex);
+                    btnConfig.Width = double.NaN;
                     btnConfig.Height = 26;
+                    btnConfig.HorizontalAlignment = HorizontalAlignment.Stretch;
                     btnConfig.Padding = new Thickness(0);
                     btnConfig.Margin = new Thickness(0, 0, 2, 0);
                     btnConfig.ToolTip = "Configurar appserver.ini";
                     btnConfig.Click += delegate { ShowIniEditorView(amb); };
                     Grid.SetColumn(btnConfig, 0);
                     mainButtonsGrid.Children.Add(btnConfig);
-        
-                    
+
                     bool isD1Active = ObterD1Ativos().Contains(amb.AppDir);
                     Button btnD1 = UiTheme.CreateRpoPureIconButton(
                         UiTheme.CreateHistoryIcon(isD1Active ? Brushes.White : UiTheme.BrushFromHex("#94A3B8"), 13),
                         isD1Active);
+                    btnD1.Width = double.NaN;
                     btnD1.Height = 26;
+                    btnD1.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    btnD1.Padding = new Thickness(0);
                     btnD1.Margin = new Thickness(2, 0, 2, 0);
                     btnD1.ToolTip = isD1Active ? "D-1 Ativo (Clique para desativar e restaurar RPO padrão)" : "D-1 Inativo (Clique para ativar D-1)";
                     btnD1.Click += delegate
@@ -560,13 +589,15 @@ namespace TOTVSHub
                     };
                     Grid.SetColumn(btnD1, 1);
                     mainButtonsGrid.Children.Add(btnD1);
-        
-                    
+
                     bool isCustomActive = VerificarRpoCustomAtivo(amb);
                     Button btnRpoCustom = UiTheme.CreateRpoPureIconButton(
                         UiTheme.CreateCubeIcon(isCustomActive ? Brushes.White : UiTheme.BrushFromHex("#94A3B8"), 13),
                         isCustomActive);
+                    btnRpoCustom.Width = double.NaN;
                     btnRpoCustom.Height = 26;
+                    btnRpoCustom.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    btnRpoCustom.Padding = new Thickness(0);
                     btnRpoCustom.Margin = new Thickness(2, 0, 0, 0);
                     btnRpoCustom.ToolTip = string.Format("RPOCustom ({0}) - {1}", ObterTamanhoCustomRpoFormatado(amb), isCustomActive ? "Ativo (Clique para desativar)" : "Inativo (Clique para reativar)");
                     btnRpoCustom.Click += delegate
@@ -664,28 +695,29 @@ namespace TOTVSHub
                     infoColumn.Children.Add(pathStack);
         
                     Grid metaContainer = new Grid();
-                    metaContainer.Margin = new Thickness(0, 0, 0, 4);
+                    metaContainer.Margin = new Thickness(0, 2, 0, 4);
                     metaContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                     metaContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        
-                    UniformGrid metaGrid = new UniformGrid();
-                    metaGrid.Columns = 2;
-                    metaGrid.Children.Add(CreateMetaPill("WebApp", !string.IsNullOrEmpty(amb.WebAppPort) ? amb.WebAppPort : "-"));
-                    metaGrid.Children.Add(CreateMetaPill("TCP", !string.IsNullOrEmpty(amb.TcpPort) ? amb.TcpPort : "-"));
+
+                    WrapPanel metaWrap = new WrapPanel();
+                    metaWrap.Orientation = Orientation.Horizontal;
+                    metaWrap.HorizontalAlignment = HorizontalAlignment.Left;
+                    metaWrap.Children.Add(CreateMetaPill("WebApp", !string.IsNullOrEmpty(amb.WebAppPort) ? amb.WebAppPort : "-"));
+                    metaWrap.Children.Add(CreateMetaPill("TCP", !string.IsNullOrEmpty(amb.TcpPort) ? amb.TcpPort : "-"));
                     if (!string.IsNullOrEmpty(amb.RestPort))
                     {
-                        metaGrid.Children.Add(CreateMetaPill("REST", amb.RestPort));
+                        metaWrap.Children.Add(CreateMetaPill("REST", amb.RestPort));
                     }
                     if (!string.IsNullOrEmpty(amb.WebServicesPort))
                     {
-                        metaGrid.Children.Add(CreateMetaPill("WebServices", amb.WebServicesPort));
+                        metaWrap.Children.Add(CreateMetaPill("WebServices", amb.WebServicesPort));
                     }
-                    metaGrid.Children.Add(CreateMetaPill("SpecialKey", !string.IsNullOrEmpty(amb.SpecialKey) ? amb.SpecialKey : "-"));
-                    metaGrid.Children.Add(CreateMetaPill("DBAlias", !string.IsNullOrEmpty(amb.DBAlias) ? amb.DBAlias : "-"));
-                    metaGrid.Children.Add(CreateMetaPill("DBPort", !string.IsNullOrEmpty(amb.DBPort) ? amb.DBPort : "-"));
-        
-                    Grid.SetColumn(metaGrid, 0);
-                    metaContainer.Children.Add(metaGrid);
+                    metaWrap.Children.Add(CreateMetaPill("SpecialKey", !string.IsNullOrEmpty(amb.SpecialKey) ? amb.SpecialKey : "-"));
+                    metaWrap.Children.Add(CreateMetaPill("DBAlias", !string.IsNullOrEmpty(amb.DBAlias) ? amb.DBAlias : "-"));
+                    metaWrap.Children.Add(CreateMetaPill("DBPort", !string.IsNullOrEmpty(amb.DBPort) ? amb.DBPort : "-"));
+
+                    Grid.SetColumn(metaWrap, 0);
+                    metaContainer.Children.Add(metaWrap);
                     infoColumn.Children.Add(metaContainer);
         
                     StackPanel metricsStack = new StackPanel();

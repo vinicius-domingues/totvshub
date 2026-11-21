@@ -310,7 +310,7 @@ namespace TOTVSHub
                 if (hProc != IntPtr.Zero) CloseHandle(hProc);
             }
 
-            if (ramMb == 0 || lastCpuTime == TimeSpan.Zero)
+            if (ramMb == 0)
             {
                 try
                 {
@@ -318,29 +318,38 @@ namespace TOTVSHub
                     {
                         if (!p.HasExited)
                         {
-                            if (ramMb == 0)
-                                ramMb = p.WorkingSet64 / (1024 * 1024);
+                            ramMb = p.WorkingSet64 / (1024 * 1024);
+                        }
+                    }
+                }
+                catch { }
+            }
 
-                            if (lastCpuTime == TimeSpan.Zero)
+            if (lastCpuTime == TimeSpan.Zero)
+            {
+                try
+                {
+                    using (Process p = Process.GetProcessById(pid))
+                    {
+                        if (!p.HasExited)
+                        {
+                            DateTime now = DateTime.UtcNow;
+                            TimeSpan totalProcessorTime = p.TotalProcessorTime;
+
+                            if (lastSampleTime > DateTime.MinValue && now > lastSampleTime)
                             {
-                                DateTime now = DateTime.UtcNow;
-                                TimeSpan totalProcessorTime = p.TotalProcessorTime;
-
-                                if (lastSampleTime > DateTime.MinValue && now > lastSampleTime)
+                                double elapsedMs = (now - lastSampleTime).TotalMilliseconds;
+                                double cpuUsedMs = (totalProcessorTime - lastCpuTime).TotalMilliseconds;
+                                if (elapsedMs > 0)
                                 {
-                                    double elapsedMs = (now - lastSampleTime).TotalMilliseconds;
-                                    double cpuUsedMs = (totalProcessorTime - lastCpuTime).TotalMilliseconds;
-                                    if (elapsedMs > 0)
-                                    {
-                                        cpuPercent = Math.Round((cpuUsedMs / (elapsedMs * Environment.ProcessorCount)) * 100.0, 1);
-                                        if (cpuPercent < 0) cpuPercent = 0;
-                                        if (cpuPercent > 100) cpuPercent = 100;
-                                    }
+                                    cpuPercent = Math.Round((cpuUsedMs / (elapsedMs * Environment.ProcessorCount)) * 100.0, 1);
+                                    if (cpuPercent < 0) cpuPercent = 0;
+                                    if (cpuPercent > 100) cpuPercent = 100;
                                 }
-
-                                lastCpuTime = totalProcessorTime;
-                                lastSampleTime = now;
                             }
+
+                            lastCpuTime = totalProcessorTime;
+                            lastSampleTime = now;
                         }
                     }
                 }
