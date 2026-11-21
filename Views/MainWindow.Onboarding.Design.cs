@@ -1,19 +1,13 @@
 using System;
 using System.IO;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
-using Microsoft.Win32;
 
 namespace TOTVSHub
 {
     public partial class MainWindow : Window
     {
-        // =====================================================================
-        // CADASTRO DE DIRETÓRIOS INICIAIS (ONBOARDING UNIFICADO - Item 17)
-        // =====================================================================
         private void ShowOnboardingView()
         {
             _isInDashboardView = false;
@@ -47,7 +41,6 @@ namespace TOTVSHub
             StackPanel stack = new StackPanel();
             stack.HorizontalAlignment = HorizontalAlignment.Stretch;
 
-            // Badge superior com a logo branca TOTVS
             Border logoBadge = new Border();
             logoBadge.Width = 64;
             logoBadge.Height = 64;
@@ -78,7 +71,6 @@ namespace TOTVSHub
             lblSubtitle.Margin = new Thickness(0, 0, 0, 24);
             stack.Children.Add(lblSubtitle);
 
-            // ================= CAMPO 1: AMBIENTES PROTHEUS (APPSERVER) =================
             TextBox txtAppServer;
             TextBlock errAppServer;
             stack.Children.Add(CriarLinhaOnboardingInput(
@@ -88,7 +80,6 @@ namespace TOTVSHub
                 out txtAppServer,
                 out errAppServer));
 
-            // ================= CAMPO 2: DBACCESS =================
             TextBox txtDbAccess;
             TextBlock errDbAccess;
             string defaultDbCandidate = @"C:\totvs\dbaccess";
@@ -101,7 +92,6 @@ namespace TOTVSHub
                 out txtDbAccess,
                 out errDbAccess));
 
-            // ================= CAMPO 3: SMARTVIEW =================
             TextBox txtSmartView;
             TextBlock errSmartView;
             string defaultSvCandidate = @"C:\TOTVS\smart-view";
@@ -112,7 +102,6 @@ namespace TOTVSHub
                 out txtSmartView,
                 out errSmartView));
 
-            // Mensagem de Erro Geral
             TextBlock lblGeneralError = new TextBlock();
             lblGeneralError.Foreground = UiTheme.AccentRed;
             lblGeneralError.FontSize = 12;
@@ -122,52 +111,6 @@ namespace TOTVSHub
             lblGeneralError.Visibility = Visibility.Collapsed;
             stack.Children.Add(lblGeneralError);
 
-            // Ação Confirmar
-            Action confirmarTudo = delegate
-            {
-                lblGeneralError.Visibility = Visibility.Collapsed;
-                string appDir = (txtAppServer.Text ?? "").Trim().Trim('"');
-                if (string.IsNullOrEmpty(appDir) || !Directory.Exists(appDir))
-                {
-                    lblGeneralError.Text = "A pasta raiz dos ambientes Protheus é obrigatória e deve existir.";
-                    lblGeneralError.Visibility = Visibility.Visible;
-                    return;
-                }
-
-                // Salvar Protheus AppServer
-                _rootPath = appDir;
-                _needsOnboarding = false;
-                _isInitialScanCompleted = false;
-                try
-                {
-                    File.WriteAllText(_configPath, _rootPath, Encoding.UTF8);
-                }
-                catch { }
-
-                // Salvar DBAccess se informado
-                string dbDir = (txtDbAccess.Text ?? "").Trim().Trim('"');
-                if (!string.IsNullOrEmpty(dbDir) && Directory.Exists(dbDir))
-                {
-                    _dbAccessConfig.FolderPath = dbDir;
-                    string candidateIni = Path.Combine(dbDir, "dbaccess.ini");
-                    if (File.Exists(candidateIni))
-                        _dbAccessConfig.IniPath = candidateIni;
-                    SalvarDbAccessPathAppData(dbDir);
-                }
-
-                // Salvar SmartView se informado
-                string svDir = (txtSmartView.Text ?? "").Trim().Trim('"');
-                if (!string.IsNullOrEmpty(svDir) && Directory.Exists(svDir))
-                {
-                    _smartViewDetectedFolder = svDir;
-                    SalvarSmartViewPrefFolder(svDir);
-                }
-
-                ShowDashboardView();
-                CarregarAmbientesAsync(false);
-            };
-
-            // Botão Começar
             Button btnContinue = UiTheme.CreateActionButton("Começar a Usar o TOTVSHub", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex);
             btnContinue.Height = 42;
             btnContinue.Padding = new Thickness(36, 8, 36, 8);
@@ -175,7 +118,10 @@ namespace TOTVSHub
             btnContinue.FontWeight = FontWeights.Bold;
             btnContinue.Margin = new Thickness(0, 22, 0, 0);
             btnContinue.HorizontalAlignment = HorizontalAlignment.Center;
-            btnContinue.Click += delegate { confirmarTudo(); };
+            btnContinue.Click += delegate
+            {
+                ConfirmarOnboardingTudo(txtAppServer.Text, txtDbAccess.Text, txtSmartView.Text, lblGeneralError);
+            };
             stack.Children.Add(btnContinue);
 
             card.Child = stack;
@@ -263,18 +209,7 @@ namespace TOTVSHub
             btnBrowse.Padding = new Thickness(12, 0, 12, 0);
             btnBrowse.Click += delegate
             {
-                using (System.Windows.Forms.FolderBrowserDialog fbd = new System.Windows.Forms.FolderBrowserDialog())
-                {
-                    fbd.Description = "Selecione o diretório para " + labelText;
-                    string currentTyped = (txt.Text ?? "").Trim().Trim('"');
-                    if (!string.IsNullOrEmpty(currentTyped) && Directory.Exists(currentTyped))
-                        fbd.SelectedPath = currentTyped;
-
-                    if (fbd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                    {
-                        txt.Text = fbd.SelectedPath;
-                    }
-                }
+                SelecionarPastaOnboarding(labelText, txt);
             };
             Grid.SetColumn(btnBrowse, 1);
             inputGrid.Children.Add(btnBrowse);
@@ -291,22 +226,6 @@ namespace TOTVSHub
             txtOut = txt;
             errOut = err;
             return group;
-        }
-
-        private void ConcluirOnboardingDiretorio(string chosenDir)
-        {
-            _rootPath = chosenDir;
-            _needsOnboarding = false;
-            _isInitialScanCompleted = false;
-
-            try
-            {
-                File.WriteAllText(_configPath, _rootPath, Encoding.UTF8);
-            }
-            catch { }
-
-            ShowDashboardView();
-            CarregarAmbientesAsync(false);
         }
     }
 }
