@@ -595,7 +595,7 @@ namespace TOTVSHub
 
                     bool isD1Active = ObterD1Ativos().Contains(amb.AppDir);
                     Button btnD1 = UiTheme.CreateRpoPureIconButton(
-                        UiTheme.CreateHistoryIcon(isD1Active ? Brushes.White : UiTheme.BrushFromHex("#94A3B8"), 13),
+                        UiTheme.CreateCalendarIcon(isD1Active ? Brushes.White : UiTheme.BrushFromHex("#94A3B8"), 13),
                         isD1Active);
                     btnD1.Width = double.NaN;
                     btnD1.Height = 26;

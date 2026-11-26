@@ -777,13 +777,49 @@ namespace TOTVSHub
             return icon;
         }
 
-        // Icone de Historico (D-1)
+        // Icone de Historico / Logs
         public static UIElement CreateHistoryIcon(Brush strokeBrush, double size = 12)
         {
             System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
             icon.Data = Geometry.Parse("M 3,12 A 9,9 0 1 0 6.2,5.6 L 3,3 M 3,8 L 3,3 L 8,3 M 12,7 L 12,12 L 15,14");
             icon.Stroke = strokeBrush;
             icon.StrokeThickness = 1.8;
+            icon.StrokeStartLineCap = PenLineCap.Round;
+            icon.StrokeEndLineCap = PenLineCap.Round;
+            icon.StrokeLineJoin = PenLineJoin.Round;
+            icon.Width = size;
+            icon.Height = size;
+            icon.Stretch = Stretch.Uniform;
+            icon.VerticalAlignment = VerticalAlignment.Center;
+            icon.HorizontalAlignment = HorizontalAlignment.Center;
+            return icon;
+        }
+
+        // Icone de Calendario / Versao Diaria (D-1)
+        public static UIElement CreateCalendarIcon(Brush strokeBrush, double size = 12)
+        {
+            System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
+            icon.Data = Geometry.Parse("M 3,5 C 3,3.5 3.5,3 5,3 L 19,3 C 20.5,3 21,3.5 21,5 L 21,19 C 21,20.5 20.5,21 19,21 L 5,21 C 3.5,21 3,20.5 3,19 Z M 16,1 L 16,5 M 8,1 L 8,5 M 3,9 L 21,9 M 8,13 L 8.1,13 M 12,13 L 12.1,13 M 16,13 L 16.1,13 M 8,17 L 8.1,17 M 12,17 L 12.1,17 M 16,17 L 16.1,17");
+            icon.Stroke = strokeBrush;
+            icon.StrokeThickness = 1.6;
+            icon.StrokeStartLineCap = PenLineCap.Round;
+            icon.StrokeEndLineCap = PenLineCap.Round;
+            icon.StrokeLineJoin = PenLineJoin.Round;
+            icon.Width = size;
+            icon.Height = size;
+            icon.Stretch = Stretch.Uniform;
+            icon.VerticalAlignment = VerticalAlignment.Center;
+            icon.HorizontalAlignment = HorizontalAlignment.Center;
+            return icon;
+        }
+
+        // Icone de Camadas / Layers (Alternativa para repositório)
+        public static UIElement CreateLayersIcon(Brush strokeBrush, double size = 12)
+        {
+            System.Windows.Shapes.Path icon = new System.Windows.Shapes.Path();
+            icon.Data = Geometry.Parse("M 12,2 L 2,7 L 12,12 L 22,7 Z M 2,12 L 12,17 L 22,12 M 2,17 L 12,22 L 22,17");
+            icon.Stroke = strokeBrush;
+            icon.StrokeThickness = 1.6;
             icon.StrokeStartLineCap = PenLineCap.Round;
             icon.StrokeEndLineCap = PenLineCap.Round;
             icon.StrokeLineJoin = PenLineJoin.Round;
