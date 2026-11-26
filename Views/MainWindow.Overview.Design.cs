@@ -40,7 +40,7 @@ namespace TOTVSHub
             headerLeft.VerticalAlignment = VerticalAlignment.Center;
 
             TextBlock titleMain = new TextBlock();
-            titleMain.Text = "Central de Visão Geral";
+            titleMain.Text = "Monitoramento";
             titleMain.FontSize = 17;
             titleMain.FontWeight = FontWeights.Bold;
             titleMain.Foreground = UiTheme.TextPrimary;
@@ -53,16 +53,15 @@ namespace TOTVSHub
             titleSub.Margin = new Thickness(0, 2, 0, 0);
             headerLeft.Children.Add(titleSub);
 
-            DockPanel.SetDock(headerLeft, Dock.Left);
-            headerDock.Children.Add(headerLeft);
-
             StackPanel headerRight = new StackPanel();
             headerRight.Orientation = Orientation.Horizontal;
             headerRight.VerticalAlignment = VerticalAlignment.Center;
+            headerRight.HorizontalAlignment = HorizontalAlignment.Right;
             DockPanel.SetDock(headerRight, Dock.Right);
 
             System.Windows.Shapes.Path spinIcon = (System.Windows.Shapes.Path)UiTheme.CreateThinRefreshIcon(UiTheme.AccentLightBlue);
             Button btnReload = UiTheme.CreateFramelessIconButton(spinIcon, "Atualizar dados e gráficos da Central");
+            btnReload.HorizontalAlignment = HorizontalAlignment.Right;
             btnReload.Click += delegate
             {
                 RotateTransform rt = spinIcon.RenderTransform as RotateTransform;
@@ -76,6 +75,7 @@ namespace TOTVSHub
             headerRight.Children.Add(btnReload);
 
             headerDock.Children.Add(headerRight);
+            headerDock.Children.Add(headerLeft);
             headerBorder.Child = headerDock;
 
             Grid.SetRow(headerBorder, 1);
@@ -83,11 +83,11 @@ namespace TOTVSHub
 
             Grid bodyGrid = new Grid();
             bodyGrid.Margin = new Thickness(20, 14, 20, 16);
-            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(33, GridUnitType.Star) });
+            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(25, GridUnitType.Star) });
             bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
-            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34, GridUnitType.Star) });
+            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(25, GridUnitType.Star) });
             bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
-            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(33, GridUnitType.Star) });
+            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50, GridUnitType.Star) });
 
             ScrollViewer leftScroll = new ScrollViewer();
             leftScroll.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
@@ -132,116 +132,49 @@ namespace TOTVSHub
             StackPanel sp = new StackPanel();
 
             TextBlock title = new TextBlock();
-            title.Text = "Consumo Consolidado";
+            title.Text = "Distribuição por Serviço";
             title.FontSize = 14;
             title.FontWeight = FontWeights.Bold;
             title.Foreground = UiTheme.TextPrimary;
             sp.Children.Add(title);
 
             TextBlock sub = new TextBlock();
-            sub.Text = "Somatória de recursos de todos os serviços rodando";
+            sub.Text = "Uso de recursos (CPU e RAM) por serviço ativo";
             sub.FontSize = 11;
             sub.Foreground = UiTheme.TextMuted;
-            sub.Margin = new Thickness(0, 2, 0, 12);
+            sub.Margin = new Thickness(0, 2, 0, 10);
             sp.Children.Add(sub);
 
-            Border cardCpu = new Border();
-            cardCpu.Background = UiTheme.BrushFromHex("#0B0F19");
-            cardCpu.BorderBrush = UiTheme.BorderSubtle;
-            cardCpu.BorderThickness = new Thickness(1);
-            cardCpu.CornerRadius = new CornerRadius(8);
-            cardCpu.Padding = new Thickness(12, 10, 12, 12);
-            cardCpu.Margin = new Thickness(0, 0, 0, 10);
+            Border kpiBanner = new Border();
+            kpiBanner.Background = UiTheme.BrushFromHex("#0B0F19");
+            kpiBanner.BorderBrush = UiTheme.BorderSubtle;
+            kpiBanner.BorderThickness = new Thickness(1);
+            kpiBanner.CornerRadius = new CornerRadius(8);
+            kpiBanner.Padding = new Thickness(12, 8, 12, 8);
+            kpiBanner.Margin = new Thickness(0, 0, 0, 10);
 
-            StackPanel spCpu = new StackPanel();
-            TextBlock lblCpuHeader = new TextBlock();
-            lblCpuHeader.Text = "CPU CONSOLIDADA";
-            lblCpuHeader.FontSize = 10;
-            lblCpuHeader.FontWeight = FontWeights.Bold;
-            lblCpuHeader.Foreground = UiTheme.AccentLightBlue;
-            lblCpuHeader.Margin = new Thickness(0, 0, 0, 6);
-            spCpu.Children.Add(lblCpuHeader);
+            Grid kpiGrid = new Grid();
+            kpiGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            kpiGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            UIElement donutCpu = CriarDonutChart(UiTheme.AccentLightBlue, out _overviewTotalCpuArc, out _overviewTotalCpuCenterText, "TOTAL CPU");
-            spCpu.Children.Add(donutCpu);
+            StackPanel kpiCpu = new StackPanel();
+            TextBlock kpiCpuTitle = new TextBlock { Text = "TOTAL CPU", FontSize = 9.5, FontWeight = FontWeights.Bold, Foreground = UiTheme.AccentLightBlue };
+            _overviewTotalCpuSummaryText = new TextBlock { Text = "0.0%", FontSize = 15, FontWeight = FontWeights.Bold, Foreground = UiTheme.AccentLightBlue, Margin = new Thickness(0, 2, 0, 0) };
+            kpiCpu.Children.Add(kpiCpuTitle);
+            kpiCpu.Children.Add(_overviewTotalCpuSummaryText);
+            Grid.SetColumn(kpiCpu, 0);
+            kpiGrid.Children.Add(kpiCpu);
 
-            Border cpuBarTrack = new Border();
-            cpuBarTrack.Height = 7;
-            cpuBarTrack.Background = UiTheme.BrushFromHex("#1E293B");
-            cpuBarTrack.CornerRadius = new CornerRadius(3.5);
-            cpuBarTrack.Margin = new Thickness(0, 8, 0, 4);
+            StackPanel kpiRam = new StackPanel();
+            TextBlock kpiRamTitle = new TextBlock { Text = "TOTAL RAM", FontSize = 9.5, FontWeight = FontWeights.Bold, Foreground = UiTheme.AccentGreen };
+            _overviewTotalRamSummaryText = new TextBlock { Text = "0 MB", FontSize = 15, FontWeight = FontWeights.Bold, Foreground = UiTheme.AccentGreen, Margin = new Thickness(0, 2, 0, 0) };
+            kpiRam.Children.Add(kpiRamTitle);
+            kpiRam.Children.Add(_overviewTotalRamSummaryText);
+            Grid.SetColumn(kpiRam, 1);
+            kpiGrid.Children.Add(kpiRam);
 
-            _overviewTotalCpuBarFill = new Border();
-            _overviewTotalCpuBarFill.Height = 7;
-            _overviewTotalCpuBarFill.Background = UiTheme.AccentLightBlue;
-            _overviewTotalCpuBarFill.CornerRadius = new CornerRadius(3.5);
-            _overviewTotalCpuBarFill.HorizontalAlignment = HorizontalAlignment.Left;
-            _overviewTotalCpuBarFill.Width = 2;
-            cpuBarTrack.Child = _overviewTotalCpuBarFill;
-            spCpu.Children.Add(cpuBarTrack);
-
-            _overviewTotalCpuSummaryText = new TextBlock();
-            _overviewTotalCpuSummaryText.Text = "0.0% de uso total";
-            _overviewTotalCpuSummaryText.FontSize = 10.5;
-            _overviewTotalCpuSummaryText.Foreground = UiTheme.TextMuted;
-            _overviewTotalCpuSummaryText.HorizontalAlignment = HorizontalAlignment.Center;
-            spCpu.Children.Add(_overviewTotalCpuSummaryText);
-
-            cardCpu.Child = spCpu;
-            sp.Children.Add(cardCpu);
-
-            Border cardRam = new Border();
-            cardRam.Background = UiTheme.BrushFromHex("#0B0F19");
-            cardRam.BorderBrush = UiTheme.BorderSubtle;
-            cardRam.BorderThickness = new Thickness(1);
-            cardRam.CornerRadius = new CornerRadius(8);
-            cardRam.Padding = new Thickness(12, 10, 12, 12);
-            cardRam.Margin = new Thickness(0, 0, 0, 12);
-
-            StackPanel spRam = new StackPanel();
-            TextBlock lblRamHeader = new TextBlock();
-            lblRamHeader.Text = "MEMÓRIA RAM CONSOLIDADA";
-            lblRamHeader.FontSize = 10;
-            lblRamHeader.FontWeight = FontWeights.Bold;
-            lblRamHeader.Foreground = UiTheme.AccentGreen;
-            lblRamHeader.Margin = new Thickness(0, 0, 0, 6);
-            spRam.Children.Add(lblRamHeader);
-
-            UIElement donutRam = CriarDonutChart(UiTheme.AccentGreen, out _overviewTotalRamArc, out _overviewTotalRamCenterText, "TOTAL RAM");
-            spRam.Children.Add(donutRam);
-
-            Border ramBarTrack = new Border();
-            ramBarTrack.Height = 7;
-            ramBarTrack.Background = UiTheme.BrushFromHex("#1E293B");
-            ramBarTrack.CornerRadius = new CornerRadius(3.5);
-            ramBarTrack.Margin = new Thickness(0, 8, 0, 4);
-
-            _overviewTotalRamBarFill = new Border();
-            _overviewTotalRamBarFill.Height = 7;
-            _overviewTotalRamBarFill.Background = UiTheme.AccentGreen;
-            _overviewTotalRamBarFill.CornerRadius = new CornerRadius(3.5);
-            _overviewTotalRamBarFill.HorizontalAlignment = HorizontalAlignment.Left;
-            _overviewTotalRamBarFill.Width = 2;
-            ramBarTrack.Child = _overviewTotalRamBarFill;
-            spRam.Children.Add(ramBarTrack);
-
-            _overviewTotalRamSummaryText = new TextBlock();
-            _overviewTotalRamSummaryText.Text = "0 MB alocados";
-            _overviewTotalRamSummaryText.FontSize = 10.5;
-            _overviewTotalRamSummaryText.Foreground = UiTheme.TextMuted;
-            _overviewTotalRamSummaryText.HorizontalAlignment = HorizontalAlignment.Center;
-            spRam.Children.Add(_overviewTotalRamSummaryText);
-
-            cardRam.Child = spRam;
-            sp.Children.Add(cardRam);
-
-            TextBlock lblDistTitle = new TextBlock();
-            lblDistTitle.Text = "Distribuição por Serviço";
-            lblDistTitle.FontSize = 12;
-            lblDistTitle.FontWeight = FontWeights.SemiBold;
-            lblDistTitle.Foreground = UiTheme.TextSecondary;
-            lblDistTitle.Margin = new Thickness(0, 0, 0, 6);
-            sp.Children.Add(lblDistTitle);
+            kpiBanner.Child = kpiGrid;
+            sp.Children.Add(kpiBanner);
 
             _overviewBreakdownStack = new StackPanel();
             sp.Children.Add(_overviewBreakdownStack);
@@ -249,59 +182,6 @@ namespace TOTVSHub
             scroll.Content = sp;
             panel.Child = scroll;
             return panel;
-        }
-
-        private UIElement CriarDonutChart(Brush strokeBrush, out System.Windows.Shapes.Path arcPath, out TextBlock centerValText, string label)
-        {
-            Grid container = new Grid();
-            container.Width = 130;
-            container.Height = 130;
-            container.HorizontalAlignment = HorizontalAlignment.Center;
-
-            System.Windows.Shapes.Ellipse bgCircle = new System.Windows.Shapes.Ellipse();
-            bgCircle.Width = 100;
-            bgCircle.Height = 100;
-            bgCircle.Stroke = UiTheme.BrushFromHex("#1E293B");
-            bgCircle.StrokeThickness = 10;
-            bgCircle.HorizontalAlignment = HorizontalAlignment.Center;
-            bgCircle.VerticalAlignment = VerticalAlignment.Center;
-            container.Children.Add(bgCircle);
-
-            System.Windows.Shapes.Path arc = new System.Windows.Shapes.Path();
-            arc.Width = 130;
-            arc.Height = 130;
-            arc.Stroke = strokeBrush;
-            arc.StrokeThickness = 10;
-            arc.StrokeStartLineCap = PenLineCap.Round;
-            arc.StrokeEndLineCap = PenLineCap.Round;
-            arc.HorizontalAlignment = HorizontalAlignment.Left;
-            arc.VerticalAlignment = VerticalAlignment.Top;
-            container.Children.Add(arc);
-            arcPath = arc;
-
-            StackPanel centerStack = new StackPanel();
-            centerStack.HorizontalAlignment = HorizontalAlignment.Center;
-            centerStack.VerticalAlignment = VerticalAlignment.Center;
-
-            TextBlock val = new TextBlock();
-            val.Text = "0%";
-            val.FontSize = 17;
-            val.FontWeight = FontWeights.Bold;
-            val.Foreground = UiTheme.TextPrimary;
-            val.HorizontalAlignment = HorizontalAlignment.Center;
-            centerStack.Children.Add(val);
-            centerValText = val;
-
-            TextBlock lbl = new TextBlock();
-            lbl.Text = label;
-            lbl.FontSize = 9;
-            lbl.FontWeight = FontWeights.SemiBold;
-            lbl.Foreground = UiTheme.TextMuted;
-            lbl.HorizontalAlignment = HorizontalAlignment.Center;
-            centerStack.Children.Add(lbl);
-
-            container.Children.Add(centerStack);
-            return container;
         }
 
         private Border CriarPainelLogsOverview()
@@ -340,9 +220,6 @@ namespace TOTVSHub
             _overviewLogPathText.TextTrimming = TextTrimming.CharacterEllipsis;
             titles.Children.Add(_overviewLogPathText);
 
-            DockPanel.SetDock(titles, Dock.Left);
-            topDock.Children.Add(titles);
-
             StackPanel actions = new StackPanel();
             actions.Orientation = Orientation.Horizontal;
             actions.VerticalAlignment = VerticalAlignment.Center;
@@ -364,7 +241,11 @@ namespace TOTVSHub
                 _overviewAutoScrollBtn.Background = UiTheme.BrushFromHex(_overviewAutoScroll ? "#0284C7" : UiTheme.NeutralBtnHex);
                 _overviewAutoScrollBtn.ToolTip = _overviewAutoScroll ? "Auto-scroll: Ativado (Clique para pausar)" : "Auto-scroll: Pausado (Clique para ativar)";
                 if (_overviewAutoScroll && _overviewLogConsole != null)
-                    _overviewLogConsole.ScrollToEnd();
+                {
+                    double hOffset = _overviewLogConsole.HorizontalOffset;
+                    _overviewLogConsole.ScrollToVerticalOffset(_overviewLogConsole.ExtentHeight);
+                    if (hOffset > 0) _overviewLogConsole.ScrollToHorizontalOffset(hOffset);
+                }
             };
             actions.Children.Add(_overviewAutoScrollBtn);
 
@@ -404,6 +285,7 @@ namespace TOTVSHub
             actions.Children.Add(btnOpenFolder);
 
             topDock.Children.Add(actions);
+            topDock.Children.Add(titles);
             Grid.SetRow(topDock, 0);
             g.Children.Add(topDock);
 

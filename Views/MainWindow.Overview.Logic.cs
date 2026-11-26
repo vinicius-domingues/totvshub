@@ -31,17 +31,8 @@ namespace TOTVSHub
         private TextBox _overviewLogConsole;
         private TextBox _overviewSearchBox;
         private Button _overviewAutoScrollBtn;
-
-        private System.Windows.Shapes.Path _overviewTotalCpuArc;
-        private TextBlock _overviewTotalCpuCenterText;
-        private Border _overviewTotalCpuBarFill;
         private TextBlock _overviewTotalCpuSummaryText;
-
-        private System.Windows.Shapes.Path _overviewTotalRamArc;
-        private TextBlock _overviewTotalRamCenterText;
-        private Border _overviewTotalRamBarFill;
         private TextBlock _overviewTotalRamSummaryText;
-
         private StackPanel _overviewBreakdownStack;
 
         private readonly Dictionary<string, Border> _overviewCardBorders = new Dictionary<string, Border>(StringComparer.OrdinalIgnoreCase);
@@ -192,46 +183,17 @@ namespace TOTVSHub
 
         private void AtualizarGraficosTotais(List<OverviewServiceItem> ativos, double totalCpu, long totalRamMb)
         {
-            AtualizarGraficoCircular(_overviewTotalCpuArc, _overviewTotalCpuCenterText, totalCpu, string.Format("{0:0.0}%", totalCpu));
-            if (_overviewTotalCpuBarFill != null)
-                _overviewTotalCpuBarFill.Width = Math.Max(2, Math.Min(220, (totalCpu / 100.0) * 220));
-
             if (_overviewTotalCpuSummaryText != null)
-                _overviewTotalCpuSummaryText.Text = string.Format("{0:0.0}% de uso consolidado em {1} serviço{2}",
+                _overviewTotalCpuSummaryText.Text = string.Format("{0:0.0}% ({1} serviço{2})",
                     totalCpu, ativos.Count, ativos.Count == 1 ? "" : "s");
 
             double ramGb = totalRamMb / 1024.0;
             string ramStr = totalRamMb >= 1024 ? string.Format("{0:0.0} GB", ramGb) : string.Format("{0} MB", totalRamMb);
-            double ramPercent = Math.Min(100.0, (totalRamMb / 8192.0) * 100.0);
-
-            AtualizarGraficoCircular(_overviewTotalRamArc, _overviewTotalRamCenterText, ramPercent, ramStr);
-            if (_overviewTotalRamBarFill != null)
-                _overviewTotalRamBarFill.Width = Math.Max(2, Math.Min(220, (ramPercent / 100.0) * 220));
 
             if (_overviewTotalRamSummaryText != null)
-                _overviewTotalRamSummaryText.Text = string.Format("{0} MB ({1:0.00} GB) alocados no total", totalRamMb, ramGb);
+                _overviewTotalRamSummaryText.Text = ramStr;
 
             AtualizarBreakdownServicos(ativos, totalCpu, totalRamMb);
-        }
-
-        private void AtualizarGraficoCircular(System.Windows.Shapes.Path path, TextBlock textBlock, double percent, string textValue)
-        {
-            if (textBlock != null) textBlock.Text = textValue;
-            if (path == null) return;
-
-            double p = Math.Max(0.01, Math.Min(99.99, percent));
-            double angle = p * 3.6;
-            double rad = (angle - 90.0) * (Math.PI / 180.0);
-            double cx = 65, cy = 65, r = 50;
-            double ex = cx + r * Math.Cos(rad);
-            double ey = cy + r * Math.Sin(rad);
-
-            PathFigure fig = new PathFigure();
-            fig.StartPoint = new Point(cx, cy - r);
-            fig.Segments.Add(new ArcSegment(new Point(ex, ey), new Size(r, r), 0, angle > 180.0, SweepDirection.Clockwise, true));
-            PathGeometry geom = new PathGeometry();
-            geom.Figures.Add(fig);
-            path.Data = geom;
         }
 
         private void AtualizarBreakdownServicos(List<OverviewServiceItem> ativos, double totalCpu, long totalRamMb)
@@ -241,81 +203,146 @@ namespace TOTVSHub
 
             if (ativos.Count == 0)
             {
+                Border emptyCard = new Border();
+                emptyCard.Background = UiTheme.BrushFromHex("#0B0F19");
+                emptyCard.BorderBrush = UiTheme.BorderSubtle;
+                emptyCard.BorderThickness = new Thickness(1);
+                emptyCard.CornerRadius = new CornerRadius(8);
+                emptyCard.Padding = new Thickness(14);
+
                 TextBlock empty = new TextBlock();
-                empty.Text = "Nenhum serviço ativo no momento.";
-                empty.FontSize = 11;
+                empty.Text = "Nenhum serviço ativo no momento.\nInicie um ambiente, DBAccess ou SmartView para visualizar o consumo gráfico de barras.";
+                empty.FontSize = 11.5;
                 empty.Foreground = UiTheme.TextMuted;
-                empty.Margin = new Thickness(0, 4, 0, 0);
-                _overviewBreakdownStack.Children.Add(empty);
+                empty.TextWrapping = TextWrapping.Wrap;
+                emptyCard.Child = empty;
+                _overviewBreakdownStack.Children.Add(emptyCard);
                 return;
             }
 
             foreach (OverviewServiceItem item in ativos)
             {
-                Border row = new Border();
-                row.Background = UiTheme.TagBg;
-                row.BorderBrush = UiTheme.BorderSubtle;
-                row.BorderThickness = new Thickness(1);
-                row.CornerRadius = new CornerRadius(6);
-                row.Padding = new Thickness(10, 7, 10, 7);
-                row.Margin = new Thickness(0, 0, 0, 6);
+                Border card = new Border();
+                card.Background = UiTheme.BrushFromHex("#0B0F19");
+                card.BorderBrush = UiTheme.BorderSubtle;
+                card.BorderThickness = new Thickness(1);
+                card.CornerRadius = new CornerRadius(8);
+                card.Padding = new Thickness(12, 10, 12, 10);
+                card.Margin = new Thickness(0, 0, 0, 8);
 
-                Grid g = new Grid();
-                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                StackPanel cardStack = new StackPanel();
 
-                StackPanel spLeft = new StackPanel();
-                spLeft.Orientation = Orientation.Horizontal;
-                spLeft.VerticalAlignment = VerticalAlignment.Center;
+                DockPanel headerDock = new DockPanel();
+                headerDock.Margin = new Thickness(0, 0, 0, 8);
+
+                Border typeBadge = new Border();
+                typeBadge.Background = UiTheme.TagBg;
+                typeBadge.BorderBrush = UiTheme.BorderSubtle;
+                typeBadge.BorderThickness = new Thickness(1);
+                typeBadge.CornerRadius = new CornerRadius(6);
+                typeBadge.Padding = new Thickness(6, 2, 6, 2);
+
+                TextBlock typeTxt = new TextBlock();
+                typeTxt.Text = item.TypeLabel ?? item.TypeHint;
+                typeTxt.FontSize = 10;
+                typeTxt.FontWeight = FontWeights.SemiBold;
+                typeTxt.Foreground = string.Equals(item.TypeHint, "dbaccess", StringComparison.OrdinalIgnoreCase)
+                    ? UiTheme.AccentAmber
+                    : string.Equals(item.TypeHint, "smartview", StringComparison.OrdinalIgnoreCase)
+                        ? UiTheme.BrushFromHex("#A855F7")
+                        : UiTheme.AccentLightBlue;
+                typeBadge.Child = typeTxt;
+                DockPanel.SetDock(typeBadge, Dock.Right);
+                headerDock.Children.Add(typeBadge);
+
+                StackPanel titleStack = new StackPanel();
+                titleStack.Orientation = Orientation.Horizontal;
+                titleStack.VerticalAlignment = VerticalAlignment.Center;
 
                 Border dot = new Border();
                 dot.Width = 8;
                 dot.Height = 8;
                 dot.CornerRadius = new CornerRadius(4);
-                dot.Background = string.Equals(item.TypeHint, "dbaccess", StringComparison.OrdinalIgnoreCase)
-                    ? UiTheme.AccentAmber
-                    : string.Equals(item.TypeHint, "smartview", StringComparison.OrdinalIgnoreCase)
-                        ? UiTheme.BrushFromHex("#A855F7")
-                        : UiTheme.AccentLightBlue;
-                dot.Margin = new Thickness(0, 0, 6, 0);
+                dot.Background = typeTxt.Foreground;
+                dot.Margin = new Thickness(0, 0, 7, 0);
                 dot.VerticalAlignment = VerticalAlignment.Center;
-                spLeft.Children.Add(dot);
+                titleStack.Children.Add(dot);
 
                 TextBlock nameTxt = new TextBlock();
                 nameTxt.Text = item.Name;
-                nameTxt.FontSize = 11;
-                nameTxt.FontWeight = FontWeights.SemiBold;
+                nameTxt.FontSize = 12.5;
+                nameTxt.FontWeight = FontWeights.Bold;
                 nameTxt.Foreground = UiTheme.TextPrimary;
                 nameTxt.VerticalAlignment = VerticalAlignment.Center;
-                spLeft.Children.Add(nameTxt);
+                nameTxt.TextTrimming = TextTrimming.CharacterEllipsis;
+                titleStack.Children.Add(nameTxt);
 
-                Grid.SetColumn(spLeft, 0);
-                g.Children.Add(spLeft);
+                headerDock.Children.Add(titleStack);
+                cardStack.Children.Add(headerDock);
 
-                StackPanel spRight = new StackPanel();
-                spRight.Orientation = Orientation.Horizontal;
-                spRight.VerticalAlignment = VerticalAlignment.Center;
+                // CPU Bar
+                DockPanel cpuHeader = new DockPanel();
+                TextBlock cpuLbl = new TextBlock { Text = "CPU", FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = UiTheme.TextSecondary };
+                DockPanel.SetDock(cpuLbl, Dock.Left);
+                cpuHeader.Children.Add(cpuLbl);
 
-                TextBlock cpuTxt = new TextBlock();
-                cpuTxt.Text = string.Format("CPU: {0:0.0}%", item.CpuPercent);
-                cpuTxt.FontSize = 10.5;
-                cpuTxt.FontWeight = FontWeights.Bold;
-                cpuTxt.Foreground = UiTheme.AccentLightBlue;
-                cpuTxt.Margin = new Thickness(0, 0, 10, 0);
-                spRight.Children.Add(cpuTxt);
+                TextBlock cpuVal = new TextBlock { Text = string.Format("{0:0.0}%", item.CpuPercent), FontSize = 11, FontWeight = FontWeights.Bold, Foreground = UiTheme.AccentLightBlue, HorizontalAlignment = HorizontalAlignment.Right };
+                DockPanel.SetDock(cpuVal, Dock.Right);
+                cpuHeader.Children.Add(cpuVal);
+                cardStack.Children.Add(cpuHeader);
 
-                TextBlock ramTxt = new TextBlock();
-                ramTxt.Text = string.Format("RAM: {0} MB", item.RamMb);
-                ramTxt.FontSize = 10.5;
-                ramTxt.FontWeight = FontWeights.Bold;
-                ramTxt.Foreground = UiTheme.AccentGreen;
-                spRight.Children.Add(ramTxt);
+                Border cpuTrack = new Border();
+                cpuTrack.Height = 8;
+                cpuTrack.Background = UiTheme.BrushFromHex("#1E293B");
+                cpuTrack.CornerRadius = new CornerRadius(4);
+                cpuTrack.Margin = new Thickness(0, 3, 0, 8);
 
-                Grid.SetColumn(spRight, 1);
-                g.Children.Add(spRight);
+                Grid cpuGrid = new Grid();
+                double cpuPct = Math.Max(0.5, Math.Min(100.0, item.CpuPercent));
+                cpuGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(cpuPct, GridUnitType.Star) });
+                cpuGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0.01, 100.0 - cpuPct), GridUnitType.Star) });
 
-                row.Child = g;
-                _overviewBreakdownStack.Children.Add(row);
+                Border cpuFill = new Border();
+                cpuFill.Background = UiTheme.AccentLightBlue;
+                cpuFill.CornerRadius = new CornerRadius(4);
+                Grid.SetColumn(cpuFill, 0);
+                cpuGrid.Children.Add(cpuFill);
+                cpuTrack.Child = cpuGrid;
+                cardStack.Children.Add(cpuTrack);
+
+                // RAM Bar
+                DockPanel ramHeader = new DockPanel();
+                TextBlock ramLbl = new TextBlock { Text = "RAM", FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = UiTheme.TextSecondary };
+                DockPanel.SetDock(ramLbl, Dock.Left);
+                ramHeader.Children.Add(ramLbl);
+
+                TextBlock ramVal = new TextBlock { Text = string.Format("{0} MB", item.RamMb), FontSize = 11, FontWeight = FontWeights.Bold, Foreground = UiTheme.AccentGreen, HorizontalAlignment = HorizontalAlignment.Right };
+                DockPanel.SetDock(ramVal, Dock.Right);
+                ramHeader.Children.Add(ramVal);
+                cardStack.Children.Add(ramHeader);
+
+                Border ramTrack = new Border();
+                ramTrack.Height = 8;
+                ramTrack.Background = UiTheme.BrushFromHex("#1E293B");
+                ramTrack.CornerRadius = new CornerRadius(4);
+                ramTrack.Margin = new Thickness(0, 3, 0, 0);
+
+                Grid ramGrid = new Grid();
+                double maxRamRef = Math.Max(4096.0, totalRamMb > 0 ? (double)totalRamMb : 4096.0);
+                double ramPct = Math.Max(0.5, Math.Min(100.0, (item.RamMb / maxRamRef) * 100.0));
+                ramGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ramPct, GridUnitType.Star) });
+                ramGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0.01, 100.0 - ramPct), GridUnitType.Star) });
+
+                Border ramFill = new Border();
+                ramFill.Background = UiTheme.AccentGreen;
+                ramFill.CornerRadius = new CornerRadius(4);
+                Grid.SetColumn(ramFill, 0);
+                ramGrid.Children.Add(ramFill);
+                ramTrack.Child = ramGrid;
+                cardStack.Children.Add(ramTrack);
+
+                card.Child = cardStack;
+                _overviewBreakdownStack.Children.Add(card);
             }
         }
 
@@ -367,9 +394,19 @@ namespace TOTVSHub
                         FiltrarLinhasLogOverview();
                     else if (_overviewLogConsole != null)
                     {
+                        double hOffset = _overviewLogConsole.HorizontalOffset;
+                        double vOffset = _overviewLogConsole.VerticalOffset;
                         _overviewLogConsole.Text = content;
                         if (_overviewAutoScroll)
-                            _overviewLogConsole.ScrollToEnd();
+                        {
+                            _overviewLogConsole.ScrollToVerticalOffset(_overviewLogConsole.ExtentHeight);
+                            if (hOffset > 0) _overviewLogConsole.ScrollToHorizontalOffset(hOffset);
+                        }
+                        else
+                        {
+                            _overviewLogConsole.ScrollToVerticalOffset(vOffset);
+                            if (hOffset > 0) _overviewLogConsole.ScrollToHorizontalOffset(hOffset);
+                        }
                     }
                 }));
             });
@@ -379,10 +416,22 @@ namespace TOTVSHub
         {
             if (_overviewLogConsole == null) return;
             string raw = _cachedOverviewLogContent ?? "";
+            double hOffset = _overviewLogConsole.HorizontalOffset;
+            double vOffset = _overviewLogConsole.VerticalOffset;
+
             if (string.IsNullOrEmpty(_overviewFilterText))
             {
                 _overviewLogConsole.Text = raw;
-                if (_overviewAutoScroll) _overviewLogConsole.ScrollToEnd();
+                if (_overviewAutoScroll)
+                {
+                    _overviewLogConsole.ScrollToVerticalOffset(_overviewLogConsole.ExtentHeight);
+                    if (hOffset > 0) _overviewLogConsole.ScrollToHorizontalOffset(hOffset);
+                }
+                else
+                {
+                    _overviewLogConsole.ScrollToVerticalOffset(vOffset);
+                    if (hOffset > 0) _overviewLogConsole.ScrollToHorizontalOffset(hOffset);
+                }
                 return;
             }
 
@@ -395,6 +444,16 @@ namespace TOTVSHub
                     filtered.Add(line);
             }
             _overviewLogConsole.Text = string.Join(Environment.NewLine, filtered.ToArray());
+            if (_overviewAutoScroll)
+            {
+                _overviewLogConsole.ScrollToVerticalOffset(_overviewLogConsole.ExtentHeight);
+                if (hOffset > 0) _overviewLogConsole.ScrollToHorizontalOffset(hOffset);
+            }
+            else
+            {
+                _overviewLogConsole.ScrollToVerticalOffset(vOffset);
+                if (hOffset > 0) _overviewLogConsole.ScrollToHorizontalOffset(hOffset);
+            }
         }
 
         private List<OverviewServiceItem> ObterServicosAtivos()
