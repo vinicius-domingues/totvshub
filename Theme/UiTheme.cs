@@ -1163,12 +1163,13 @@ namespace TOTVSHub
             return path;
         }
 
+        // Icone de Auto-Scroll / Seguir Log (Chevrons duplos para baixo)
         public static UIElement CreateScrollIcon(Brush strokeBrush, double size = 14)
         {
             System.Windows.Shapes.Path path = new System.Windows.Shapes.Path();
-            path.Data = Geometry.Parse("M 7,2 L 7,12 M 4,9 L 7,12 L 10,9 M 3,14 L 11,14");
+            path.Data = Geometry.Parse("M 7,6 L 12,11 L 17,6 M 7,13 L 12,18 L 17,13");
             path.Stroke = strokeBrush;
-            path.StrokeThickness = 1.6;
+            path.StrokeThickness = 1.8;
             path.StrokeStartLineCap = PenLineCap.Round;
             path.StrokeEndLineCap = PenLineCap.Round;
             path.StrokeLineJoin = PenLineJoin.Round;
