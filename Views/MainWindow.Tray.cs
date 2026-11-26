@@ -219,6 +219,28 @@ namespace TOTVSHub
             catch { }
         }
 
+        private void IniciarProtheusAmbiente(AmbienteInfo amb)
+        {
+            if (amb == null) return;
+            if (amb.State == EnvRunState.Active || amb.State == EnvRunState.Initializing)
+            {
+                if (!string.IsNullOrEmpty(amb.WebAppPort))
+                    AbrirNavegador(amb);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(amb.WebAppPort))
+            {
+                string url = string.Format("http://localhost:{0}", amb.WebAppPort);
+                int delay = _browserDelaySeconds;
+                IniciarAmbienteAsync(amb, delegate { AbrirUrlNoNavegador(url, delay); });
+            }
+            else
+            {
+                IniciarAmbienteAsync(amb, null);
+            }
+        }
+
         private void ReconstruirMenuBandeja()
         {
             if (_trayMenu == null) return;
@@ -236,55 +258,109 @@ namespace TOTVSHub
 
             _trayMenu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
-            var basesAtivas = _ambientes.Where(a => a.State == EnvRunState.Active).ToList();
-            if (basesAtivas.Count > 0)
+            var listaAmbientes = _ambientes.Where(a => !_hiddenDirs.Contains(a.AppDir)).ToList();
+            if (listaAmbientes.Count == 0 && _ambientes.Count > 0)
             {
-                for (int i = 0; i < basesAtivas.Count; i++)
+                listaAmbientes = _ambientes.ToList();
+            }
+
+            listaAmbientes = listaAmbientes
+                .OrderByDescending(a => a.State == EnvRunState.Active || a.State == EnvRunState.Initializing)
+                .ThenBy(a => a.NomeIni)
+                .ToList();
+
+            if (listaAmbientes.Count > 0)
+            {
+                for (int i = 0; i < listaAmbientes.Count; i++)
                 {
                     if (i > 0)
                     {
                         _trayMenu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
                     }
 
-                    AmbienteInfo captured = basesAtivas[i];
-                    string portDisplay = !string.IsNullOrEmpty(captured.WebAppPort)
-                        ? " (:" + captured.WebAppPort + ")"
-                        : (!string.IsNullOrEmpty(captured.RestPort) ? " (:" + captured.RestPort + ")" : "");
+                    AmbienteInfo captured = listaAmbientes[i];
 
-                    var envItem = new System.Windows.Forms.ToolStripMenuItem(string.Format("🟢 {0}{1}", captured.NomeIni, portDisplay));
-                    envItem.Font = new System.Drawing.Font(_trayMenu.Font, System.Drawing.FontStyle.Bold);
-                    envItem.ForeColor = Color.FromArgb(74, 222, 128);
-                    envItem.Click += delegate
+                    if (captured.State == EnvRunState.Active)
                     {
-                        if (!string.IsNullOrEmpty(captured.WebAppPort))
-                            AbrirNavegador(captured);
-                        else if (!string.IsNullOrEmpty(captured.RestPort))
-                            AbrirRestNavegador(captured);
-                        else
-                            RestaurarJanelaPrincipal();
-                    };
-                    _trayMenu.Items.Add(envItem);
+                        string portDisplay = !string.IsNullOrEmpty(captured.WebAppPort)
+                            ? " (:" + captured.WebAppPort + ")"
+                            : (!string.IsNullOrEmpty(captured.RestPort) ? " (:" + captured.RestPort + ")" : "");
 
-                    if (!string.IsNullOrEmpty(captured.RestPort) && !string.IsNullOrEmpty(captured.WebAppPort))
-                    {
-                        var restItem = new System.Windows.Forms.ToolStripMenuItem(string.Format("    🌐 REST (:{0}/rest)", captured.RestPort));
-                        restItem.ForeColor = Color.FromArgb(56, 189, 248);
-                        restItem.Click += delegate { AbrirRestNavegador(captured); };
-                        _trayMenu.Items.Add(restItem);
+                        var envItem = new System.Windows.Forms.ToolStripMenuItem(string.Format("🟢 {0}{1}", captured.NomeIni, portDisplay));
+                        envItem.Font = new System.Drawing.Font(_trayMenu.Font, System.Drawing.FontStyle.Bold);
+                        envItem.ForeColor = Color.FromArgb(74, 222, 128);
+                        envItem.ToolTipText = "Clique para abrir o Protheus";
+                        envItem.Click += delegate
+                        {
+                            if (!string.IsNullOrEmpty(captured.WebAppPort))
+                                AbrirNavegador(captured);
+                            else if (!string.IsNullOrEmpty(captured.RestPort))
+                                AbrirRestNavegador(captured);
+                            else
+                                RestaurarJanelaPrincipal();
+                        };
+                        _trayMenu.Items.Add(envItem);
+
+                        if (!string.IsNullOrEmpty(captured.RestPort) && !string.IsNullOrEmpty(captured.WebAppPort))
+                        {
+                            var restItem = new System.Windows.Forms.ToolStripMenuItem(string.Format("    REST (:{0}/rest)", captured.RestPort));
+                            restItem.ForeColor = Color.FromArgb(56, 189, 248);
+                            restItem.Click += delegate { AbrirRestNavegador(captured); };
+                            _trayMenu.Items.Add(restItem);
+                        }
+
+                        var stopItem = new System.Windows.Forms.ToolStripMenuItem(string.Format("    Parar {0}", captured.NomeIni));
+                        stopItem.ForeColor = Color.FromArgb(248, 113, 113);
+                        stopItem.Click += delegate { EncerrarAmbienteAsync(captured); };
+                        _trayMenu.Items.Add(stopItem);
                     }
+                    else if (captured.State == EnvRunState.Initializing)
+                    {
+                        var envItem = new System.Windows.Forms.ToolStripMenuItem(string.Format("🟡 {0} (Iniciando...)", captured.NomeIni));
+                        envItem.Font = new System.Drawing.Font(_trayMenu.Font, System.Drawing.FontStyle.Italic);
+                        envItem.ForeColor = Color.FromArgb(251, 191, 36);
+                        envItem.Click += delegate { RestaurarJanelaPrincipal(); };
+                        _trayMenu.Items.Add(envItem);
+                    }
+                    else if (captured.State == EnvRunState.Stopping)
+                    {
+                        var envItem = new System.Windows.Forms.ToolStripMenuItem(string.Format("🟠 {0} (Parando...)", captured.NomeIni));
+                        envItem.Font = new System.Drawing.Font(_trayMenu.Font, System.Drawing.FontStyle.Italic);
+                        envItem.ForeColor = Color.FromArgb(251, 146, 60);
+                        envItem.Click += delegate { RestaurarJanelaPrincipal(); };
+                        _trayMenu.Items.Add(envItem);
+                    }
+                    else // Stopped
+                    {
+                        var envItem = new System.Windows.Forms.ToolStripMenuItem(string.Format("⚪ {0}", captured.NomeIni));
+                        envItem.Font = new System.Drawing.Font(_trayMenu.Font, System.Drawing.FontStyle.Regular);
+                        envItem.ForeColor = Color.FromArgb(148, 163, 184);
+                        envItem.ToolTipText = "Clique para iniciar o Protheus";
+                        envItem.Click += delegate
+                        {
+                            IniciarProtheusAmbiente(captured);
+                        };
+                        _trayMenu.Items.Add(envItem);
 
-                    var stopItem = new System.Windows.Forms.ToolStripMenuItem(string.Format("    ⏹️ Parar {0}", captured.NomeIni));
-                    stopItem.ForeColor = Color.FromArgb(248, 113, 113);
-                    stopItem.Click += delegate { EncerrarAmbienteAsync(captured); };
-                    _trayMenu.Items.Add(stopItem);
+                        string startLabel = !string.IsNullOrEmpty(captured.WebAppPort)
+                            ? "    Iniciar Protheus"
+                            : string.Format("    Iniciar {0}", captured.NomeIni);
+                        var startItem = new System.Windows.Forms.ToolStripMenuItem(startLabel);
+                        startItem.ForeColor = Color.FromArgb(74, 222, 128);
+                        startItem.Click += delegate
+                        {
+                            IniciarProtheusAmbiente(captured);
+                        };
+                        _trayMenu.Items.Add(startItem);
+                    }
                 }
             }
             else
             {
-                var semAtivos = new System.Windows.Forms.ToolStripMenuItem("⚪ Nenhum ambiente ativo no momento");
-                semAtivos.ForeColor = Color.FromArgb(148, 163, 184);
-                semAtivos.Enabled = false;
-                _trayMenu.Items.Add(semAtivos);
+                var semAmbientes = new System.Windows.Forms.ToolStripMenuItem("Nenhum ambiente encontrado");
+                semAmbientes.ForeColor = Color.FromArgb(148, 163, 184);
+                semAmbientes.Enabled = false;
+                _trayMenu.Items.Add(semAmbientes);
             }
 
             _trayMenu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
