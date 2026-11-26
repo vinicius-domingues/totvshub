@@ -833,6 +833,8 @@ namespace TOTVSHub
             if (fe != null && fe.Tag != null)
             {
                 string tag = fe.Tag.ToString();
+                if (string.Equals(tag, "NoTabs", StringComparison.OrdinalIgnoreCase))
+                    return true;
                 if (tag.IndexOf("Tab", StringComparison.OrdinalIgnoreCase) >= 0)
                     return true;
             }

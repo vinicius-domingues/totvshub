@@ -39,31 +39,48 @@ namespace TOTVSHub
             root.RowDefinitions.Add(rBottom);
 
             StackPanel topLeft = new StackPanel();
+            topLeft.Tag = "NoTabs";
             topLeft.Orientation = Orientation.Horizontal;
             topLeft.VerticalAlignment = VerticalAlignment.Center;
+
+            StackPanel brand = CreateBrandTitleHeader();
+            topLeft.Children.Add(brand);
+
+            Border separator = new Border();
+            separator.Width = 1;
+            separator.Height = 22;
+            separator.Background = UiTheme.BorderSubtle;
+            separator.Margin = new Thickness(18, 0, 16, 0);
+            separator.VerticalAlignment = VerticalAlignment.Center;
+            topLeft.Children.Add(separator);
+
+            StackPanel settingsGroup = new StackPanel();
+            settingsGroup.Orientation = Orientation.Horizontal;
+            settingsGroup.VerticalAlignment = VerticalAlignment.Center;
 
             Button btnBackArrow = UiTheme.CreateFramelessIconButton(
                 UiTheme.CreateLargeThinLeftArrowIcon(UiTheme.TextPrimary),
                 "Voltar");
             btnBackArrow.Padding = new Thickness(4, 2, 4, 2);
-            btnBackArrow.Margin = new Thickness(0, 0, 10, 0);
+            btnBackArrow.Margin = new Thickness(0, 0, 8, 0);
             btnBackArrow.Click += delegate
             {
                 if (_needsOnboarding)
                     ShowOnboardingView();
                 else
-                    ShowDashboardView();
+                    SwitchToTab(_currentTab);
             };
 
             TextBlock titleLbl = new TextBlock();
             titleLbl.Text = "Configurações";
             titleLbl.Foreground = UiTheme.TextPrimary;
-            titleLbl.FontSize = 17;
+            titleLbl.FontSize = 16;
             titleLbl.FontWeight = FontWeights.Bold;
             titleLbl.VerticalAlignment = VerticalAlignment.Center;
 
-            topLeft.Children.Add(btnBackArrow);
-            topLeft.Children.Add(titleLbl);
+            settingsGroup.Children.Add(btnBackArrow);
+            settingsGroup.Children.Add(titleLbl);
+            topLeft.Children.Add(settingsGroup);
 
             Border topBar = BuildTopWindowBar(topLeft);
             Grid.SetRow(topBar, 0);
