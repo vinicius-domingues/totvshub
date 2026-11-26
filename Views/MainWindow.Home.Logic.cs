@@ -741,7 +741,7 @@ namespace TOTVSHub
                         string apoFolder = LocalizarPastaApo(amb);
                         if (string.IsNullOrEmpty(apoFolder) || !Directory.Exists(apoFolder))
                         {
-                            MessageBox.Show(this, "Não foi possível localizar o diretório de repositórios (/apo) deste ambiente.", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            StyledDialog.Info(this, "TOTVSHub", "Não foi possível localizar o diretório de repositórios (/apo) deste ambiente.");
                             return;
                         }
         
@@ -787,7 +787,7 @@ namespace TOTVSHub
                             string[] normalFiles = Directory.GetFiles(normalFolder, "*.rpo");
                             if (normalFiles.Length == 0)
                             {
-                                MessageBox.Show(this, "Não há arquivo de RPO padrão de backup no armazenamento do TOTVSHub para restaurar.", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                                StyledDialog.Info(this, "TOTVSHub", "Não há arquivo de RPO padrão de backup no armazenamento do TOTVSHub para restaurar.");
                                 return;
                             }
         
@@ -817,8 +817,8 @@ namespace TOTVSHub
         
                             if (d1Files.Length == 0)
                             {
-                                var res = MessageBox.Show(this, "O repositório D-1 deste ambiente ainda não foi baixado na pasta AppData.\nDeseja iniciar o download agora?", "TOTVSHub - Repositório D-1", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                                if (res == MessageBoxResult.Yes)
+                                bool res = StyledDialog.AskYesNo(this, "TOTVSHub - Repositório D-1", "O repositório D-1 deste ambiente ainda não foi baixado na pasta AppData.\nDeseja iniciar o download agora?");
+                                if (res)
                                 {
                                     AbrirModalDownloadD1(amb);
                                 }
@@ -848,7 +848,7 @@ namespace TOTVSHub
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show(this, "Erro ao alterar RPO D-1: " + ex.Message + "\n\nSe o ambiente TOTVS estiver em execução, encerre-o antes de alterar os arquivos RPO.", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Error);
+                        StyledDialog.Info(this, "TOTVSHub", "Erro ao alterar RPO D-1: " + ex.Message + "\n\nSe o ambiente TOTVS estiver em execução, encerre-o antes de alterar os arquivos RPO.");
                     }
                 }
 
@@ -957,7 +957,7 @@ namespace TOTVSHub
                                 apoFolder = amb.AppDir;
                             else
                             {
-                                MessageBox.Show(this, "Não foi possível localizar o diretório de repositórios (/apo) deste ambiente.", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                                StyledDialog.Info(this, "TOTVSHub", "Não foi possível localizar o diretório de repositórios (/apo) deste ambiente.");
                                 return;
                             }
                         }
@@ -1017,12 +1017,12 @@ namespace TOTVSHub
                             
                             if (!File.Exists(savedPath))
                             {
-                                MessageBox.Show(this, "Arquivo " + customFileName + " não foi encontrado em " + customFolder + " para restaurar.", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                                StyledDialog.Info(this, "TOTVSHub", "Arquivo " + customFileName + " não foi encontrado em " + customFolder + " para restaurar.");
                                 return;
                             }
         
-                            MessageBoxResult res = MessageBox.Show(this, "Isso irá restaurar/sobrescrever o custom.rpo pelo arquivo de totvshub_customrpo. Deseja continuar?", "TOTVSHub", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                            if (res != MessageBoxResult.Yes)
+                            bool res = StyledDialog.AskYesNo(this, "TOTVSHub", "Isso irá restaurar/sobrescrever o custom.rpo pelo arquivo de totvshub_customrpo. Deseja continuar?");
+                            if (!res)
                                 return;
         
                             if (File.Exists(activePath))
@@ -1038,7 +1038,7 @@ namespace TOTVSHub
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show(this, "Erro ao alternar RPOCustom: " + ex.Message + "\n\nSe o ambiente TOTVS estiver em execução, encerre-o antes de alterar os arquivos RPO.", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Error);
+                        StyledDialog.Info(this, "TOTVSHub", "Erro ao alternar RPOCustom: " + ex.Message + "\n\nSe o ambiente TOTVS estiver em execução, encerre-o antes de alterar os arquivos RPO.");
                     }
                 }
 
@@ -1085,7 +1085,7 @@ namespace TOTVSHub
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show(this, "Erro ao copiar dados para a área de transferência: " + ex.Message, "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        StyledDialog.Info(this, "TOTVSHub", "Erro ao copiar dados para a área de transferência: " + ex.Message);
                     }
                 }
 
@@ -1110,12 +1110,12 @@ namespace TOTVSHub
                             if (!string.IsNullOrEmpty(parent) && Directory.Exists(parent))
                                 Process.Start("explorer.exe", parent);
                             else
-                                MessageBox.Show(this, "Caminho não encontrado no sistema: " + path, "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                                StyledDialog.Info(this, "TOTVSHub", "Caminho não encontrado no sistema: " + path);
                         }
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show(this, "Erro ao abrir o Windows Explorer: " + ex.Message, "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Error);
+                        StyledDialog.Info(this, "TOTVSHub", "Erro ao abrir o Windows Explorer: " + ex.Message);
                     }
                 }
     }

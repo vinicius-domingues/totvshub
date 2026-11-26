@@ -17,7 +17,7 @@ namespace TOTVSHub
 
         public DialogChoice ResultChoice { get; private set; }
 
-        public StyledDialog(string title, string message, string subMessage, string togglePrompt, bool showToggle, bool initialToggleState, string confirmLabel, string confirmBgHex, string confirmHoverHex, bool showCancel)
+        public StyledDialog(string title, string message, string subMessage, string togglePrompt, bool showToggle, bool initialToggleState, string confirmLabel, string confirmBgHex, string confirmHoverHex, bool showCancel, string cancelLabel = "Cancelar", bool isYesNo = false)
         {
             ResultChoice = DialogChoice.Cancel;
             bool toggleState = initialToggleState;
@@ -65,7 +65,7 @@ namespace TOTVSHub
                 DockPanel.SetDock(btnClose, Dock.Right);
                 btnClose.Click += delegate
                 {
-                    ResultChoice = DialogChoice.Cancel;
+                    ResultChoice = isYesNo ? DialogChoice.No : DialogChoice.Cancel;
                     Close();
                 };
                 topRow.Children.Add(btnClose);
@@ -174,15 +174,50 @@ namespace TOTVSHub
                 stack.Children.Add(toggleCard);
             }
 
-            Button btnConfirm = UiTheme.CreateActionButton(confirmLabel, confirmBgHex, confirmHoverHex);
-            btnConfirm.Padding = new Thickness(18, 8, 18, 8);
-            btnConfirm.HorizontalAlignment = HorizontalAlignment.Right;
-            btnConfirm.Click += delegate
+            DockPanel buttonBar = new DockPanel();
+            buttonBar.Margin = new Thickness(0, 8, 0, 0);
+
+            if (isYesNo)
             {
-                ResultChoice = toggleState ? DialogChoice.Yes : DialogChoice.No;
-                Close();
-            };
-            stack.Children.Add(btnConfirm);
+                StackPanel rightButtons = new StackPanel();
+                rightButtons.Orientation = Orientation.Horizontal;
+                rightButtons.HorizontalAlignment = HorizontalAlignment.Right;
+
+                Button btnNo = UiTheme.CreateActionButton(cancelLabel ?? "Não", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
+                btnNo.Padding = new Thickness(18, 8, 18, 8);
+                btnNo.Margin = new Thickness(0, 0, 10, 0);
+                btnNo.Click += delegate
+                {
+                    ResultChoice = DialogChoice.No;
+                    Close();
+                };
+                rightButtons.Children.Add(btnNo);
+
+                Button btnYes = UiTheme.CreateActionButton(confirmLabel ?? "Sim", confirmBgHex ?? UiTheme.PrimaryBlueHex, confirmHoverHex ?? UiTheme.PrimaryBlueHoverHex);
+                btnYes.Padding = new Thickness(18, 8, 18, 8);
+                btnYes.Click += delegate
+                {
+                    ResultChoice = DialogChoice.Yes;
+                    Close();
+                };
+                rightButtons.Children.Add(btnYes);
+
+                buttonBar.Children.Add(rightButtons);
+            }
+            else
+            {
+                Button btnConfirm = UiTheme.CreateActionButton(confirmLabel ?? "OK", confirmBgHex ?? UiTheme.PrimaryBlueHex, confirmHoverHex ?? UiTheme.PrimaryBlueHoverHex);
+                btnConfirm.Padding = new Thickness(18, 8, 18, 8);
+                btnConfirm.HorizontalAlignment = HorizontalAlignment.Right;
+                btnConfirm.Click += delegate
+                {
+                    ResultChoice = toggleState ? DialogChoice.Yes : DialogChoice.No;
+                    Close();
+                };
+                buttonBar.Children.Add(btnConfirm);
+            }
+
+            stack.Children.Add(buttonBar);
 
             outer.Child = stack;
             Content = outer;
@@ -191,31 +226,73 @@ namespace TOTVSHub
             {
                 if (e.Key == Key.Escape)
                 {
-                    ResultChoice = DialogChoice.Cancel;
+                    ResultChoice = isYesNo ? DialogChoice.No : DialogChoice.Cancel;
                     Close();
                 }
                 else if (e.Key == Key.Enter)
                 {
-                    ResultChoice = toggleState ? DialogChoice.Yes : DialogChoice.No;
+                    ResultChoice = isYesNo ? DialogChoice.Yes : (toggleState ? DialogChoice.Yes : DialogChoice.No);
                     Close();
                 }
             };
         }
 
+        private static void SetOwner(Window dlg, Window owner)
+        {
+            try
+            {
+                if (owner != null && owner.IsLoaded && owner.IsVisible)
+                {
+                    dlg.Owner = owner;
+                    dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                }
+                else if (Application.Current != null && Application.Current.MainWindow != null && Application.Current.MainWindow.IsVisible)
+                {
+                    dlg.Owner = Application.Current.MainWindow;
+                    dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                }
+                else
+                {
+                    dlg.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                }
+            }
+            catch
+            {
+                dlg.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            }
+        }
+
         public static DialogChoice AskWithToggle(Window owner, string title, string message, string subMessage, string togglePrompt, bool initialState, string confirmLabel, string confirmBgHex, string confirmHoverHex)
         {
             StyledDialog dlg = new StyledDialog(title, message, subMessage, togglePrompt, true, initialState, confirmLabel, confirmBgHex, confirmHoverHex, true);
-            dlg.Owner = owner;
+            SetOwner(dlg, owner);
             dlg.ShowDialog();
             return dlg.ResultChoice;
         }
 
-        public static void Info(Window owner, string title, string message, string subMessage)
+        public static bool AskYesNo(Window owner, string title, string message, string subMessage = null, string yesLabel = "Sim", string noLabel = "Não")
         {
-            StyledDialog dlg = new StyledDialog(title, message, subMessage, null, false, true, "OK", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex, false);
-            dlg.Owner = owner;
+            StyledDialog dlg = new StyledDialog(title, message, subMessage, null, false, false, yesLabel, UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex, true, noLabel, true);
+            SetOwner(dlg, owner);
             dlg.ShowDialog();
-            return;
+            return dlg.ResultChoice == DialogChoice.Yes;
+        }
+
+        public static void Info(Window owner, string title, string message, string subMessage = null)
+        {
+            StyledDialog dlg = new StyledDialog(title, message, subMessage, null, false, true, "OK", UiTheme.PrimaryBlueHex, UiTheme.PrimaryBlueHoverHex, true, null, false);
+            SetOwner(dlg, owner);
+            dlg.ShowDialog();
+        }
+
+        public static void Warning(Window owner, string title, string message, string subMessage = null)
+        {
+            Info(owner, title, message, subMessage);
+        }
+
+        public static void Error(Window owner, string title, string message, string subMessage = null)
+        {
+            Info(owner, title, message, subMessage);
         }
     }
 }

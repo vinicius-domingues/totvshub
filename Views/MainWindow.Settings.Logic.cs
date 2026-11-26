@@ -186,7 +186,7 @@ namespace TOTVSHub
 
             if (tempLinks.Count >= 5)
             {
-                MessageBox.Show(this, "Limite atingido: Você pode cadastrar no máximo 5 botões de acesso.", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                StyledDialog.Info(this, "TOTVSHub", "Limite atingido: Você pode cadastrar no máximo 5 botões de acesso.");
                 return;
             }
 
@@ -205,7 +205,7 @@ namespace TOTVSHub
 
             if (tempRules.Count >= 10)
             {
-                MessageBox.Show(this, "Limite atingido: Você pode cadastrar no máximo 10 regras/tags de monitoramento.", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                StyledDialog.Info(this, "TOTVSHub", "Limite atingido: Você pode cadastrar no máximo 10 regras/tags de monitoramento.");
                 return;
             }
 
