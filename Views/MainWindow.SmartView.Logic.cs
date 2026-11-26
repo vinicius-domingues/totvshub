@@ -28,6 +28,8 @@ namespace TOTVSHub
         private TextBlock _svCard7019LatencyText;
         private TextBlock _svFolderLabel;
         private TextBlock _svLastUpdateLabel;
+        private TextBlock _svStatsLabel;
+        private DateTime _svLastUpdatedTime = DateTime.Now;
         private string _smartViewDetectedFolder;
         private int _smartViewPid = 0;
         private string _smartViewSavedFolderPrefPath;
@@ -187,9 +189,18 @@ namespace TOTVSHub
                             _svFolderLabel.ToolTip = "Clique para abrir no Windows Explorer";
                         }
                     }
+                    _svLastUpdatedTime = DateTime.Now;
                     if (_svLastUpdateLabel != null)
                     {
-                        _svLastUpdateLabel.Text = string.Format("Atualizado às {0:HH:mm:ss}", DateTime.Now);
+                        _svLastUpdateLabel.Text = string.Format("Atualizado em {0:dd/MM/yyyy HH:mm:ss}  •", _svLastUpdatedTime);
+                    }
+                    if (_svStatsLabel != null)
+                    {
+                        int svAtivos = (_smartViewPort7017 != null && _smartViewPort7017.IsOpen ? 1 : 0) +
+                                       (_smartViewPort7019 != null && _smartViewPort7019.IsOpen ? 1 : 0);
+                        int svTotal = 2;
+                        string ativoTxt = (svAtivos == 1) ? "ativo" : "ativos";
+                        _svStatsLabel.Text = string.Format("{0} de {1} {2}", svAtivos, svTotal, ativoTxt);
                     }
                 }));
             });

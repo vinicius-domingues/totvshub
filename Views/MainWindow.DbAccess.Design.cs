@@ -35,45 +35,74 @@ namespace TOTVSHub
 
         private TextBlock _dbAccessLastUpdateLabel;
 
+        private TextBlock _dbAccessFolderLabel;
+
         public void ShowDbAccessView()
-                {
-                    _isInDashboardView = false;
-                    _currentTab = HubActiveTab.DbAccess;
-        
-                    InicializarDbAccessConfig();
-        
-                    Grid rootGrid = new Grid();
-                    RowDefinition rowTop = new RowDefinition(); rowTop.Height = GridLength.Auto;
-                    RowDefinition rowBody = new RowDefinition(); rowBody.Height = new GridLength(1, GridUnitType.Star);
-                    rootGrid.RowDefinitions.Add(rowTop);
-                    rootGrid.RowDefinitions.Add(rowBody);
-        
-                    StackPanel topLeft = CreateBrandHeaderWithTabs(HubActiveTab.DbAccess);
-                    Border topBar = BuildTopWindowBar(topLeft, null);
-                    Grid.SetRow(topBar, 0);
-                    rootGrid.Children.Add(topBar);
-        
-                    bool hasValidConfig = !string.IsNullOrEmpty(_dbAccessConfig.FolderPath) &&
-                                         Directory.Exists(_dbAccessConfig.FolderPath) &&
-                                         !string.IsNullOrEmpty(_dbAccessConfig.IniPath) &&
-                                         File.Exists(_dbAccessConfig.IniPath);
-        
-                    UIElement bodyElement;
-                    if (!hasValidConfig)
-                    {
-                        bodyElement = BuildDbAccessSetupView();
-                    }
-                    else
-                    {
-                        bodyElement = BuildDbAccessMainView();
-                        CarregarDadosDbAccessAsync();
-                    }
-        
-                    Grid.SetRow(bodyElement, 1);
-                    rootGrid.Children.Add(bodyElement);
-        
-                    _pageHost.Content = rootGrid;
-                }
+        {
+            _isInDashboardView = false;
+            _currentTab = HubActiveTab.DbAccess;
+
+            InicializarDbAccessConfig();
+
+            Grid rootGrid = new Grid();
+            RowDefinition rowTop = new RowDefinition(); rowTop.Height = GridLength.Auto;
+            RowDefinition rowToolbar = new RowDefinition(); rowToolbar.Height = GridLength.Auto;
+            RowDefinition rowDivider = new RowDefinition(); rowDivider.Height = GridLength.Auto;
+            RowDefinition rowBody = new RowDefinition(); rowBody.Height = new GridLength(1, GridUnitType.Star);
+            rootGrid.RowDefinitions.Add(rowTop);
+            rootGrid.RowDefinitions.Add(rowToolbar);
+            rootGrid.RowDefinitions.Add(rowDivider);
+            rootGrid.RowDefinitions.Add(rowBody);
+
+            StackPanel topLeft = CreateBrandHeaderWithTabs(HubActiveTab.DbAccess);
+            Border topBar = BuildTopWindowBar(topLeft, null);
+            Grid.SetRow(topBar, 0);
+            rootGrid.Children.Add(topBar);
+
+            bool hasValidConfig = !string.IsNullOrEmpty(_dbAccessConfig.FolderPath) &&
+                                 Directory.Exists(_dbAccessConfig.FolderPath) &&
+                                 !string.IsNullOrEmpty(_dbAccessConfig.IniPath) &&
+                                 File.Exists(_dbAccessConfig.IniPath);
+
+            if (!hasValidConfig)
+            {
+                UIElement setup = BuildDbAccessSetupView();
+                Grid.SetRow(setup, 1);
+                Grid.SetRowSpan(setup, 3);
+                rootGrid.Children.Add(setup);
+            }
+            else
+            {
+                CarregarNotaDbAccessAppData();
+
+                Border toolbar = BuildDbAccessToolbar();
+                Grid.SetRow(toolbar, 1);
+                rootGrid.Children.Add(toolbar);
+
+                Border divider = new Border();
+                divider.Height = 3;
+                divider.Background = UiTheme.BorderSubtle;
+                divider.Margin = new Thickness(20, 0, 20, 6);
+                Grid.SetRow(divider, 2);
+                rootGrid.Children.Add(divider);
+
+                _dbAccessScrollViewer = new ScrollViewer();
+                _dbAccessScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+                _dbAccessScrollViewer.Padding = new Thickness(20, 4, 20, 18);
+
+                StackPanel sp = new StackPanel();
+                sp.VerticalAlignment = VerticalAlignment.Top;
+                _dbAccessCardsContainer = sp;
+                _dbAccessScrollViewer.Content = _dbAccessCardsContainer;
+
+                Grid.SetRow(_dbAccessScrollViewer, 3);
+                rootGrid.Children.Add(_dbAccessScrollViewer);
+
+                CarregarDadosDbAccessAsync();
+            }
+
+            _pageHost.Content = rootGrid;
+        }
 
         private UIElement BuildDbAccessSetupView()
                 {
@@ -218,85 +247,6 @@ namespace TOTVSHub
                     return scroll;
                 }
 
-        private UIElement BuildDbAccessMainView()
-                {
-                    CarregarNotaDbAccessAppData();
-        
-                    Grid mainGrid = new Grid();
-                    RowDefinition rToolbar = new RowDefinition(); rToolbar.Height = GridLength.Auto;
-                    RowDefinition rInfoBar = new RowDefinition(); rInfoBar.Height = GridLength.Auto;
-                    RowDefinition rContent = new RowDefinition(); rContent.Height = new GridLength(1, GridUnitType.Star);
-                    mainGrid.RowDefinitions.Add(rToolbar);
-                    mainGrid.RowDefinitions.Add(rInfoBar);
-                    mainGrid.RowDefinitions.Add(rContent);
-        
-                    
-                    Border toolbar = BuildDbAccessToolbar();
-                    Grid.SetRow(toolbar, 0);
-                    mainGrid.Children.Add(toolbar);
-        
-                    
-                    Border infoBar = BuildDbAccessInfoBar();
-                    Grid.SetRow(infoBar, 1);
-                    mainGrid.Children.Add(infoBar);
-        
-                    
-                    _dbAccessScrollViewer = new ScrollViewer();
-                    _dbAccessScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
-                    _dbAccessScrollViewer.Padding = new Thickness(20, 14, 20, 20);
-        
-                    StackPanel sp = new StackPanel();
-                    _dbAccessCardsContainer = sp;
-                    _dbAccessScrollViewer.Content = _dbAccessCardsContainer;
-        
-                    Grid.SetRow(_dbAccessScrollViewer, 2);
-                    mainGrid.Children.Add(_dbAccessScrollViewer);
-        
-                    return mainGrid;
-                }
-
-        private Border BuildDbAccessInfoBar()
-                {
-                    Border infoBar = new Border();
-                    infoBar.Padding = new Thickness(20, 10, 20, 0);
-
-                    DockPanel dp = new DockPanel();
-
-                    StackPanel rightStatsStack = new StackPanel();
-                    rightStatsStack.Orientation = Orientation.Horizontal;
-                    DockPanel.SetDock(rightStatsStack, Dock.Right);
-
-                    _dbAccessLastUpdateLabel = new TextBlock();
-                    _dbAccessLastUpdateLabel.Foreground = UiTheme.TextMuted;
-                    _dbAccessLastUpdateLabel.FontSize = 12;
-                    _dbAccessLastUpdateLabel.Margin = new Thickness(0, 0, 10, 0);
-                    _dbAccessLastUpdateLabel.Text = string.Format("Atualizado em {0:dd/MM/yyyy HH:mm:ss}  •", _dbAccessLastUpdatedTime);
-
-                    _dbAccessStatusCountLabel = new TextBlock();
-                    _dbAccessStatusCountLabel.Foreground = UiTheme.TextPrimary;
-                    _dbAccessStatusCountLabel.FontSize = 12;
-                    _dbAccessStatusCountLabel.FontWeight = FontWeights.SemiBold;
-                    int total = 1;
-                    int ativos = _dbAccessConfig.IsRunning ? 1 : 0;
-                    int ocultos = _hiddenDbAccessEnvs.Contains("DBAccess") ? 1 : 0;
-                    _dbAccessStatusCountLabel.Text = string.Format("{0} de {1} ativo{2} ({3} oculto{4})",
-                        ativos, total, ativos == 1 ? "" : "s", ocultos, ocultos == 1 ? "" : "s");
-
-                    rightStatsStack.Children.Add(_dbAccessLastUpdateLabel);
-                    rightStatsStack.Children.Add(_dbAccessStatusCountLabel);
-
-                    TextBlock dbRootLabel = new TextBlock();
-                    dbRootLabel.Foreground = UiTheme.TextMuted;
-                    dbRootLabel.FontSize = 12;
-                    dbRootLabel.Text = "Diretório: " + (_dbAccessConfig.FolderPath ?? "");
-
-                    dp.Children.Add(rightStatsStack);
-                    dp.Children.Add(dbRootLabel);
-
-                    infoBar.Child = dp;
-                    return infoBar;
-                }
-
         private Border BuildDbAccessToolbar()
                 {
                     Border toolbar = new Border();
@@ -304,6 +254,7 @@ namespace TOTVSHub
                     toolbar.Background = UiTheme.BgWindow;
         
                     Grid toolGrid = new Grid();
+                    toolGrid.Height = 34;
                     ColumnDefinition cLeft = new ColumnDefinition(); cLeft.Width = GridLength.Auto;
                     ColumnDefinition cSearch = new ColumnDefinition(); cSearch.Width = new GridLength(1, GridUnitType.Star);
                     ColumnDefinition cRight = new ColumnDefinition(); cRight.Width = GridLength.Auto;
@@ -341,7 +292,7 @@ namespace TOTVSHub
                                 }
                                 else
                                 {
-                                    MessageBox.Show(this, "Arquivo 'dbaccess.ini' não foi localizado nesta pasta.", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                                    StyledDialog.Info(this, "TOTVSHub", "Arquivo 'dbaccess.ini' não foi localizado nesta pasta.");
                                 }
                             }
                         }
@@ -432,8 +383,52 @@ namespace TOTVSHub
         
                     Grid.SetColumn(rightTools, 2);
                     toolGrid.Children.Add(rightTools);
-        
-                    toolbar.Child = toolGrid;
+
+                    StackPanel toolbarWrapper = new StackPanel();
+                    toolbarWrapper.Children.Add(toolGrid);
+
+                    DockPanel infoBar = new DockPanel();
+                    infoBar.Margin = new Thickness(0, 10, 0, 0);
+
+                    StackPanel rightStatsStack = new StackPanel();
+                    rightStatsStack.Orientation = Orientation.Horizontal;
+                    rightStatsStack.VerticalAlignment = VerticalAlignment.Center;
+                    DockPanel.SetDock(rightStatsStack, Dock.Right);
+
+                    _dbAccessLastUpdateLabel = new TextBlock();
+                    _dbAccessLastUpdateLabel.Foreground = UiTheme.TextMuted;
+                    _dbAccessLastUpdateLabel.FontSize = 12;
+                    _dbAccessLastUpdateLabel.VerticalAlignment = VerticalAlignment.Center;
+                    _dbAccessLastUpdateLabel.Margin = new Thickness(0, 0, 10, 0);
+                    _dbAccessLastUpdateLabel.Text = string.Format("Atualizado em {0:dd/MM/yyyy HH:mm:ss}  •", _dbAccessLastUpdatedTime);
+
+                    _dbAccessStatusCountLabel = new TextBlock();
+                    _dbAccessStatusCountLabel.Foreground = UiTheme.TextPrimary;
+                    _dbAccessStatusCountLabel.FontSize = 12;
+                    _dbAccessStatusCountLabel.FontWeight = FontWeights.SemiBold;
+                    _dbAccessStatusCountLabel.VerticalAlignment = VerticalAlignment.Center;
+                    int total = 1;
+                    int ativos = _dbAccessConfig.IsRunning ? 1 : 0;
+                    int ocultos = _hiddenDbAccessEnvs.Contains("DBAccess") ? 1 : 0;
+                    _dbAccessStatusCountLabel.Text = ocultos > 0
+                        ? string.Format("{0} de {1} {2} ({3} {4})", ativos, total, ativos == 1 ? "ativo" : "ativos", ocultos, ocultos == 1 ? "oculto" : "ocultos")
+                        : string.Format("{0} de {1} {2}", ativos, total, ativos == 1 ? "ativo" : "ativos");
+
+                    rightStatsStack.Children.Add(_dbAccessLastUpdateLabel);
+                    rightStatsStack.Children.Add(_dbAccessStatusCountLabel);
+
+                    _dbAccessFolderLabel = new TextBlock();
+                    _dbAccessFolderLabel.Foreground = UiTheme.TextMuted;
+                    _dbAccessFolderLabel.FontSize = 12;
+                    _dbAccessFolderLabel.VerticalAlignment = VerticalAlignment.Center;
+                    _dbAccessFolderLabel.TextTrimming = TextTrimming.CharacterEllipsis;
+                    _dbAccessFolderLabel.Text = "Diretório: " + (_dbAccessConfig.FolderPath ?? "");
+
+                    infoBar.Children.Add(rightStatsStack);
+                    infoBar.Children.Add(_dbAccessFolderLabel);
+                    toolbarWrapper.Children.Add(infoBar);
+
+                    toolbar.Child = toolbarWrapper;
                     return toolbar;
                 }
 
@@ -454,6 +449,37 @@ namespace TOTVSHub
         private void RenderizarCardsDbAccess()
                 {
                     if (_dbAccessCardsContainer == null) return;
+
+                    if (_isCardsViewMode)
+                    {
+                        if (!(_dbAccessCardsContainer is System.Windows.Controls.Primitives.UniformGrid))
+                        {
+                            System.Windows.Controls.Primitives.UniformGrid ug = new System.Windows.Controls.Primitives.UniformGrid();
+                            ug.Columns = 2;
+                            ug.VerticalAlignment = VerticalAlignment.Top;
+                            _dbAccessCardsContainer = ug;
+                            if (_dbAccessScrollViewer != null) _dbAccessScrollViewer.Content = _dbAccessCardsContainer;
+                        }
+                        else
+                        {
+                            _dbAccessCardsContainer.VerticalAlignment = VerticalAlignment.Top;
+                        }
+                    }
+                    else
+                    {
+                        if (!(_dbAccessCardsContainer is StackPanel))
+                        {
+                            StackPanel spNew = new StackPanel();
+                            spNew.VerticalAlignment = VerticalAlignment.Top;
+                            _dbAccessCardsContainer = spNew;
+                            if (_dbAccessScrollViewer != null) _dbAccessScrollViewer.Content = _dbAccessCardsContainer;
+                        }
+                        else
+                        {
+                            _dbAccessCardsContainer.VerticalAlignment = VerticalAlignment.Top;
+                        }
+                    }
+
                     _dbAccessCardsContainer.Children.Clear();
 
                     int total = 1;
@@ -466,8 +492,9 @@ namespace TOTVSHub
                     }
                     if (_dbAccessStatusCountLabel != null)
                     {
-                        _dbAccessStatusCountLabel.Text = string.Format("{0} de {1} ativo{2} ({3} oculto{4})",
-                            ativos, total, ativos == 1 ? "" : "s", ocultos, ocultos == 1 ? "" : "s");
+                        _dbAccessStatusCountLabel.Text = ocultos > 0
+                            ? string.Format("{0} de {1} {2} ({3} {4})", ativos, total, ativos == 1 ? "ativo" : "ativos", ocultos, ocultos == 1 ? "oculto" : "ocultos")
+                            : string.Format("{0} de {1} {2}", ativos, total, ativos == 1 ? "ativo" : "ativos");
                     }
 
                     Border cardUnico = CriarCardDbAccessUnico();
@@ -491,8 +518,13 @@ namespace TOTVSHub
                     card.BorderThickness = new Thickness(1);
                     card.CornerRadius = new CornerRadius(12);
                     card.Padding = new Thickness(16, 14, 16, 14);
-                    card.Margin = new Thickness(0, 0, 0, 10);
+                    card.Margin = _isCardsViewMode ? new Thickness(0, 0, 10, 10) : new Thickness(0, 0, 0, 10);
                     card.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    card.VerticalAlignment = VerticalAlignment.Top;
+                    if (_isCardsViewMode)
+                    {
+                        card.MinHeight = 168;
+                    }
 
                     Grid cardGrid = new Grid();
                     RowDefinition rMain = new RowDefinition(); rMain.Height = GridLength.Auto;
@@ -549,31 +581,48 @@ namespace TOTVSHub
 
                     if (_dbAccessConfig.IsRunning && _dbAccessConfig.ProcessId > 0)
                     {
-                        Border pidBadge = new Border();
-                        pidBadge.Width = 104;
-                        pidBadge.Height = 24;
-                        pidBadge.Background = UiTheme.BrushFromHex("#0C4A6E");
-                        pidBadge.BorderBrush = UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex);
-                        pidBadge.BorderThickness = new Thickness(1);
-                        pidBadge.CornerRadius = new CornerRadius(5);
-                        pidBadge.Padding = new Thickness(4, 2, 4, 2);
-                        pidBadge.Margin = new Thickness(0, 4, 0, 0);
+                        Border userBadge = new Border();
+                        userBadge.Width = 104;
+                        userBadge.Height = 24;
+                        userBadge.Background = UiTheme.BrushFromHex("#0C4A6E");
+                        userBadge.BorderBrush = UiTheme.BrushFromHex(UiTheme.PrimaryBlueHex);
+                        userBadge.BorderThickness = new Thickness(1);
+                        userBadge.CornerRadius = new CornerRadius(5);
+                        userBadge.Padding = new Thickness(4, 2, 4, 2);
+                        userBadge.Margin = new Thickness(0, 4, 0, 0);
 
-                        TextBlock pidTxt = new TextBlock();
-                        pidTxt.Text = "PID " + _dbAccessConfig.ProcessId;
-                        pidTxt.Foreground = UiTheme.AccentLightBlue;
-                        pidTxt.FontSize = 10;
-                        pidTxt.FontWeight = FontWeights.Bold;
-                        pidTxt.HorizontalAlignment = HorizontalAlignment.Center;
-                        pidTxt.VerticalAlignment = VerticalAlignment.Center;
-                        pidBadge.Child = pidTxt;
-                        leftStack.Children.Add(pidBadge);
+                        string user = _dbAccessConfig.ProcessUser;
+                        if (string.IsNullOrWhiteSpace(user) || 
+                            string.Equals(user, "N/A", StringComparison.OrdinalIgnoreCase) || 
+                            user.IndexOf("SYSTEM", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            user = "system";
+                        }
+
+                        TextBlock userTxt = new TextBlock();
+                        userTxt.Text = "👤 " + user;
+                        userTxt.Foreground = UiTheme.AccentLightBlue;
+                        userTxt.FontSize = 10;
+                        userTxt.FontWeight = FontWeights.Bold;
+                        userTxt.MaxWidth = 96;
+                        userTxt.TextTrimming = TextTrimming.CharacterEllipsis;
+                        userTxt.TextAlignment = TextAlignment.Center;
+                        userTxt.HorizontalAlignment = HorizontalAlignment.Center;
+                        userTxt.VerticalAlignment = VerticalAlignment.Center;
+                        userBadge.Child = userTxt;
+
+                        string fullProc = !string.IsNullOrEmpty(_dbAccessConfig.ProcessName) ? _dbAccessConfig.ProcessName : "dbaccess.exe";
+                        string fullUser = (!string.IsNullOrEmpty(_dbAccessConfig.ProcessUser) && !string.Equals(_dbAccessConfig.ProcessUser, "N/A", StringComparison.OrdinalIgnoreCase))
+                            ? _dbAccessConfig.ProcessUser
+                            : "system";
+                        userBadge.ToolTip = string.Format("PID: {0}\nProcesso: {1}\nUsuário: {2}", _dbAccessConfig.ProcessId, fullProc, fullUser);
+
+                        leftStack.Children.Add(userBadge);
                     }
 
                     Grid mainButtonsGrid = new Grid();
                     mainButtonsGrid.Width = 104;
                     mainButtonsGrid.Margin = new Thickness(0, 8, 0, 0);
-                    mainButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                     mainButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                     mainButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -590,6 +639,23 @@ namespace TOTVSHub
                     btnEditIni.Click += delegate { ShowDbAccessIniEditorView(); };
                     Grid.SetColumn(btnEditIni, 0);
                     mainButtonsGrid.Children.Add(btnEditIni);
+
+                    Button btnLogs = UiTheme.CreateActionButton(
+                        UiTheme.CreateHistoryIcon(UiTheme.TextSecondary, 13),
+                        UiTheme.NeutralBtnHex,
+                        UiTheme.NeutralBtnHoverHex);
+                    btnLogs.Width = double.NaN;
+                    btnLogs.Height = 26;
+                    btnLogs.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    btnLogs.Padding = new Thickness(0);
+                    btnLogs.Margin = new Thickness(2, 0, 0, 0);
+                    btnLogs.ToolTip = "Logs e Monitoramento do DBAccess";
+                    btnLogs.Click += delegate
+                    {
+                        AbrirTelaCompletaLogs("DBAccess", _dbAccessConfig.FolderPath, _dbAccessConfig.ProcessId, "dbaccess");
+                    };
+                    Grid.SetColumn(btnLogs, 1);
+                    mainButtonsGrid.Children.Add(btnLogs);
 
                     leftStack.Children.Add(mainButtonsGrid);
 
@@ -661,7 +727,6 @@ namespace TOTVSHub
                     int monPort = _dbAccessConfig.MonitorPort > 0 ? _dbAccessConfig.MonitorPort : 7890;
                     metaWrap.Children.Add(CreateMetaPill("Porta", monPort.ToString()));
                     metaWrap.Children.Add(CreateMetaPill("License", _dbAccessConfig.LicenseServer + ":" + _dbAccessConfig.LicensePort));
-                    metaWrap.Children.Add(CreateMetaPill("Aliases", _dbAccessConfig.Environments.Count + " configurados"));
 
                     HashSet<string> dbmsSet = new HashSet<string>(_dbAccessConfig.Environments.Select(e => e.Dbms).Where(d => !string.IsNullOrEmpty(d)), StringComparer.OrdinalIgnoreCase);
                     if (dbmsSet.Count > 0)
@@ -735,7 +800,7 @@ namespace TOTVSHub
 
                     menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Atualizar Binário", UiTheme.CreateThinRefreshIcon(UiTheme.TextSecondary), delegate
                     {
-                        MessageBox.Show(this, "Funcionalidade em desenvolvimento:\nTroca e atualização automática de binários em breve!", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Information);
+                        StyledDialog.Info(this, "TOTVSHub", "Funcionalidade em desenvolvimento:\nTroca e atualização automática de binários em breve!");
                     }));
 
                     menuDots.Items.Add(UiTheme.CreateDarkMenuItem(isHidden ? "Desocultar DBAccess" : "Ocultar DBAccess", isHidden ? UiTheme.CreateEyeOffIcon(UiTheme.TextSecondary, 14) : UiTheme.CreateEyeIcon(UiTheme.TextSecondary, 14), delegate
@@ -747,16 +812,6 @@ namespace TOTVSHub
                     }));
 
                     menuDots.Items.Add(new Separator { Background = UiTheme.BorderSubtle, Margin = new Thickness(4, 2, 4, 2) });
-
-                    menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Logs e Monitoramento", UiTheme.CreateCopyIcon(UiTheme.AccentLightBlue, 14), delegate
-                    {
-                        AbrirTelaCompletaLogs("DBAccess", _dbAccessConfig.FolderPath, _dbAccessConfig.ProcessId, "dbaccess");
-                    }));
-
-                    menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Editar INI", UiTheme.CreatePencilIcon(UiTheme.TextSecondary, 14), delegate
-                    {
-                        ShowDbAccessIniEditorView();
-                    }));
 
                     menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Abrir pasta no Explorer", UiTheme.CreateFolderIcon(UiTheme.TextSecondary, 14), delegate
                     {
@@ -1568,7 +1623,7 @@ namespace TOTVSHub
                         }
                         catch (Exception ex)
                         {
-                            MessageBox.Show("Erro ao salvar: " + ex.Message, "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                            StyledDialog.Info(dlg, "Erro", "Erro ao salvar: " + ex.Message);
                         }
                     };
                     btnStack.Children.Add(btnSave);
@@ -1610,7 +1665,7 @@ namespace TOTVSHub
                 {
                     if (string.IsNullOrEmpty(_dbAccessConfig.IniPath) || !File.Exists(_dbAccessConfig.IniPath))
                     {
-                        MessageBox.Show("Arquivo dbaccess.ini não localizado.", "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        StyledDialog.Info(this, "Aviso", "Arquivo dbaccess.ini não localizado.");
                         return;
                     }
         
@@ -1752,12 +1807,12 @@ namespace TOTVSHub
                         try
                         {
                             SalvarArquivoIni(_dbAccessConfig.IniPath, sections);
-                            MessageBox.Show("dbaccess.ini salvo com sucesso!", "Sucesso", MessageBoxButton.OK, MessageBoxImage.Information);
+                            StyledDialog.Info(this, "Sucesso", "dbaccess.ini salvo com sucesso!");
                             ShowDbAccessView();
                         }
                         catch (Exception ex)
                         {
-                            MessageBox.Show("Erro ao salvar dbaccess.ini: " + ex.Message, "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                            StyledDialog.Info(this, "Erro", "Erro ao salvar dbaccess.ini: " + ex.Message);
                         }
                     };
                     bStack.Children.Add(btnSaveBottom);

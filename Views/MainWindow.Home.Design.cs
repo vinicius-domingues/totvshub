@@ -46,6 +46,7 @@ namespace TOTVSHub
                     toolbar.Background = UiTheme.BgWindow;
         
                     Grid toolGrid = new Grid();
+                    toolGrid.Height = 34;
                     ColumnDefinition cLeft = new ColumnDefinition(); cLeft.Width = GridLength.Auto;
                     ColumnDefinition cSearch = new ColumnDefinition(); cSearch.Width = new GridLength(1, GridUnitType.Star);
                     ColumnDefinition cRight = new ColumnDefinition(); cRight.Width = GridLength.Auto;
@@ -151,15 +152,17 @@ namespace TOTVSHub
                     toolbarWrapper.Children.Add(toolGrid);
         
                     DockPanel infoBar = new DockPanel();
-                    infoBar.Margin = new Thickness(2, 10, 2, 0);
+                    infoBar.Margin = new Thickness(0, 10, 0, 0);
         
                     StackPanel rightStatsStack = new StackPanel();
                     rightStatsStack.Orientation = Orientation.Horizontal;
+                    rightStatsStack.VerticalAlignment = VerticalAlignment.Center;
                     DockPanel.SetDock(rightStatsStack, Dock.Right);
         
                     _lastUpdateLabel = new TextBlock();
                     _lastUpdateLabel.Foreground = UiTheme.TextMuted;
                     _lastUpdateLabel.FontSize = 12;
+                    _lastUpdateLabel.VerticalAlignment = VerticalAlignment.Center;
                     _lastUpdateLabel.Margin = new Thickness(0, 0, 10, 0);
                     _lastUpdateLabel.Text = string.Format("Atualizado em {0:dd/MM/yyyy HH:mm:ss}  •", _lastUpdatedTime);
         
@@ -167,6 +170,7 @@ namespace TOTVSHub
                     _statsLabel.Foreground = UiTheme.TextPrimary;
                     _statsLabel.FontSize = 12;
                     _statsLabel.FontWeight = FontWeights.SemiBold;
+                    _statsLabel.VerticalAlignment = VerticalAlignment.Center;
         
                     rightStatsStack.Children.Add(_lastUpdateLabel);
                     rightStatsStack.Children.Add(_statsLabel);
@@ -174,6 +178,8 @@ namespace TOTVSHub
                     _rootPathLabel = new TextBlock();
                     _rootPathLabel.Foreground = UiTheme.TextMuted;
                     _rootPathLabel.FontSize = 12;
+                    _rootPathLabel.VerticalAlignment = VerticalAlignment.Center;
+                    _rootPathLabel.TextTrimming = TextTrimming.CharacterEllipsis;
                     _rootPathLabel.Text = "Diretório: " + _rootPath;
         
                     infoBar.Children.Add(rightStatsStack);
@@ -221,6 +227,7 @@ namespace TOTVSHub
                     _cardsScrollViewer = scroll;
         
                     StackPanel sp = new StackPanel();
+                    sp.VerticalAlignment = VerticalAlignment.Top;
                     _cardsContainer = sp;
         
                     scroll.Content = _cardsContainer;
@@ -292,8 +299,13 @@ namespace TOTVSHub
                         {
                             System.Windows.Controls.Primitives.UniformGrid ug = new System.Windows.Controls.Primitives.UniformGrid();
                             ug.Columns = 2;
+                            ug.VerticalAlignment = VerticalAlignment.Top;
                             _cardsContainer = ug;
                             if (_cardsScrollViewer != null) _cardsScrollViewer.Content = _cardsContainer;
+                        }
+                        else
+                        {
+                            _cardsContainer.VerticalAlignment = VerticalAlignment.Top;
                         }
                     }
                     else
@@ -301,8 +313,13 @@ namespace TOTVSHub
                         if (!(_cardsContainer is StackPanel))
                         {
                             StackPanel spNew = new StackPanel();
+                            spNew.VerticalAlignment = VerticalAlignment.Top;
                             _cardsContainer = spNew;
                             if (_cardsScrollViewer != null) _cardsScrollViewer.Content = _cardsContainer;
+                        }
+                        else
+                        {
+                            _cardsContainer.VerticalAlignment = VerticalAlignment.Top;
                         }
                     }
         
@@ -464,7 +481,12 @@ namespace TOTVSHub
                     card.Padding = new Thickness(16, 14, 16, 14);
         
                     card.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    card.VerticalAlignment = VerticalAlignment.Top;
                     card.Margin = _isCardsViewMode ? new Thickness(0, 0, 10, 10) : new Thickness(0, 0, 0, 10);
+                    if (_isCardsViewMode)
+                    {
+                        card.MinHeight = 168;
+                    }
         
                     amb.CardBorder = card;
         
@@ -771,6 +793,7 @@ namespace TOTVSHub
                         "#10B981");
                     btnStart.Width = 34;
                     btnStart.Height = 26;
+                    btnStart.HorizontalAlignment = HorizontalAlignment.Right;
                     btnStart.Padding = new Thickness(0);
                     btnStart.Margin = new Thickness(0, 2, 0, 2);
                     btnStart.ToolTip = "Iniciar";
@@ -783,6 +806,7 @@ namespace TOTVSHub
                         "#F59E0B");
                     btnRestart.Width = 34;
                     btnRestart.Height = 26;
+                    btnRestart.HorizontalAlignment = HorizontalAlignment.Right;
                     btnRestart.Padding = new Thickness(0);
                     btnRestart.Margin = new Thickness(0, 2, 0, 2);
                     btnRestart.ToolTip = "Reiniciar";
@@ -795,6 +819,7 @@ namespace TOTVSHub
                         "#EF4444");
                     btnStop.Width = 34;
                     btnStop.Height = 26;
+                    btnStop.HorizontalAlignment = HorizontalAlignment.Right;
                     btnStop.Padding = new Thickness(0);
                     btnStop.Margin = new Thickness(0, 2, 0, 2);
                     btnStop.ToolTip = "Parar";
@@ -903,7 +928,7 @@ namespace TOTVSHub
         
                     menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Trocar / Atualizar Binário", UiTheme.CreateThinRefreshIcon(UiTheme.TextSecondary), delegate
                     {
-                        MessageBox.Show(this, "Funcionalidade em desenvolvimento:\nTroca e atualização automática de binários em breve!", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Information);
+                        StyledDialog.Info(this, "TOTVSHub", "Funcionalidade em desenvolvimento:\nTroca e atualização automática de binários em breve!");
                     }));
         
                     menuDots.Items.Add(UiTheme.CreateDarkMenuItem(isHidden ? "Desocultar ambiente" : "Ocultar ambiente", isHidden ? UiTheme.CreateEyeIcon(UiTheme.AccentAmber, 14) : UiTheme.CreateEyeOffIcon(UiTheme.TextSecondary, 14), delegate
@@ -920,7 +945,7 @@ namespace TOTVSHub
         
                     menuDots.Items.Add(new Separator { Background = UiTheme.BorderSubtle, Margin = new Thickness(4, 2, 4, 2) });
         
-                    menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Logs e Monitoramento", UiTheme.CreateHistoryIcon(UiTheme.AccentLightBlue, 14), delegate
+                    menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Logs e Monitoramento", UiTheme.CreateHistoryIcon(UiTheme.TextSecondary, 14), delegate
                     {
                         AbrirTelaCompletaLogs(amb.NomeIni, amb.AppDir, amb.Pid, "appserver");
                     }));
@@ -1127,17 +1152,25 @@ namespace TOTVSHub
                     {
                         if (amb.State == EnvRunState.Active && (amb.Pid > 0 || !string.IsNullOrEmpty(amb.ProcessUser)))
                         {
+                            string displayUser = amb.ProcessUser;
+                            if (string.IsNullOrWhiteSpace(displayUser) ||
+                                string.Equals(displayUser, "N/A", StringComparison.OrdinalIgnoreCase) ||
+                                (displayUser != null && displayUser.IndexOf("SYSTEM", StringComparison.OrdinalIgnoreCase) >= 0))
+                            {
+                                displayUser = "system";
+                            }
+
                             string userInfo = "";
-                            if (_showProcessUser && !string.IsNullOrEmpty(amb.ProcessUser))
-                                userInfo = "👤 " + amb.ProcessUser;
+                            if (_showProcessUser && !string.IsNullOrEmpty(displayUser))
+                                userInfo = "👤 " + displayUser;
                             else if (amb.Pid > 0)
                                 userInfo = "PID " + amb.Pid;
         
                             amb.UserTagText.Text = userInfo;
         
                             string fullInfo = "";
-                            if (!string.IsNullOrEmpty(amb.ProcessUser))
-                                fullInfo += "Usuário: " + amb.ProcessUser + "\n";
+                            if (!string.IsNullOrEmpty(displayUser))
+                                fullInfo += "Usuário: " + displayUser + "\n";
                             if (amb.Pid > 0)
                                 fullInfo += "PID: " + amb.Pid + "\n";
                             fullInfo += "Modo: " + (amb.RunningAsService ? "Serviço Windows" : "Processo Console");
@@ -1338,7 +1371,7 @@ namespace TOTVSHub
         
                     ProgressBar pb = new ProgressBar();
                     pb.Height = 8;
-                    pb.Margin = new Thickness(0, 12, 0, 6);
+                    pb.Margin = new Thickness(0, 8, 0, 8);
                     pb.Visibility = Visibility.Collapsed;
                     pb.Foreground = UiTheme.AccentLightBlue;
         
@@ -1347,7 +1380,7 @@ namespace TOTVSHub
                     txtStatus.FontSize = 11;
                     txtStatus.Foreground = UiTheme.TextSecondary;
                     txtStatus.HorizontalAlignment = HorizontalAlignment.Center;
-                    txtStatus.Margin = new Thickness(0, 0, 0, 10);
+                    txtStatus.Margin = new Thickness(0, 14, 0, 10);
         
                     List<Border> versionCards = new List<Border>();
         
@@ -1506,6 +1539,7 @@ namespace TOTVSHub
                     g.Children.Add(gridVersions);
         
                     StackPanel progStack = new StackPanel();
+                    progStack.Margin = new Thickness(0, 4, 0, 0);
                     progStack.Children.Add(pb);
                     progStack.Children.Add(txtStatus);
                     Grid.SetRow(progStack, 2);
@@ -1514,7 +1548,7 @@ namespace TOTVSHub
                     DockPanel bRow = new DockPanel();
                     bRow.Margin = new Thickness(0, 8, 0, 0);
         
-                    Button btnOpenFolder = UiTheme.CreateActionButton("📂 Abrir Pasta D-1", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
+                    Button btnOpenFolder = UiTheme.CreateActionButton("📂 Abrir", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
                     btnOpenFolder.Height = 32;
                     btnOpenFolder.Padding = new Thickness(12, 0, 12, 0);
                     btnOpenFolder.Click += delegate
@@ -1600,6 +1634,7 @@ namespace TOTVSHub
                     lbBases.BorderThickness = new Thickness(1);
                     lbBases.Foreground = UiTheme.TextPrimary;
                     lbBases.Margin = new Thickness(0, 0, 0, 8);
+                    lbBases.HorizontalContentAlignment = HorizontalAlignment.Stretch;
         
                     List<AmbienteInfo> outrasBases = (_ambientes ?? new List<AmbienteInfo>())
                         .Where(a => a != null && !string.Equals(a.AppDir, amb.AppDir, StringComparison.OrdinalIgnoreCase))
@@ -1689,10 +1724,11 @@ namespace TOTVSHub
                             badge.CornerRadius = new CornerRadius(4);
                             badge.Padding = new Thickness(6, 2, 6, 2);
                             badge.VerticalAlignment = VerticalAlignment.Center;
+                            badge.HorizontalAlignment = HorizontalAlignment.Right;
                             badge.Background = temD1 ? UiTheme.BrushFromHex("#064E3B") : UiTheme.BrushFromHex("#450A0A");
         
                             TextBlock txtBadge = new TextBlock();
-                            txtBadge.Text = temD1 ? string.Format("✓ D-1 Disponível ({0})", rpos.Length) : "✗ Sem D-1";
+                            txtBadge.Text = temD1 ? string.Format("✓ D-1 Disponível ({0})", rpos.Length) : "Inexistente";
                             txtBadge.FontSize = 11;
                             txtBadge.Foreground = temD1 ? UiTheme.AccentGreen : UiTheme.AccentRed;
                             badge.Child = txtBadge;
@@ -1702,6 +1738,7 @@ namespace TOTVSHub
                             itemCard.Child = itemGrid;
         
                             ListBoxItem lbi = new ListBoxItem();
+                            lbi.HorizontalContentAlignment = HorizontalAlignment.Stretch;
                             lbi.Content = itemCard;
                             lbi.Tag = temD1;
                             lbBases.Items.Add(lbi);
@@ -1726,8 +1763,11 @@ namespace TOTVSHub
         
                     btnConfirm.Click += delegate
                     {
+                        if (!btnConfirm.IsEnabled) return;
                         ListBoxItem selected = lbBases.SelectedItem as ListBoxItem;
                         if (selected == null) return;
+                        bool temD1 = selected.Tag is bool && (bool)selected.Tag;
+                        if (!temD1) return;
         
                         Border card = selected.Content as Border;
                         AmbienteInfo fonteAmb = card != null ? card.Tag as AmbienteInfo : null;
@@ -1738,7 +1778,7 @@ namespace TOTVSHub
         
                         if (!Directory.Exists(srcD1Dir) || Directory.GetFiles(srcD1Dir, "*.rpo").Length == 0)
                         {
-                            MessageBox.Show(dlg, "A base de origem não possui arquivos D-1 para copiar.", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            StyledDialog.Info(dlg, "TOTVSHub", "A base de origem não possui arquivos D-1 para copiar.");
                             return;
                         }
         
@@ -1768,12 +1808,12 @@ namespace TOTVSHub
                                 }
                             }
         
-                            MessageBox.Show(dlg, string.Format("Repositório D-1 copiado com sucesso de '{0}' para '{1}'!", fonteAmb.NomeIni, amb.NomeIni), "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Information);
+                            StyledDialog.Info(dlg, "TOTVSHub", string.Format("Repositório D-1 copiado com sucesso de '{0}' para '{1}'!", fonteAmb.NomeIni, amb.NomeIni));
                             dlg.Close();
                         }
                         catch (Exception ex)
                         {
-                            MessageBox.Show(dlg, "Erro ao copiar D-1: " + ex.Message, "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Error);
+                            StyledDialog.Info(dlg, "TOTVSHub", "Erro ao copiar D-1: " + ex.Message);
                         }
                     };
         
@@ -1800,8 +1840,8 @@ namespace TOTVSHub
         
                     if (csvFiles.Length == 0)
                     {
-                        var res = MessageBox.Show(this, string.Format("Nenhum arquivo CSV de fontes foi encontrado no repositório D-1 de '{0}'.\n\nDeseja realizar o download do D-1 agora?", amb.NomeIni), "TOTVSHub - Fontes D-1", MessageBoxButton.YesNo, MessageBoxImage.Information);
-                        if (res == MessageBoxResult.Yes)
+                        bool res = StyledDialog.AskYesNo(this, "TOTVSHub - Fontes D-1", string.Format("Nenhum arquivo CSV de fontes foi encontrado no repositório D-1 de '{0}'.\n\nDeseja realizar o download do D-1 agora?", amb.NomeIni));
+                        if (res)
                         {
                             AbrirModalDownloadD1(amb);
                         }
@@ -1837,7 +1877,7 @@ namespace TOTVSHub
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show(this, "Erro ao ler arquivo CSV: " + ex.Message, "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Error);
+                        StyledDialog.Info(this, "TOTVSHub", "Erro ao ler arquivo CSV: " + ex.Message);
                         return;
                     }
         
@@ -1987,14 +2027,14 @@ namespace TOTVSHub
                                 sb.AppendLine(string.Join("\t", r));
                             }
                             Clipboard.SetDataObject(sb.ToString().TrimEnd(), true);
-                            MessageBox.Show(dlg, "Lista de fontes copiada para a área de transferência!", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Information);
+                            StyledDialog.Info(dlg, "TOTVSHub", "Lista de fontes copiada para a área de transferência!");
                         }
                         catch { }
                     };
                     DockPanel.SetDock(btnCopyList, Dock.Left);
                     bRow.Children.Add(btnCopyList);
         
-                    Button btnOpenFolder = UiTheme.CreateActionButton("📂 Abrir Pasta D-1", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
+                    Button btnOpenFolder = UiTheme.CreateActionButton("📂 Abrir", UiTheme.NeutralBtnHex, UiTheme.NeutralBtnHoverHex);
                     btnOpenFolder.Height = 32;
                     btnOpenFolder.Padding = new Thickness(14, 0, 14, 0);
                     btnOpenFolder.Margin = new Thickness(8, 0, 0, 0);

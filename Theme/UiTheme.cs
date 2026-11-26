@@ -728,11 +728,18 @@ namespace TOTVSHub
 
             tpl.VisualTree = borderFactory;
 
-            Trigger hoverTrigger = new Trigger();
-            hoverTrigger.Property = UIElement.IsMouseOverProperty;
-            hoverTrigger.Value = true;
+            MultiTrigger hoverTrigger = new MultiTrigger();
+            hoverTrigger.Conditions.Add(new Condition(UIElement.IsMouseOverProperty, true));
+            hoverTrigger.Conditions.Add(new Condition(UIElement.IsEnabledProperty, true));
             hoverTrigger.Setters.Add(new Setter(Border.BackgroundProperty, BrushFromHex(hoverHex), "bd"));
             tpl.Triggers.Add(hoverTrigger);
+
+            Trigger disabledTrigger = new Trigger();
+            disabledTrigger.Property = UIElement.IsEnabledProperty;
+            disabledTrigger.Value = false;
+            disabledTrigger.Setters.Add(new Setter(UIElement.OpacityProperty, 0.38));
+            disabledTrigger.Setters.Add(new Setter(FrameworkElement.CursorProperty, Cursors.Arrow));
+            tpl.Triggers.Add(disabledTrigger);
 
             btn.Template = tpl;
             return btn;

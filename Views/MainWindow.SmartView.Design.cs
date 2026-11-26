@@ -22,11 +22,11 @@ namespace TOTVSHub
             Grid rootGrid = new Grid();
             RowDefinition rowTop = new RowDefinition(); rowTop.Height = GridLength.Auto;
             RowDefinition rowToolbar = new RowDefinition(); rowToolbar.Height = GridLength.Auto;
-            RowDefinition rowInfoBar = new RowDefinition(); rowInfoBar.Height = GridLength.Auto;
+            RowDefinition rowDivider = new RowDefinition(); rowDivider.Height = GridLength.Auto;
             RowDefinition rowBody = new RowDefinition(); rowBody.Height = new GridLength(1, GridUnitType.Star);
             rootGrid.RowDefinitions.Add(rowTop);
             rootGrid.RowDefinitions.Add(rowToolbar);
-            rootGrid.RowDefinitions.Add(rowInfoBar);
+            rootGrid.RowDefinitions.Add(rowDivider);
             rootGrid.RowDefinitions.Add(rowBody);
 
             StackPanel topLeft = CreateBrandHeaderWithTabs(HubActiveTab.SmartView);
@@ -38,15 +38,19 @@ namespace TOTVSHub
             Grid.SetRow(toolbar, 1);
             rootGrid.Children.Add(toolbar);
 
-            Border infoBar = BuildSmartViewInfoBar();
-            Grid.SetRow(infoBar, 2);
-            rootGrid.Children.Add(infoBar);
+            Border divider = new Border();
+            divider.Height = 3;
+            divider.Background = UiTheme.BorderSubtle;
+            divider.Margin = new Thickness(20, 0, 20, 6);
+            Grid.SetRow(divider, 2);
+            rootGrid.Children.Add(divider);
 
             _svScrollViewer = new ScrollViewer();
             _svScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
-            _svScrollViewer.Padding = new Thickness(20, 14, 20, 20);
+            _svScrollViewer.Padding = new Thickness(20, 4, 20, 18);
 
             _svCardsContainer = new StackPanel();
+            _svCardsContainer.VerticalAlignment = VerticalAlignment.Top;
             _svScrollViewer.Content = _svCardsContainer;
 
             Grid.SetRow(_svScrollViewer, 3);
@@ -65,6 +69,7 @@ namespace TOTVSHub
             toolbar.Background = UiTheme.BgWindow;
 
             Grid toolGrid = new Grid();
+            toolGrid.Height = 34;
             ColumnDefinition cLeft = new ColumnDefinition(); cLeft.Width = GridLength.Auto;
             ColumnDefinition cSearch = new ColumnDefinition(); cSearch.Width = new GridLength(1, GridUnitType.Star);
             ColumnDefinition cRight = new ColumnDefinition(); cRight.Width = GridLength.Auto;
@@ -93,7 +98,7 @@ namespace TOTVSHub
                     {
                         _smartViewDetectedFolder = fbd.SelectedPath;
                         SalvarSmartViewPrefFolder(fbd.SelectedPath);
-                        if (_svFolderLabel != null) _svFolderLabel.Text = "Pasta: " + fbd.SelectedPath;
+                        if (_svFolderLabel != null) _svFolderLabel.Text = "Diretório: " + fbd.SelectedPath;
                     }
                 }
             };
@@ -162,27 +167,45 @@ namespace TOTVSHub
             Grid.SetColumn(rightTools, 2);
             toolGrid.Children.Add(rightTools);
 
-            toolbar.Child = toolGrid;
-            return toolbar;
-        }
+            StackPanel toolbarWrapper = new StackPanel();
+            toolbarWrapper.Children.Add(toolGrid);
 
-        private Border BuildSmartViewInfoBar()
-        {
-            Border infoBar = new Border();
-            infoBar.Padding = new Thickness(24, 8, 24, 0);
+            DockPanel infoBar = new DockPanel();
+            infoBar.Margin = new Thickness(0, 10, 0, 0);
 
-            DockPanel dp = new DockPanel();
+            StackPanel rightStatsStack = new StackPanel();
+            rightStatsStack.Orientation = Orientation.Horizontal;
+            rightStatsStack.VerticalAlignment = VerticalAlignment.Center;
+            DockPanel.SetDock(rightStatsStack, Dock.Right);
 
-            StackPanel leftStack = new StackPanel();
-            leftStack.Orientation = Orientation.Horizontal;
-            leftStack.VerticalAlignment = VerticalAlignment.Center;
-            DockPanel.SetDock(leftStack, Dock.Left);
+            _svLastUpdateLabel = new TextBlock();
+            _svLastUpdateLabel.Foreground = UiTheme.TextMuted;
+            _svLastUpdateLabel.FontSize = 12;
+            _svLastUpdateLabel.VerticalAlignment = VerticalAlignment.Center;
+            _svLastUpdateLabel.Margin = new Thickness(0, 0, 10, 0);
+            _svLastUpdateLabel.Text = string.Format("Atualizado em {0:dd/MM/yyyy HH:mm:ss}  •", _svLastUpdatedTime);
+
+            _svStatsLabel = new TextBlock();
+            _svStatsLabel.Foreground = UiTheme.TextPrimary;
+            _svStatsLabel.FontSize = 12;
+            _svStatsLabel.FontWeight = FontWeights.SemiBold;
+            _svStatsLabel.VerticalAlignment = VerticalAlignment.Center;
+            int svAtivos = (_smartViewPort7017 != null && _smartViewPort7017.IsOpen ? 1 : 0) +
+                           (_smartViewPort7019 != null && _smartViewPort7019.IsOpen ? 1 : 0);
+            int svTotal = 2;
+            string ativoTxt = (svAtivos == 1) ? "ativo" : "ativos";
+            _svStatsLabel.Text = string.Format("{0} de {1} {2}", svAtivos, svTotal, ativoTxt);
+
+            rightStatsStack.Children.Add(_svLastUpdateLabel);
+            rightStatsStack.Children.Add(_svStatsLabel);
 
             _svFolderLabel = new TextBlock();
-            string folderTxt = string.IsNullOrEmpty(_smartViewDetectedFolder) ? "Pasta: Não foi possível localizar pelas portas. Selecione a pasta acima" : "Pasta: " + _smartViewDetectedFolder;
+            string folderTxt = string.IsNullOrEmpty(_smartViewDetectedFolder) ? "Diretório: Não foi possível localizar pelas portas" : "Diretório: " + _smartViewDetectedFolder;
             _svFolderLabel.Text = folderTxt;
             _svFolderLabel.Foreground = UiTheme.TextMuted;
             _svFolderLabel.FontSize = 12;
+            _svFolderLabel.VerticalAlignment = VerticalAlignment.Center;
+            _svFolderLabel.TextTrimming = TextTrimming.CharacterEllipsis;
             _svFolderLabel.Cursor = Cursors.Hand;
             _svFolderLabel.ToolTip = string.IsNullOrEmpty(_smartViewDetectedFolder) ? "Clique para selecionar a pasta de instalação do SmartView" : "Clique para abrir no Windows Explorer";
             _svFolderLabel.MouseLeftButtonUp += delegate
@@ -192,28 +215,13 @@ namespace TOTVSHub
                 else
                     SelecionarPastaSmartViewDialog();
             };
-            leftStack.Children.Add(_svFolderLabel);
 
-            Button btnCopyFolder = UiTheme.CreateFramelessIconButton(UiTheme.CreateCopyIcon(UiTheme.TextMuted, 12), "Copiar caminho da pasta");
-            btnCopyFolder.Margin = new Thickness(6, 0, 0, 0);
-            btnCopyFolder.Click += delegate
-            {
-                try { Clipboard.SetText(_smartViewDetectedFolder ?? ""); } catch { }
-            };
-            leftStack.Children.Add(btnCopyFolder);
-            dp.Children.Add(leftStack);
+            infoBar.Children.Add(rightStatsStack);
+            infoBar.Children.Add(_svFolderLabel);
+            toolbarWrapper.Children.Add(infoBar);
 
-            _svLastUpdateLabel = new TextBlock();
-            _svLastUpdateLabel.Text = string.Format("Atualizado às {0:HH:mm:ss}", DateTime.Now);
-            _svLastUpdateLabel.Foreground = UiTheme.TextMuted;
-            _svLastUpdateLabel.FontSize = 12;
-            _svLastUpdateLabel.VerticalAlignment = VerticalAlignment.Center;
-            _svLastUpdateLabel.HorizontalAlignment = HorizontalAlignment.Right;
-            DockPanel.SetDock(_svLastUpdateLabel, Dock.Right);
-            dp.Children.Add(_svLastUpdateLabel);
-
-            infoBar.Child = dp;
-            return infoBar;
+            toolbar.Child = toolbarWrapper;
+            return toolbar;
         }
 
         private void RenderizarCardsSmartView()
@@ -260,6 +268,7 @@ namespace TOTVSHub
             _svCard7019.Visibility = match7019 ? Visibility.Visible : Visibility.Collapsed;
 
             Grid grid = new Grid();
+            grid.VerticalAlignment = VerticalAlignment.Top;
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -292,6 +301,8 @@ namespace TOTVSHub
             card.BorderThickness = new Thickness(1);
             card.CornerRadius = new CornerRadius(12);
             card.Padding = new Thickness(16, 14, 16, 14);
+            card.VerticalAlignment = VerticalAlignment.Top;
+            card.MinHeight = 168;
 
             Grid cardGrid = new Grid();
             cardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -305,23 +316,44 @@ namespace TOTVSHub
             StackPanel leftStack = new StackPanel();
             leftStack.VerticalAlignment = VerticalAlignment.Center;
             leftStack.HorizontalAlignment = HorizontalAlignment.Center;
-            leftStack.Width = 96;
-            leftStack.Margin = new Thickness(0, 0, 14, 0);
+            leftStack.Width = 104;
+            leftStack.Margin = new Thickness(0, 0, 16, 0);
 
             Border statusBadge = new Border();
-            statusBadge.Width = 96;
+            statusBadge.Width = 104;
             statusBadge.Height = 26;
             statusBadge.CornerRadius = new CornerRadius(10);
             statusBadge.Padding = new Thickness(6, 3, 6, 3);
-            statusBadge.Background = portStatus.IsOpen ? UiTheme.AccentGreen : UiTheme.BrushFromHex("#475569");
+            statusBadge.Background = portStatus.IsOpen ? UiTheme.BrushFromHex("#064E3B") : UiTheme.TagBg;
+            statusBadge.BorderBrush = portStatus.IsOpen ? UiTheme.AccentGreen : UiTheme.BorderSubtle;
+            statusBadge.BorderThickness = new Thickness(1);
             statusBadge.HorizontalAlignment = HorizontalAlignment.Center;
+
+            StackPanel statusInner = new StackPanel();
+            statusInner.Orientation = Orientation.Horizontal;
+            statusInner.HorizontalAlignment = HorizontalAlignment.Center;
+            statusInner.VerticalAlignment = VerticalAlignment.Center;
+
+            Border statusDot = new Border();
+            statusDot.Width = 7;
+            statusDot.Height = 7;
+            statusDot.CornerRadius = new CornerRadius(3.5);
+            statusDot.Margin = new Thickness(0, 0, 5, 0);
+            statusDot.Background = portStatus.IsOpen ? UiTheme.AccentGreen : UiTheme.TextMuted;
+            statusDot.VerticalAlignment = VerticalAlignment.Center;
+            statusInner.Children.Add(statusDot);
 
             TextBlock statusText = new TextBlock();
             statusText.Text = portStatus.IsOpen ? "RUNNING" : "STOPPED";
-            statusText.FontSize = 10;
+            statusText.FontSize = 10.5;
             statusText.FontWeight = FontWeights.Bold;
-            statusText.Foreground = Brushes.White;
-            statusBadge.Child = statusText;
+            statusText.Foreground = portStatus.IsOpen ? UiTheme.AccentGreen : UiTheme.TextSecondary;
+            statusText.HorizontalAlignment = HorizontalAlignment.Center;
+            statusText.VerticalAlignment = VerticalAlignment.Center;
+            statusText.TextAlignment = TextAlignment.Center;
+            statusInner.Children.Add(statusText);
+
+            statusBadge.Child = statusInner;
             leftStack.Children.Add(statusBadge);
 
             badgeRef = statusBadge;
@@ -333,7 +365,7 @@ namespace TOTVSHub
             actionRow.Margin = new Thickness(0, 8, 0, 0);
 
             Button btnLogsSquare = UiTheme.CreateActionButton(
-                UiTheme.CreateHistoryIcon(UiTheme.AccentLightBlue, 13),
+                UiTheme.CreateHistoryIcon(UiTheme.TextSecondary, 13),
                 UiTheme.NeutralBtnHex,
                 UiTheme.NeutralBtnHoverHex);
             btnLogsSquare.Width = 34;
@@ -412,6 +444,7 @@ namespace TOTVSHub
             desc.Text = description ?? portStatus.Description;
             desc.FontSize = 12;
             desc.Foreground = UiTheme.TextSecondary;
+            desc.TextWrapping = TextWrapping.Wrap;
             desc.Margin = new Thickness(0, 0, 0, 4);
             infoStack.Children.Add(desc);
 
@@ -421,6 +454,7 @@ namespace TOTVSHub
                 : "Serviço não detectado na porta";
             latencyText.FontSize = 11;
             latencyText.Foreground = portStatus.IsOpen ? UiTheme.AccentLightBlue : UiTheme.TextMuted;
+            latencyText.TextWrapping = TextWrapping.Wrap;
             infoStack.Children.Add(latencyText);
             latencyTextRef = latencyText;
 
@@ -454,20 +488,7 @@ namespace TOTVSHub
 
             ContextMenu menuDots = UiTheme.CreateDarkContextMenu();
 
-            menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Comentário", UiTheme.CreateCommentBubbleIcon(UiTheme.TextSecondary, 14), delegate
-            {
-                EditarNotaSmartView(portStatus.Port, customTitle);
-            }));
-
-            menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Logs e Monitoramento", UiTheme.CreateCopyIcon(UiTheme.AccentLightBlue, 14), delegate
-            {
-                string logsDir = ObterDiretorioLogsSmartView();
-                AbrirTelaCompletaLogs("SmartView", logsDir, _smartViewPid, "smartview");
-            }));
-
-            menuDots.Items.Add(new Separator { Background = UiTheme.BorderSubtle, Margin = new Thickness(4, 2, 4, 2) });
-
-            menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Abrir pasta no Explorer", UiTheme.CreateFolderIcon(UiTheme.TextSecondary, 14), delegate
+            menuDots.Items.Add(UiTheme.CreateDarkMenuItem("Abrir local da pasta", UiTheme.CreateFolderIcon(UiTheme.TextSecondary, 14), delegate
             {
                 if (!string.IsNullOrEmpty(_smartViewDetectedFolder) && Directory.Exists(_smartViewDetectedFolder))
                     AbrirNoExplorer(_smartViewDetectedFolder);
@@ -650,10 +671,22 @@ namespace TOTVSHub
         private void AtualizarBadgeEStatus(SmartViewPortStatus port, Border badge, TextBlock statusText, TextBlock latencyText)
         {
             if (badge != null)
-                badge.Background = port.IsOpen ? UiTheme.AccentGreen : UiTheme.BrushFromHex("#475569");
+            {
+                badge.Background = port.IsOpen ? UiTheme.BrushFromHex("#064E3B") : UiTheme.TagBg;
+                badge.BorderBrush = port.IsOpen ? UiTheme.AccentGreen : UiTheme.BorderSubtle;
+                StackPanel sp = badge.Child as StackPanel;
+                if (sp != null && sp.Children.Count > 0)
+                {
+                    Border dot = sp.Children[0] as Border;
+                    if (dot != null) dot.Background = port.IsOpen ? UiTheme.AccentGreen : UiTheme.TextMuted;
+                }
+            }
 
             if (statusText != null)
+            {
                 statusText.Text = port.IsOpen ? "RUNNING" : "STOPPED";
+                statusText.Foreground = port.IsOpen ? UiTheme.AccentGreen : UiTheme.TextSecondary;
+            }
 
             if (latencyText != null)
             {
