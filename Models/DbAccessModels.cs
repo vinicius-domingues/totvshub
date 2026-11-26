@@ -25,6 +25,7 @@ namespace TOTVSHub
         public bool IsPortOpen { get; set; }
         public int ProcessId { get; set; }
         public string ProcessName { get; set; }
+        public string ProcessUser { get; set; }
         public double CpuPercent { get; set; }
         public long RamMb { get; set; }
         public TimeSpan LastCpuTime { get; set; }

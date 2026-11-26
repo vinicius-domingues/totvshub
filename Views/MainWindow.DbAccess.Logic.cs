@@ -377,6 +377,10 @@ namespace TOTVSHub
                         {
                             _dbAccessConfig.IsRunning = true;
                             _dbAccessConfig.ProcessId = dbPid;
+                            string owner = NativeWin32.GetProcessOwnerUser(dbPid);
+                            if (string.IsNullOrWhiteSpace(owner) || string.Equals(owner, "N/A", StringComparison.OrdinalIgnoreCase) || owner.IndexOf("SYSTEM", StringComparison.OrdinalIgnoreCase) >= 0)
+                                owner = "system";
+                            _dbAccessConfig.ProcessUser = owner;
         
                             TimeSpan lastCpu = _dbAccessConfig.LastCpuTime;
                             DateTime lastSample = _dbAccessConfig.LastCpuSampleTime;
@@ -393,6 +397,7 @@ namespace TOTVSHub
                             _dbAccessConfig.IsRunning = false;
                             _dbAccessConfig.ProcessId = 0;
                             _dbAccessConfig.ProcessName = "";
+                            _dbAccessConfig.ProcessUser = null;
                             _dbAccessConfig.CpuPercent = 0;
                             _dbAccessConfig.RamMb = 0;
                         }
@@ -610,7 +615,7 @@ namespace TOTVSHub
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show("Falha ao atualizar dbaccess.ini: " + ex.Message, "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                        StyledDialog.Info(this, "Erro", "Falha ao atualizar dbaccess.ini: " + ex.Message);
                     }
                 }
 

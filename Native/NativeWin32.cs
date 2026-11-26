@@ -161,7 +161,10 @@ namespace TOTVSHub
                         if (!string.IsNullOrEmpty(full))
                         {
                             int slash = full.IndexOf('\\');
-                            return slash >= 0 ? full.Substring(slash + 1) : full;
+                            string res = slash >= 0 ? full.Substring(slash + 1) : full;
+                            if (string.Equals(res, "SYSTEM", StringComparison.OrdinalIgnoreCase))
+                                return "system";
+                            return res;
                         }
                     }
                 }
@@ -185,7 +188,12 @@ namespace TOTVSHub
                         int ret = Convert.ToInt32(o.InvokeMethod("GetOwner", outParams));
                         if (ret == 0 && outParams[0] != null && !string.IsNullOrWhiteSpace(outParams[0].ToString()))
                         {
-                            return outParams[0].ToString().Trim();
+                            string wmiUser = outParams[0].ToString().Trim();
+                            int slash = wmiUser.IndexOf('\\');
+                            string res = slash >= 0 ? wmiUser.Substring(slash + 1) : wmiUser;
+                            if (string.Equals(res, "SYSTEM", StringComparison.OrdinalIgnoreCase))
+                                return "system";
+                            return res;
                         }
                     }
                 }
@@ -213,8 +221,13 @@ namespace TOTVSHub
                             if (cols.Length >= 7)
                             {
                                 string userCol = cols[6].Trim('"').Trim();
+                                if (string.Equals(userCol, "N/A", StringComparison.OrdinalIgnoreCase))
+                                    return "system";
                                 int slash = userCol.IndexOf('\\');
-                                return slash >= 0 ? userCol.Substring(slash + 1) : userCol;
+                                string res = slash >= 0 ? userCol.Substring(slash + 1) : userCol;
+                                if (string.Equals(res, "SYSTEM", StringComparison.OrdinalIgnoreCase))
+                                    return "system";
+                                return res;
                             }
                         }
                     }
@@ -222,7 +235,7 @@ namespace TOTVSHub
             }
             catch { }
 
-            return null;
+            return "system";
         }
 
         public static int GetProcessIdByTcpPort(int port)
