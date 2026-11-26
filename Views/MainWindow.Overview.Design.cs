@@ -132,52 +132,191 @@ namespace TOTVSHub
             StackPanel sp = new StackPanel();
 
             TextBlock title = new TextBlock();
-            title.Text = "Distribuição por Serviço";
+            title.Text = "Consumo Total";
             title.FontSize = 14;
             title.FontWeight = FontWeights.Bold;
             title.Foreground = UiTheme.TextPrimary;
             sp.Children.Add(title);
 
             TextBlock sub = new TextBlock();
-            sub.Text = "Uso de recursos (CPU e RAM) por serviço ativo";
+            sub.Text = "Uso consolidado de hardware dos serviços em execução";
             sub.FontSize = 11;
             sub.Foreground = UiTheme.TextMuted;
-            sub.Margin = new Thickness(0, 2, 0, 10);
+            sub.Margin = new Thickness(0, 2, 0, 12);
             sp.Children.Add(sub);
 
-            Border kpiBanner = new Border();
-            kpiBanner.Background = UiTheme.BrushFromHex("#0B0F19");
-            kpiBanner.BorderBrush = UiTheme.BorderSubtle;
-            kpiBanner.BorderThickness = new Thickness(1);
-            kpiBanner.CornerRadius = new CornerRadius(8);
-            kpiBanner.Padding = new Thickness(12, 8, 12, 8);
-            kpiBanner.Margin = new Thickness(0, 0, 0, 10);
+            // Card 1: Consumo Total CPU
+            Border cardCpu = new Border();
+            cardCpu.Background = UiTheme.BrushFromHex("#0B0F19");
+            cardCpu.BorderBrush = UiTheme.BorderSubtle;
+            cardCpu.BorderThickness = new Thickness(1);
+            cardCpu.CornerRadius = new CornerRadius(8);
+            cardCpu.Padding = new Thickness(14, 12, 14, 14);
+            cardCpu.Margin = new Thickness(0, 0, 0, 10);
 
-            Grid kpiGrid = new Grid();
-            kpiGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            kpiGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            StackPanel spCpu = new StackPanel();
 
-            StackPanel kpiCpu = new StackPanel();
-            TextBlock kpiCpuTitle = new TextBlock { Text = "TOTAL CPU", FontSize = 9.5, FontWeight = FontWeights.Bold, Foreground = UiTheme.AccentLightBlue };
-            _overviewTotalCpuSummaryText = new TextBlock { Text = "0.0%", FontSize = 15, FontWeight = FontWeights.Bold, Foreground = UiTheme.AccentLightBlue, Margin = new Thickness(0, 2, 0, 0) };
-            kpiCpu.Children.Add(kpiCpuTitle);
-            kpiCpu.Children.Add(_overviewTotalCpuSummaryText);
-            Grid.SetColumn(kpiCpu, 0);
-            kpiGrid.Children.Add(kpiCpu);
+            DockPanel cpuTop = new DockPanel();
+            cpuTop.Margin = new Thickness(0, 0, 0, 8);
 
-            StackPanel kpiRam = new StackPanel();
-            TextBlock kpiRamTitle = new TextBlock { Text = "TOTAL RAM", FontSize = 9.5, FontWeight = FontWeights.Bold, Foreground = UiTheme.AccentGreen };
-            _overviewTotalRamSummaryText = new TextBlock { Text = "0 MB", FontSize = 15, FontWeight = FontWeights.Bold, Foreground = UiTheme.AccentGreen, Margin = new Thickness(0, 2, 0, 0) };
-            kpiRam.Children.Add(kpiRamTitle);
-            kpiRam.Children.Add(_overviewTotalRamSummaryText);
-            Grid.SetColumn(kpiRam, 1);
-            kpiGrid.Children.Add(kpiRam);
+            TextBlock lblCpu = new TextBlock();
+            lblCpu.Text = "CPU CONSOLIDADA";
+            lblCpu.FontSize = 10;
+            lblCpu.FontWeight = FontWeights.Bold;
+            lblCpu.Foreground = UiTheme.AccentLightBlue;
+            DockPanel.SetDock(lblCpu, Dock.Left);
+            cpuTop.Children.Add(lblCpu);
 
-            kpiBanner.Child = kpiGrid;
-            sp.Children.Add(kpiBanner);
+            _overviewTotalCpuSummaryText = new TextBlock();
+            _overviewTotalCpuSummaryText.Text = "0.0%";
+            _overviewTotalCpuSummaryText.FontSize = 16;
+            _overviewTotalCpuSummaryText.FontWeight = FontWeights.Bold;
+            _overviewTotalCpuSummaryText.Foreground = UiTheme.AccentLightBlue;
+            _overviewTotalCpuSummaryText.HorizontalAlignment = HorizontalAlignment.Right;
+            DockPanel.SetDock(_overviewTotalCpuSummaryText, Dock.Right);
+            cpuTop.Children.Add(_overviewTotalCpuSummaryText);
+            spCpu.Children.Add(cpuTop);
 
-            _overviewBreakdownStack = new StackPanel();
-            sp.Children.Add(_overviewBreakdownStack);
+            Border cpuTrack = new Border();
+            cpuTrack.Height = 8;
+            cpuTrack.Background = UiTheme.BrushFromHex("#1E293B");
+            cpuTrack.CornerRadius = new CornerRadius(4);
+            cpuTrack.Margin = new Thickness(0, 0, 0, 8);
+
+            Grid cpuGrid = new Grid();
+            _overviewTotalCpuColFill = new ColumnDefinition { Width = new GridLength(0.01, GridUnitType.Star) };
+            _overviewTotalCpuColEmpty = new ColumnDefinition { Width = new GridLength(100, GridUnitType.Star) };
+            cpuGrid.ColumnDefinitions.Add(_overviewTotalCpuColFill);
+            cpuGrid.ColumnDefinitions.Add(_overviewTotalCpuColEmpty);
+
+            Border cpuFill = new Border();
+            cpuFill.Background = UiTheme.AccentLightBlue;
+            cpuFill.CornerRadius = new CornerRadius(4);
+            Grid.SetColumn(cpuFill, 0);
+            cpuGrid.Children.Add(cpuFill);
+            cpuTrack.Child = cpuGrid;
+            spCpu.Children.Add(cpuTrack);
+
+            _overviewTotalCpuDetailsText = new TextBlock();
+            _overviewTotalCpuDetailsText.Text = "0 serviços ativos consumindo processamento";
+            _overviewTotalCpuDetailsText.FontSize = 11;
+            _overviewTotalCpuDetailsText.Foreground = UiTheme.TextMuted;
+            spCpu.Children.Add(_overviewTotalCpuDetailsText);
+
+            cardCpu.Child = spCpu;
+            sp.Children.Add(cardCpu);
+
+            // Card 2: Consumo Total RAM
+            Border cardRam = new Border();
+            cardRam.Background = UiTheme.BrushFromHex("#0B0F19");
+            cardRam.BorderBrush = UiTheme.BorderSubtle;
+            cardRam.BorderThickness = new Thickness(1);
+            cardRam.CornerRadius = new CornerRadius(8);
+            cardRam.Padding = new Thickness(14, 12, 14, 14);
+            cardRam.Margin = new Thickness(0, 0, 0, 10);
+
+            StackPanel spRam = new StackPanel();
+
+            DockPanel ramTop = new DockPanel();
+            ramTop.Margin = new Thickness(0, 0, 0, 8);
+
+            TextBlock lblRam = new TextBlock();
+            lblRam.Text = "MEMÓRIA RAM TOTAL";
+            lblRam.FontSize = 10;
+            lblRam.FontWeight = FontWeights.Bold;
+            lblRam.Foreground = UiTheme.AccentGreen;
+            DockPanel.SetDock(lblRam, Dock.Left);
+            ramTop.Children.Add(lblRam);
+
+            _overviewTotalRamSummaryText = new TextBlock();
+            _overviewTotalRamSummaryText.Text = "0 MB";
+            _overviewTotalRamSummaryText.FontSize = 16;
+            _overviewTotalRamSummaryText.FontWeight = FontWeights.Bold;
+            _overviewTotalRamSummaryText.Foreground = UiTheme.AccentGreen;
+            _overviewTotalRamSummaryText.HorizontalAlignment = HorizontalAlignment.Right;
+            DockPanel.SetDock(_overviewTotalRamSummaryText, Dock.Right);
+            ramTop.Children.Add(_overviewTotalRamSummaryText);
+            spRam.Children.Add(ramTop);
+
+            Border ramTrack = new Border();
+            ramTrack.Height = 8;
+            ramTrack.Background = UiTheme.BrushFromHex("#1E293B");
+            ramTrack.CornerRadius = new CornerRadius(4);
+            ramTrack.Margin = new Thickness(0, 0, 0, 8);
+
+            Grid ramGrid = new Grid();
+            _overviewTotalRamColFill = new ColumnDefinition { Width = new GridLength(0.01, GridUnitType.Star) };
+            _overviewTotalRamColEmpty = new ColumnDefinition { Width = new GridLength(100, GridUnitType.Star) };
+            ramGrid.ColumnDefinitions.Add(_overviewTotalRamColFill);
+            ramGrid.ColumnDefinitions.Add(_overviewTotalRamColEmpty);
+
+            Border ramFill = new Border();
+            ramFill.Background = UiTheme.AccentGreen;
+            ramFill.CornerRadius = new CornerRadius(4);
+            Grid.SetColumn(ramFill, 0);
+            ramGrid.Children.Add(ramFill);
+            ramTrack.Child = ramGrid;
+            spRam.Children.Add(ramTrack);
+
+            _overviewTotalRamDetailsText = new TextBlock();
+            _overviewTotalRamDetailsText.Text = "0 MB alocados entre os serviços ativos";
+            _overviewTotalRamDetailsText.FontSize = 11;
+            _overviewTotalRamDetailsText.Foreground = UiTheme.TextMuted;
+            spRam.Children.Add(_overviewTotalRamDetailsText);
+
+            cardRam.Child = spRam;
+            sp.Children.Add(cardRam);
+
+            // Card 3: Resumo dos Serviços Online
+            Border cardSummary = new Border();
+            cardSummary.Background = UiTheme.BrushFromHex("#0B0F19");
+            cardSummary.BorderBrush = UiTheme.BorderSubtle;
+            cardSummary.BorderThickness = new Thickness(1);
+            cardSummary.CornerRadius = new CornerRadius(8);
+            cardSummary.Padding = new Thickness(14, 12, 14, 14);
+
+            StackPanel spSummary = new StackPanel();
+
+            TextBlock lblSum = new TextBlock();
+            lblSum.Text = "SERVIÇOS EM EXECUÇÃO";
+            lblSum.FontSize = 10;
+            lblSum.FontWeight = FontWeights.Bold;
+            lblSum.Foreground = UiTheme.TextSecondary;
+            lblSum.Margin = new Thickness(0, 0, 0, 10);
+            spSummary.Children.Add(lblSum);
+
+            Grid sumGrid = new Grid();
+            sumGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            sumGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            sumGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            StackPanel sumApp = new StackPanel();
+            TextBlock lblAppTitle = new TextBlock { Text = "AppServer", FontSize = 10, Foreground = UiTheme.TextMuted };
+            _overviewSummaryAppText = new TextBlock { Text = "0", FontSize = 15, FontWeight = FontWeights.Bold, Foreground = UiTheme.AccentLightBlue, Margin = new Thickness(0, 2, 0, 0) };
+            sumApp.Children.Add(lblAppTitle);
+            sumApp.Children.Add(_overviewSummaryAppText);
+            Grid.SetColumn(sumApp, 0);
+            sumGrid.Children.Add(sumApp);
+
+            StackPanel sumDb = new StackPanel();
+            TextBlock lblDbTitle = new TextBlock { Text = "DBAccess", FontSize = 10, Foreground = UiTheme.TextMuted };
+            _overviewSummaryDbText = new TextBlock { Text = "Inativo", FontSize = 15, FontWeight = FontWeights.Bold, Foreground = UiTheme.TextSecondary, Margin = new Thickness(0, 2, 0, 0) };
+            sumDb.Children.Add(lblDbTitle);
+            sumDb.Children.Add(_overviewSummaryDbText);
+            Grid.SetColumn(sumDb, 1);
+            sumGrid.Children.Add(sumDb);
+
+            StackPanel sumSv = new StackPanel();
+            TextBlock lblSvTitle = new TextBlock { Text = "SmartView", FontSize = 10, Foreground = UiTheme.TextMuted };
+            _overviewSummarySvText = new TextBlock { Text = "Inativo", FontSize = 15, FontWeight = FontWeights.Bold, Foreground = UiTheme.TextSecondary, Margin = new Thickness(0, 2, 0, 0) };
+            sumSv.Children.Add(lblSvTitle);
+            sumSv.Children.Add(_overviewSummarySvText);
+            Grid.SetColumn(sumSv, 2);
+            sumGrid.Children.Add(sumSv);
+
+            spSummary.Children.Add(sumGrid);
+            cardSummary.Child = spSummary;
+            sp.Children.Add(cardSummary);
 
             scroll.Content = sp;
             panel.Child = scroll;

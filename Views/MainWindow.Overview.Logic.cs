@@ -33,7 +33,15 @@ namespace TOTVSHub
         private Button _overviewAutoScrollBtn;
         private TextBlock _overviewTotalCpuSummaryText;
         private TextBlock _overviewTotalRamSummaryText;
-        private StackPanel _overviewBreakdownStack;
+        private TextBlock _overviewTotalCpuDetailsText;
+        private TextBlock _overviewTotalRamDetailsText;
+        private ColumnDefinition _overviewTotalCpuColFill;
+        private ColumnDefinition _overviewTotalCpuColEmpty;
+        private ColumnDefinition _overviewTotalRamColFill;
+        private ColumnDefinition _overviewTotalRamColEmpty;
+        private TextBlock _overviewSummaryAppText;
+        private TextBlock _overviewSummaryDbText;
+        private TextBlock _overviewSummarySvText;
 
         private readonly Dictionary<string, Border> _overviewCardBorders = new Dictionary<string, Border>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, TextBlock> _overviewCpuTexts = new Dictionary<string, TextBlock>(StringComparer.OrdinalIgnoreCase);
@@ -184,8 +192,24 @@ namespace TOTVSHub
         private void AtualizarGraficosTotais(List<OverviewServiceItem> ativos, double totalCpu, long totalRamMb)
         {
             if (_overviewTotalCpuSummaryText != null)
-                _overviewTotalCpuSummaryText.Text = string.Format("{0:0.0}% ({1} serviço{2})",
-                    totalCpu, ativos.Count, ativos.Count == 1 ? "" : "s");
+                _overviewTotalCpuSummaryText.Text = string.Format("{0:0.0}%", totalCpu);
+
+            double cpuPct = Math.Max(0.5, Math.Min(100.0, totalCpu));
+            if (_overviewTotalCpuColFill != null && _overviewTotalCpuColEmpty != null)
+            {
+                _overviewTotalCpuColFill.Width = new GridLength(cpuPct, GridUnitType.Star);
+                _overviewTotalCpuColEmpty.Width = new GridLength(Math.Max(0.01, 100.0 - cpuPct), GridUnitType.Star);
+            }
+
+            int appCount = ativos.Count(a => string.Equals(a.TypeHint, "appserver", StringComparison.OrdinalIgnoreCase));
+            int dbCount = ativos.Count(a => string.Equals(a.TypeHint, "dbaccess", StringComparison.OrdinalIgnoreCase));
+            int svCount = ativos.Count(a => string.Equals(a.TypeHint, "smartview", StringComparison.OrdinalIgnoreCase));
+
+            if (_overviewTotalCpuDetailsText != null)
+            {
+                _overviewTotalCpuDetailsText.Text = string.Format("{0} serviço{1} ativo{1} consumindo processamento",
+                    ativos.Count, ativos.Count == 1 ? "" : "s");
+            }
 
             double ramGb = totalRamMb / 1024.0;
             string ramStr = totalRamMb >= 1024 ? string.Format("{0:0.0} GB", ramGb) : string.Format("{0} MB", totalRamMb);
@@ -193,164 +217,36 @@ namespace TOTVSHub
             if (_overviewTotalRamSummaryText != null)
                 _overviewTotalRamSummaryText.Text = ramStr;
 
-            AtualizarBreakdownServicos(ativos, totalCpu, totalRamMb);
-        }
-
-        private void AtualizarBreakdownServicos(List<OverviewServiceItem> ativos, double totalCpu, long totalRamMb)
-        {
-            if (_overviewBreakdownStack == null) return;
-            _overviewBreakdownStack.Children.Clear();
-
-            if (ativos.Count == 0)
+            double maxRamRef = Math.Max(4096.0, totalRamMb > 0 ? (double)totalRamMb : 4096.0);
+            double ramPct = Math.Max(0.5, Math.Min(100.0, (totalRamMb / maxRamRef) * 100.0));
+            if (_overviewTotalRamColFill != null && _overviewTotalRamColEmpty != null)
             {
-                Border emptyCard = new Border();
-                emptyCard.Background = UiTheme.BrushFromHex("#0B0F19");
-                emptyCard.BorderBrush = UiTheme.BorderSubtle;
-                emptyCard.BorderThickness = new Thickness(1);
-                emptyCard.CornerRadius = new CornerRadius(8);
-                emptyCard.Padding = new Thickness(14);
-
-                TextBlock empty = new TextBlock();
-                empty.Text = "Nenhum serviço ativo no momento.\nInicie um ambiente, DBAccess ou SmartView para visualizar o consumo gráfico de barras.";
-                empty.FontSize = 11.5;
-                empty.Foreground = UiTheme.TextMuted;
-                empty.TextWrapping = TextWrapping.Wrap;
-                emptyCard.Child = empty;
-                _overviewBreakdownStack.Children.Add(emptyCard);
-                return;
+                _overviewTotalRamColFill.Width = new GridLength(ramPct, GridUnitType.Star);
+                _overviewTotalRamColEmpty.Width = new GridLength(Math.Max(0.01, 100.0 - ramPct), GridUnitType.Star);
             }
 
-            foreach (OverviewServiceItem item in ativos)
+            if (_overviewTotalRamDetailsText != null)
             {
-                Border card = new Border();
-                card.Background = UiTheme.BrushFromHex("#0B0F19");
-                card.BorderBrush = UiTheme.BorderSubtle;
-                card.BorderThickness = new Thickness(1);
-                card.CornerRadius = new CornerRadius(8);
-                card.Padding = new Thickness(12, 10, 12, 10);
-                card.Margin = new Thickness(0, 0, 0, 8);
+                _overviewTotalRamDetailsText.Text = string.Format("{0} alocado{1} entre os serviços em execução",
+                    ramStr, totalRamMb == 0 ? "" : "s");
+            }
 
-                StackPanel cardStack = new StackPanel();
+            if (_overviewSummaryAppText != null)
+            {
+                _overviewSummaryAppText.Text = string.Format("{0} ativo{1}", appCount, appCount == 1 ? "" : "s");
+                _overviewSummaryAppText.Foreground = appCount > 0 ? UiTheme.AccentLightBlue : UiTheme.TextSecondary;
+            }
 
-                DockPanel headerDock = new DockPanel();
-                headerDock.Margin = new Thickness(0, 0, 0, 8);
+            if (_overviewSummaryDbText != null)
+            {
+                _overviewSummaryDbText.Text = dbCount > 0 ? "Ativo" : "Inativo";
+                _overviewSummaryDbText.Foreground = dbCount > 0 ? UiTheme.AccentAmber : UiTheme.TextSecondary;
+            }
 
-                bool isDuplicateBadge = string.Equals(item.Name, item.TypeLabel, StringComparison.OrdinalIgnoreCase) ||
-                                        string.Equals(item.Name, item.TypeHint, StringComparison.OrdinalIgnoreCase);
-
-                Brush itemColor = string.Equals(item.TypeHint, "dbaccess", StringComparison.OrdinalIgnoreCase)
-                    ? UiTheme.AccentAmber
-                    : string.Equals(item.TypeHint, "smartview", StringComparison.OrdinalIgnoreCase)
-                        ? UiTheme.BrushFromHex("#A855F7")
-                        : UiTheme.AccentLightBlue;
-
-                if (!isDuplicateBadge)
-                {
-                    Border typeBadge = new Border();
-                    typeBadge.Background = UiTheme.TagBg;
-                    typeBadge.BorderBrush = UiTheme.BorderSubtle;
-                    typeBadge.BorderThickness = new Thickness(1);
-                    typeBadge.CornerRadius = new CornerRadius(6);
-                    typeBadge.Padding = new Thickness(6, 2, 6, 2);
-
-                    TextBlock typeTxt = new TextBlock();
-                    typeTxt.Text = item.TypeLabel ?? item.TypeHint;
-                    typeTxt.FontSize = 10;
-                    typeTxt.FontWeight = FontWeights.SemiBold;
-                    typeTxt.Foreground = itemColor;
-                    typeBadge.Child = typeTxt;
-                    DockPanel.SetDock(typeBadge, Dock.Right);
-                    headerDock.Children.Add(typeBadge);
-                }
-
-                StackPanel titleStack = new StackPanel();
-                titleStack.Orientation = Orientation.Horizontal;
-                titleStack.VerticalAlignment = VerticalAlignment.Center;
-
-                Border dot = new Border();
-                dot.Width = 8;
-                dot.Height = 8;
-                dot.CornerRadius = new CornerRadius(4);
-                dot.Background = itemColor;
-                dot.Margin = new Thickness(0, 0, 7, 0);
-                dot.VerticalAlignment = VerticalAlignment.Center;
-                titleStack.Children.Add(dot);
-
-                TextBlock nameTxt = new TextBlock();
-                nameTxt.Text = item.Name;
-                nameTxt.FontSize = 12.5;
-                nameTxt.FontWeight = FontWeights.Bold;
-                nameTxt.Foreground = UiTheme.TextPrimary;
-                nameTxt.VerticalAlignment = VerticalAlignment.Center;
-                nameTxt.TextTrimming = TextTrimming.CharacterEllipsis;
-                titleStack.Children.Add(nameTxt);
-
-                headerDock.Children.Add(titleStack);
-                cardStack.Children.Add(headerDock);
-
-                // CPU Bar
-                DockPanel cpuHeader = new DockPanel();
-                TextBlock cpuLbl = new TextBlock { Text = "CPU", FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = UiTheme.TextSecondary };
-                DockPanel.SetDock(cpuLbl, Dock.Left);
-                cpuHeader.Children.Add(cpuLbl);
-
-                TextBlock cpuVal = new TextBlock { Text = string.Format("{0:0.0}%", item.CpuPercent), FontSize = 11, FontWeight = FontWeights.Bold, Foreground = UiTheme.AccentLightBlue, HorizontalAlignment = HorizontalAlignment.Right };
-                DockPanel.SetDock(cpuVal, Dock.Right);
-                cpuHeader.Children.Add(cpuVal);
-                cardStack.Children.Add(cpuHeader);
-
-                Border cpuTrack = new Border();
-                cpuTrack.Height = 8;
-                cpuTrack.Background = UiTheme.BrushFromHex("#1E293B");
-                cpuTrack.CornerRadius = new CornerRadius(4);
-                cpuTrack.Margin = new Thickness(0, 3, 0, 8);
-
-                Grid cpuGrid = new Grid();
-                double cpuPct = Math.Max(0.5, Math.Min(100.0, item.CpuPercent));
-                cpuGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(cpuPct, GridUnitType.Star) });
-                cpuGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0.01, 100.0 - cpuPct), GridUnitType.Star) });
-
-                Border cpuFill = new Border();
-                cpuFill.Background = UiTheme.AccentLightBlue;
-                cpuFill.CornerRadius = new CornerRadius(4);
-                Grid.SetColumn(cpuFill, 0);
-                cpuGrid.Children.Add(cpuFill);
-                cpuTrack.Child = cpuGrid;
-                cardStack.Children.Add(cpuTrack);
-
-                // RAM Bar
-                DockPanel ramHeader = new DockPanel();
-                TextBlock ramLbl = new TextBlock { Text = "RAM", FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = UiTheme.TextSecondary };
-                DockPanel.SetDock(ramLbl, Dock.Left);
-                ramHeader.Children.Add(ramLbl);
-
-                TextBlock ramVal = new TextBlock { Text = string.Format("{0} MB", item.RamMb), FontSize = 11, FontWeight = FontWeights.Bold, Foreground = UiTheme.AccentGreen, HorizontalAlignment = HorizontalAlignment.Right };
-                DockPanel.SetDock(ramVal, Dock.Right);
-                ramHeader.Children.Add(ramVal);
-                cardStack.Children.Add(ramHeader);
-
-                Border ramTrack = new Border();
-                ramTrack.Height = 8;
-                ramTrack.Background = UiTheme.BrushFromHex("#1E293B");
-                ramTrack.CornerRadius = new CornerRadius(4);
-                ramTrack.Margin = new Thickness(0, 3, 0, 0);
-
-                Grid ramGrid = new Grid();
-                double maxRamRef = Math.Max(4096.0, totalRamMb > 0 ? (double)totalRamMb : 4096.0);
-                double ramPct = Math.Max(0.5, Math.Min(100.0, (item.RamMb / maxRamRef) * 100.0));
-                ramGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ramPct, GridUnitType.Star) });
-                ramGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0.01, 100.0 - ramPct), GridUnitType.Star) });
-
-                Border ramFill = new Border();
-                ramFill.Background = UiTheme.AccentGreen;
-                ramFill.CornerRadius = new CornerRadius(4);
-                Grid.SetColumn(ramFill, 0);
-                ramGrid.Children.Add(ramFill);
-                ramTrack.Child = ramGrid;
-                cardStack.Children.Add(ramTrack);
-
-                card.Child = cardStack;
-                _overviewBreakdownStack.Children.Add(card);
+            if (_overviewSummarySvText != null)
+            {
+                _overviewSummarySvText.Text = svCount > 0 ? string.Format("{0} porta{1}", svCount, svCount == 1 ? "" : "s") : "Inativo";
+                _overviewSummarySvText.Foreground = svCount > 0 ? UiTheme.BrushFromHex("#A855F7") : UiTheme.TextSecondary;
             }
         }
 
