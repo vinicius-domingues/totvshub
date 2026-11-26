@@ -69,6 +69,7 @@ namespace TOTVSHub
                 DoubleAnimation spin = new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(650));
                 spin.EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut };
                 rt.BeginAnimation(RotateTransform.AngleProperty, spin);
+                DispararAtualizacaoProcessosAsync();
                 AtualizarListaOverview();
                 CarregarLogOverviewAsync(true);
             };

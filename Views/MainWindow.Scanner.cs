@@ -88,6 +88,21 @@ namespace TOTVSHub
 
                     novosAmbientes = novosAmbientes.OrderBy(a => a.NomeIni).ToList();
                     SincronizarEstadoProcessosEServicos(novosAmbientes, fetchUser);
+
+                    try
+                    {
+                        ParseDbAccessIni();
+                        ParseDbMonitorIni();
+                        TestarStatusDbAccess();
+                    }
+                    catch { }
+
+                    try
+                    {
+                        if (_smartViewPort7017 != null) TestarPortaTcp(_smartViewPort7017);
+                        if (_smartViewPort7019 != null) TestarPortaTcp(_smartViewPort7019);
+                    }
+                    catch { }
                 }
                 catch { }
 
@@ -577,6 +592,10 @@ namespace TOTVSHub
                             {
                                 _dbAccessConfig.RamText.Text = _dbAccessConfig.IsRunning ? string.Format("RAM: {0} MB", _dbAccessConfig.RamMb) : "RAM: -";
                                 _dbAccessConfig.RamText.Foreground = _dbAccessConfig.IsRunning ? UiTheme.AccentGreen : UiTheme.TextMuted;
+                            }
+                            if (_currentTab == HubActiveTab.HomeOverview)
+                            {
+                                AtualizarListaOverview();
                             }
                         }
                         finally

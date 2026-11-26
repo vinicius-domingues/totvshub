@@ -131,6 +131,8 @@ namespace TOTVSHub
 
             IniciarListenerSobrescrita();
             CarregarPreferenciasAppData();
+            InicializarDbAccessConfig();
+            CarregarSmartViewPrefFolder();
             ConfigurarInicializacaoWindowsAutomatica();
 
             Title = "TOTVSHub";

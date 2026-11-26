@@ -165,6 +165,51 @@ namespace TOTVSHub
         private void AtualizarConsumosOverviewLive()
         {
             List<OverviewServiceItem> ativos = ObterServicosAtivos();
+
+            // Se o conjunto de serviços mudou (ex: DBAccess ligou ou desligou), recria os cards
+            if (ativos.Count != _overviewCardBorders.Count ||
+                ativos.Any(a => !_overviewCardBorders.ContainsKey(a.Id)) ||
+                _overviewCardBorders.Keys.Any(k => !ativos.Any(a => string.Equals(a.Id, k, StringComparison.OrdinalIgnoreCase))))
+            {
+                AtualizarListaOverview();
+                return;
+            }
+
+            // Atualiza CPU e RAM ao vivo do DBAccess se estiver em execução
+            if (_dbAccessConfig != null && _dbAccessConfig.IsRunning && _dbAccessConfig.ProcessId > 0)
+            {
+                TimeSpan lastCpu = _dbAccessConfig.LastCpuTime;
+                DateTime lastSample = _dbAccessConfig.LastCpuSampleTime;
+                double dbCpu;
+                long dbRam;
+                NativeWin32.GetProcessCpuAndRam(_dbAccessConfig.ProcessId, ref lastCpu, ref lastSample, out dbCpu, out dbRam);
+                _dbAccessConfig.CpuPercent = dbCpu;
+                _dbAccessConfig.RamMb = dbRam;
+                _dbAccessConfig.LastCpuTime = lastCpu;
+                _dbAccessConfig.LastCpuSampleTime = lastSample;
+            }
+
+            // Atualiza CPU e RAM ao vivo dos AppServers em execução
+            if (_ambientes != null)
+            {
+                foreach (AmbienteInfo amb in _ambientes)
+                {
+                    if (amb.State == EnvRunState.Active && amb.Pid > 0)
+                    {
+                        TimeSpan ambCpu = amb.LastCpuTime;
+                        DateTime ambSample = amb.LastCpuSampleTime;
+                        double aCpu;
+                        long aRam;
+                        NativeWin32.GetProcessCpuAndRam(amb.Pid, ref ambCpu, ref ambSample, out aCpu, out aRam);
+                        amb.CpuPercent = aCpu;
+                        amb.RamMb = aRam;
+                        amb.LastCpuTime = ambCpu;
+                        amb.LastCpuSampleTime = ambSample;
+                    }
+                }
+            }
+
+            ativos = ObterServicosAtivos();
             double sumCpu = 0;
             long sumRam = 0;
 
