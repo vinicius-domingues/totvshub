@@ -35,14 +35,16 @@ namespace TOTVSHub
 
             Grid rootGrid = new Grid();
             RowDefinition rowTop = new RowDefinition(); rowTop.Height = GridLength.Auto;
-            RowDefinition rowHeader = new RowDefinition(); rowHeader.Height = GridLength.Auto;
+            RowDefinition rowBreadcrumb = new RowDefinition(); rowBreadcrumb.Height = GridLength.Auto;
             RowDefinition rowMetrics = new RowDefinition(); rowMetrics.Height = GridLength.Auto;
+            RowDefinition rowSearch = new RowDefinition(); rowSearch.Height = GridLength.Auto;
             RowDefinition rowLogTabs = new RowDefinition(); rowLogTabs.Height = GridLength.Auto;
             RowDefinition rowConsole = new RowDefinition(); rowConsole.Height = new GridLength(1, GridUnitType.Star);
 
             rootGrid.RowDefinitions.Add(rowTop);
-            rootGrid.RowDefinitions.Add(rowHeader);
+            rootGrid.RowDefinitions.Add(rowBreadcrumb);
             rootGrid.RowDefinitions.Add(rowMetrics);
+            rootGrid.RowDefinitions.Add(rowSearch);
             rootGrid.RowDefinitions.Add(rowLogTabs);
             rootGrid.RowDefinitions.Add(rowConsole);
 
@@ -59,10 +61,10 @@ namespace TOTVSHub
 
             Grid headGrid = new Grid();
             ColumnDefinition cLeft = new ColumnDefinition(); cLeft.Width = GridLength.Auto;
-            ColumnDefinition cSearch = new ColumnDefinition(); cSearch.Width = new GridLength(1, GridUnitType.Star);
+            ColumnDefinition cSpacer = new ColumnDefinition(); cSpacer.Width = new GridLength(1, GridUnitType.Star);
             ColumnDefinition cRight = new ColumnDefinition(); cRight.Width = GridLength.Auto;
             headGrid.ColumnDefinitions.Add(cLeft);
-            headGrid.ColumnDefinitions.Add(cSearch);
+            headGrid.ColumnDefinitions.Add(cSpacer);
             headGrid.ColumnDefinitions.Add(cRight);
 
             StackPanel breadcrumbStack = new StackPanel();
@@ -111,9 +113,9 @@ namespace TOTVSHub
             Grid.SetColumn(breadcrumbStack, 0);
             headGrid.Children.Add(breadcrumbStack);
 
-            DockPanel searchDock = new DockPanel();
-            searchDock.VerticalAlignment = VerticalAlignment.Center;
-            searchDock.Margin = new Thickness(0, 0, 16, 0);
+            StackPanel actionsStack = new StackPanel();
+            actionsStack.Orientation = Orientation.Horizontal;
+            actionsStack.VerticalAlignment = VerticalAlignment.Center;
 
             Button btnFolder = UiTheme.CreateActionButton(
                 UiTheme.CreateFolderIcon(Brushes.White, 14),
@@ -122,56 +124,14 @@ namespace TOTVSHub
             btnFolder.Width = 32;
             btnFolder.Height = 28;
             btnFolder.Padding = new Thickness(0);
-            btnFolder.Margin = new Thickness(0, 0, 8, 0);
+            btnFolder.Margin = new Thickness(0, 0, 6, 0);
             btnFolder.ToolTip = "Abrir pasta de logs no Windows Explorer: " + _activeLogFolderPath;
             btnFolder.Click += delegate
             {
                 if (!string.IsNullOrEmpty(_activeLogFolderPath) && Directory.Exists(_activeLogFolderPath))
                     AbrirNoExplorer(_activeLogFolderPath);
             };
-            DockPanel.SetDock(btnFolder, Dock.Left);
-            searchDock.Children.Add(btnFolder);
-
-            Border searchContainer = new Border();
-            searchContainer.Background = UiTheme.BgInput;
-            searchContainer.BorderBrush = UiTheme.BorderSubtle;
-            searchContainer.BorderThickness = new Thickness(1);
-            searchContainer.CornerRadius = new CornerRadius(6);
-            searchContainer.Padding = new Thickness(10, 4, 10, 4);
-            searchContainer.Height = 28;
-
-            Grid searchInner = new Grid();
-            TextBlock searchPlaceholder = new TextBlock();
-            searchPlaceholder.Text = "Filtrar conteúdo do log...";
-            searchPlaceholder.Foreground = UiTheme.TextMuted;
-            searchPlaceholder.FontSize = 12;
-            searchPlaceholder.VerticalAlignment = VerticalAlignment.Center;
-            searchPlaceholder.IsHitTestVisible = false;
-
-            _logSearchBox = new TextBox();
-            _logSearchBox.Background = Brushes.Transparent;
-            _logSearchBox.Foreground = UiTheme.TextPrimary;
-            _logSearchBox.CaretBrush = UiTheme.TextPrimary;
-            _logSearchBox.BorderThickness = new Thickness(0);
-            _logSearchBox.FontSize = 12;
-            _logSearchBox.VerticalAlignment = VerticalAlignment.Center;
-            _logSearchBox.TextChanged += delegate
-            {
-                searchPlaceholder.Visibility = string.IsNullOrEmpty(_logSearchBox.Text) ? Visibility.Visible : Visibility.Collapsed;
-                FiltrarLinhasLogVisiveis(_logSearchBox.Text);
-            };
-
-            searchInner.Children.Add(searchPlaceholder);
-            searchInner.Children.Add(_logSearchBox);
-            searchContainer.Child = searchInner;
-            searchDock.Children.Add(searchContainer);
-
-            Grid.SetColumn(searchDock, 1);
-            headGrid.Children.Add(searchDock);
-
-            StackPanel actionsStack = new StackPanel();
-            actionsStack.Orientation = Orientation.Horizontal;
-            actionsStack.VerticalAlignment = VerticalAlignment.Center;
+            actionsStack.Children.Add(btnFolder);
 
             Button btnAutoScroll = UiTheme.CreateActionButton(
                 UiTheme.CreateScrollIcon(UiTheme.AccentLightBlue, 14),
@@ -248,8 +208,55 @@ namespace TOTVSHub
             Grid.SetRow(metricsBar, 2);
             rootGrid.Children.Add(metricsBar);
 
+            Border searchBar = new Border();
+            searchBar.Background = UiTheme.BgWindow;
+            searchBar.Padding = new Thickness(20, 2, 20, 8);
+
+            Border searchContainer = new Border();
+            searchContainer.Background = UiTheme.BgInput;
+            searchContainer.BorderBrush = UiTheme.BorderSubtle;
+            searchContainer.BorderThickness = new Thickness(1);
+            searchContainer.CornerRadius = new CornerRadius(6);
+            searchContainer.Padding = new Thickness(12, 4, 12, 4);
+            searchContainer.Height = 30;
+
+            DockPanel searchDock = new DockPanel();
+            UIElement searchIcon = UiTheme.CreateSearchIcon();
+            DockPanel.SetDock(searchIcon, Dock.Left);
+            searchDock.Children.Add(searchIcon);
+
+            Grid searchInner = new Grid();
+            TextBlock searchPlaceholder = new TextBlock();
+            searchPlaceholder.Text = "Filtrar conteúdo do log...";
+            searchPlaceholder.Foreground = UiTheme.TextMuted;
+            searchPlaceholder.FontSize = 12;
+            searchPlaceholder.VerticalAlignment = VerticalAlignment.Center;
+            searchPlaceholder.IsHitTestVisible = false;
+
+            _logSearchBox = new TextBox();
+            _logSearchBox.Background = Brushes.Transparent;
+            _logSearchBox.Foreground = UiTheme.TextPrimary;
+            _logSearchBox.CaretBrush = UiTheme.TextPrimary;
+            _logSearchBox.BorderThickness = new Thickness(0);
+            _logSearchBox.FontSize = 12;
+            _logSearchBox.VerticalAlignment = VerticalAlignment.Center;
+            _logSearchBox.TextChanged += delegate
+            {
+                searchPlaceholder.Visibility = string.IsNullOrEmpty(_logSearchBox.Text) ? Visibility.Visible : Visibility.Collapsed;
+                FiltrarLinhasLogVisiveis(_logSearchBox.Text);
+            };
+
+            searchInner.Children.Add(searchPlaceholder);
+            searchInner.Children.Add(_logSearchBox);
+            searchDock.Children.Add(searchInner);
+            searchContainer.Child = searchDock;
+            searchBar.Child = searchContainer;
+
+            Grid.SetRow(searchBar, 3);
+            rootGrid.Children.Add(searchBar);
+
             Border logTabsBar = BuildLogFileTabs(logFiles);
-            Grid.SetRow(logTabsBar, 3);
+            Grid.SetRow(logTabsBar, 4);
             rootGrid.Children.Add(logTabsBar);
 
             Border consoleContainer = new Border();
@@ -272,7 +279,7 @@ namespace TOTVSHub
             _logsConsoleTextBox.AcceptsReturn = true;
 
             consoleContainer.Child = _logsConsoleTextBox;
-            Grid.SetRow(consoleContainer, 4);
+            Grid.SetRow(consoleContainer, 5);
             rootGrid.Children.Add(consoleContainer);
 
             _pageHost.Content = rootGrid;
@@ -466,11 +473,12 @@ namespace TOTVSHub
             }
             else
             {
+                List<Action> updateTabVisuals = new List<Action>();
+
                 foreach (string filePath in logFiles)
                 {
                     string capturedPath = filePath;
                     string fileName = Path.GetFileName(capturedPath);
-                    bool isSelected = string.Equals(_activeLogFilePath, capturedPath, StringComparison.OrdinalIgnoreCase);
 
                     Border tabItem = new Border();
                     tabItem.Height = 32;
@@ -478,8 +486,6 @@ namespace TOTVSHub
                     tabItem.Margin = new Thickness(0, 0, 6, 0);
                     tabItem.CornerRadius = new CornerRadius(6, 6, 0, 0);
                     tabItem.Cursor = Cursors.Hand;
-                    tabItem.Background = isSelected ? UiTheme.BrushFromHex("#060A10") : Brushes.Transparent;
-                    tabItem.BorderBrush = isSelected ? UiTheme.BorderSubtle : Brushes.Transparent;
                     tabItem.BorderThickness = new Thickness(1, 1, 1, 0);
 
                     StackPanel inner = new StackPanel();
@@ -495,23 +501,37 @@ namespace TOTVSHub
                     TextBlock label = new TextBlock();
                     label.Text = fileName;
                     label.FontSize = 12;
-                    label.FontWeight = isSelected ? FontWeights.Bold : FontWeights.Normal;
-                    label.Foreground = isSelected ? UiTheme.AccentLightBlue : UiTheme.TextSecondary;
                     label.VerticalAlignment = VerticalAlignment.Center;
                     inner.Children.Add(label);
 
                     tabItem.Child = inner;
 
+                    Action refreshTabState = delegate
+                    {
+                        bool isSelected = string.Equals(_activeLogFilePath, capturedPath, StringComparison.OrdinalIgnoreCase);
+                        tabItem.Background = isSelected ? UiTheme.BrushFromHex("#060A10") : Brushes.Transparent;
+                        tabItem.BorderBrush = isSelected ? UiTheme.BorderSubtle : Brushes.Transparent;
+                        label.FontWeight = isSelected ? FontWeights.Bold : FontWeights.Normal;
+                        label.Foreground = isSelected ? UiTheme.AccentLightBlue : UiTheme.TextSecondary;
+                    };
+
+                    refreshTabState();
+                    updateTabVisuals.Add(refreshTabState);
+
                     tabItem.MouseLeftButtonUp += delegate
                     {
-                        if (!string.Equals(_activeLogFilePath, capturedPath, StringComparison.OrdinalIgnoreCase))
+                        try
                         {
-                            _activeLogFilePath = capturedPath;
-                            if (_logsBreadcrumbSub != null) _logsBreadcrumbSub.Text = fileName;
-                            _activeLogLastFileLength = 0;
-                            bar.Child = BuildLogFileTabs(logFiles).Child;
-                            RecarregarLogSelecionadoAsync();
+                            if (!string.Equals(_activeLogFilePath, capturedPath, StringComparison.OrdinalIgnoreCase))
+                            {
+                                _activeLogFilePath = capturedPath;
+                                if (_logsBreadcrumbSub != null) _logsBreadcrumbSub.Text = fileName;
+                                _activeLogLastFileLength = 0;
+                                foreach (Action act in updateTabVisuals) act();
+                                RecarregarLogSelecionadoAsync();
+                            }
                         }
+                        catch { }
                     };
 
                     tabsContainer.Children.Add(tabItem);

@@ -44,7 +44,7 @@ namespace TOTVSHub
         {
             if (string.IsNullOrEmpty(_activeLogFilePath) || !File.Exists(_activeLogFilePath))
             {
-                MessageBox.Show(this, "Nenhum arquivo de log para salvar.", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                StyledDialog.Info(this, "TOTVSHub", "Nenhum arquivo de log para salvar.");
                 return;
             }
             SaveFileDialog sfd = new SaveFileDialog();
@@ -55,11 +55,11 @@ namespace TOTVSHub
                 try
                 {
                     File.Copy(_activeLogFilePath, sfd.FileName, true);
-                    MessageBox.Show(this, "Log exportado com sucesso!", "TOTVSHub", MessageBoxButton.OK, MessageBoxImage.Information);
+                    StyledDialog.Info(this, "TOTVSHub", "Log exportado com sucesso!");
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, "Erro ao salvar arquivo: " + ex.Message, "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                    StyledDialog.Info(this, "Erro", "Erro ao salvar arquivo: " + ex.Message);
                 }
             }
         }
@@ -161,6 +161,9 @@ namespace TOTVSHub
 
                 Dispatcher.BeginInvoke(new Action(delegate
                 {
+                    if (!string.Equals(_activeLogFilePath, targetFile, StringComparison.OrdinalIgnoreCase))
+                        return;
+
                     _activeLogLastFileLength = fileLength;
                     _cachedFullLogContent = content;
 
@@ -307,6 +310,9 @@ namespace TOTVSHub
                         string fresh = LerUltimasLinhasArquivo(targetFile, 1000);
                         Dispatcher.BeginInvoke(new Action(delegate
                         {
+                            if (!string.Equals(_activeLogFilePath, targetFile, StringComparison.OrdinalIgnoreCase))
+                                return;
+
                             _activeLogLastFileLength = newLen;
                             _cachedFullLogContent = fresh;
                             if (_logSearchBox != null && !string.IsNullOrEmpty(_logSearchBox.Text))
