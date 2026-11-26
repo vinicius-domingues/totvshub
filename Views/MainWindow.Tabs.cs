@@ -23,7 +23,10 @@ namespace TOTVSHub
             switch (tab)
             {
                 case HubActiveTab.HomeOverview:
-                    ShowHomeOverviewView();
+                    if (!_isInitialScanCompleted)
+                        ShowSkeletonLoadingView();
+                    else
+                        ShowHomeOverviewView();
                     break;
                 case HubActiveTab.Ambientes:
                     ShowDashboardView();

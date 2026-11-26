@@ -103,7 +103,14 @@ namespace TOTVSHub
 
                         RecalcularAlertas();
                         RenderizarCards();
-                        if (_currentTab == HubActiveTab.HomeOverview)
+                        if (isFirstScan)
+                        {
+                            if (!_needsOnboarding && _currentTab == HubActiveTab.HomeOverview)
+                            {
+                                ShowHomeOverviewView();
+                            }
+                        }
+                        else if (_currentTab == HubActiveTab.HomeOverview)
                         {
                             AtualizarListaOverview();
                         }

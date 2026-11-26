@@ -145,6 +145,30 @@ namespace TOTVSHub
             sub.Margin = new Thickness(0, 2, 0, 12);
             sp.Children.Add(sub);
 
+            // Card 0: Gráficos de Pizza/Donut de Consumo Total
+            Border cardDonuts = new Border();
+            cardDonuts.Background = UiTheme.BrushFromHex("#0B0F19");
+            cardDonuts.BorderBrush = UiTheme.BorderSubtle;
+            cardDonuts.BorderThickness = new Thickness(1);
+            cardDonuts.CornerRadius = new CornerRadius(8);
+            cardDonuts.Padding = new Thickness(10, 10, 10, 10);
+            cardDonuts.Margin = new Thickness(0, 0, 0, 10);
+
+            Grid donutsGrid = new Grid();
+            donutsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            donutsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            UIElement cpuDonut = CriarDonutChart(UiTheme.AccentLightBlue, out _overviewTotalCpuArc, out _overviewTotalCpuCenterText, "CPU Total", 100);
+            Grid.SetColumn(cpuDonut as FrameworkElement, 0);
+            donutsGrid.Children.Add(cpuDonut);
+
+            UIElement ramDonut = CriarDonutChart(UiTheme.AccentGreen, out _overviewTotalRamArc, out _overviewTotalRamCenterText, "RAM Total", 100);
+            Grid.SetColumn(ramDonut as FrameworkElement, 1);
+            donutsGrid.Children.Add(ramDonut);
+
+            cardDonuts.Child = donutsGrid;
+            sp.Children.Add(cardDonuts);
+
             // Card 1: Consumo Total CPU
             Border cardCpu = new Border();
             cardCpu.Background = UiTheme.BrushFromHex("#0B0F19");
@@ -703,6 +727,368 @@ namespace TOTVSHub
             };
 
             return card;
+        }
+
+        public void ShowSkeletonLoadingView()
+        {
+            _isInDashboardView = false;
+            _currentTab = HubActiveTab.HomeOverview;
+            PararOverviewTimer();
+
+            Grid rootGrid = new Grid();
+            rootGrid.Background = UiTheme.BgWindow;
+            rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            rootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+            StackPanel titleLeft = CreateBrandHeaderWithTabs(HubActiveTab.HomeOverview);
+            Border topBar = BuildTopWindowBar(titleLeft, null);
+            Grid.SetRow(topBar, 0);
+            rootGrid.Children.Add(topBar);
+
+            Border headerBorder = new Border();
+            headerBorder.Padding = new Thickness(20, 12, 20, 10);
+            headerBorder.Background = UiTheme.BgHeader;
+            headerBorder.BorderBrush = UiTheme.BorderSubtle;
+            headerBorder.BorderThickness = new Thickness(0, 0, 0, 1);
+
+            DockPanel headerDock = new DockPanel();
+
+            StackPanel headerLeft = new StackPanel();
+            headerLeft.VerticalAlignment = VerticalAlignment.Center;
+
+            TextBlock titleMain = new TextBlock();
+            titleMain.Text = "Monitoramento";
+            titleMain.FontSize = 17;
+            titleMain.FontWeight = FontWeights.Bold;
+            titleMain.Foreground = UiTheme.TextPrimary;
+            headerLeft.Children.Add(titleMain);
+
+            TextBlock titleSub = new TextBlock();
+            titleSub.Text = "Verificando serviços e processos ativos no sistema...";
+            titleSub.FontSize = 11.5;
+            titleSub.Foreground = UiTheme.AccentLightBlue;
+            titleSub.Margin = new Thickness(0, 2, 0, 0);
+            headerLeft.Children.Add(titleSub);
+
+            headerDock.Children.Add(headerLeft);
+            headerBorder.Child = headerDock;
+
+            Grid.SetRow(headerBorder, 1);
+            rootGrid.Children.Add(headerBorder);
+
+            Grid bodyGrid = new Grid();
+            bodyGrid.Margin = new Thickness(20, 14, 20, 16);
+            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(25, GridUnitType.Star) });
+            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
+            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(25, GridUnitType.Star) });
+            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
+            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50, GridUnitType.Star) });
+
+            // Col 0: Skeleton Left Column (Service cards placeholders)
+            StackPanel leftCol = new StackPanel();
+            for (int i = 0; i < 3; i++)
+            {
+                leftCol.Children.Add(CriarSkeletonCardServico());
+            }
+            bodyGrid.Children.Add(leftCol);
+            Grid.SetColumn(leftCol, 0);
+
+            // Col 2: Skeleton Center Column (Consumo Total with donut placeholders and bars)
+            Border centerSkeleton = CriarSkeletonPainelConsumo();
+            Grid.SetColumn(centerSkeleton, 2);
+            bodyGrid.Children.Add(centerSkeleton);
+
+            // Col 4: Skeleton Right Column (Terminal / Log loading state with pulsing spinner and informative status)
+            Border rightSkeleton = CriarSkeletonPainelLogs();
+            Grid.SetColumn(rightSkeleton, 4);
+            bodyGrid.Children.Add(rightSkeleton);
+
+            Grid.SetRow(bodyGrid, 2);
+            rootGrid.Children.Add(bodyGrid);
+
+            DoubleAnimation pulse = new DoubleAnimation(0.35, 0.85, TimeSpan.FromMilliseconds(900));
+            pulse.AutoReverse = true;
+            pulse.RepeatBehavior = RepeatBehavior.Forever;
+            pulse.EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut };
+            bodyGrid.BeginAnimation(UIElement.OpacityProperty, pulse);
+
+            _pageHost.Content = rootGrid;
+        }
+
+        private Border CriarSkeletonBar(double width, double height, double cornerRadius = 4, Brush fill = null)
+        {
+            Border b = new Border();
+            if (!double.IsNaN(width)) b.Width = width;
+            if (!double.IsNaN(height)) b.Height = height;
+            b.CornerRadius = new CornerRadius(cornerRadius);
+            b.Background = fill ?? UiTheme.BrushFromHex("#1E293B");
+            return b;
+        }
+
+        private Border CriarSkeletonCardServico()
+        {
+            Border card = new Border();
+            card.Background = UiTheme.BgCard;
+            card.BorderBrush = UiTheme.BorderSubtle;
+            card.BorderThickness = new Thickness(1);
+            card.CornerRadius = new CornerRadius(8);
+            card.Padding = new Thickness(12, 10, 12, 10);
+            card.Margin = new Thickness(0, 0, 0, 8);
+
+            StackPanel sp = new StackPanel();
+            DockPanel top = new DockPanel();
+            top.Margin = new Thickness(0, 0, 0, 8);
+
+            StackPanel leftTitle = new StackPanel { Orientation = Orientation.Horizontal };
+            leftTitle.Children.Add(CriarSkeletonBar(8, 8, 4, UiTheme.BrushFromHex("#334155")));
+            leftTitle.Children.Add(new Border { Width = 8 });
+            leftTitle.Children.Add(CriarSkeletonBar(90, 12, 4, UiTheme.BrushFromHex("#334155")));
+            DockPanel.SetDock(leftTitle, Dock.Left);
+            top.Children.Add(leftTitle);
+
+            Border badgeSkel = CriarSkeletonBar(55, 14, 4, UiTheme.BrushFromHex("#334155"));
+            badgeSkel.HorizontalAlignment = HorizontalAlignment.Right;
+            DockPanel.SetDock(badgeSkel, Dock.Right);
+            top.Children.Add(badgeSkel);
+            sp.Children.Add(top);
+
+            Border pathSkel = CriarSkeletonBar(140, 9, 3, UiTheme.BrushFromHex("#1E293B"));
+            pathSkel.Margin = new Thickness(0, 0, 0, 8);
+            sp.Children.Add(pathSkel);
+
+            Border bar1 = CriarSkeletonBar(double.NaN, 6, 3, UiTheme.BrushFromHex("#1E293B"));
+            bar1.Margin = new Thickness(0, 0, 0, 4);
+            sp.Children.Add(bar1);
+
+            Border bar2 = CriarSkeletonBar(double.NaN, 6, 3, UiTheme.BrushFromHex("#1E293B"));
+            sp.Children.Add(bar2);
+
+            card.Child = sp;
+            return card;
+        }
+
+        private Border CriarSkeletonPainelConsumo()
+        {
+            Border panel = new Border();
+            panel.Background = UiTheme.BgCard;
+            panel.BorderBrush = UiTheme.BorderSubtle;
+            panel.BorderThickness = new Thickness(1);
+            panel.CornerRadius = new CornerRadius(10);
+            panel.Padding = new Thickness(16, 14, 16, 14);
+
+            StackPanel sp = new StackPanel();
+            sp.Children.Add(CriarSkeletonBar(120, 14, 4, UiTheme.BrushFromHex("#334155")));
+            Border subBar = CriarSkeletonBar(200, 10, 3, UiTheme.BrushFromHex("#1E293B"));
+            subBar.Margin = new Thickness(0, 4, 0, 12);
+            sp.Children.Add(subBar);
+
+            Border cardDonuts = new Border();
+            cardDonuts.Background = UiTheme.BrushFromHex("#0B0F19");
+            cardDonuts.BorderBrush = UiTheme.BorderSubtle;
+            cardDonuts.BorderThickness = new Thickness(1);
+            cardDonuts.CornerRadius = new CornerRadius(8);
+            cardDonuts.Padding = new Thickness(10);
+            cardDonuts.Margin = new Thickness(0, 0, 0, 10);
+
+            Grid donutsGrid = new Grid();
+            donutsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            donutsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            System.Windows.Shapes.Ellipse ring1 = new System.Windows.Shapes.Ellipse { Width = 88, Height = 88, Stroke = UiTheme.BrushFromHex("#1E293B"), StrokeThickness = 8 };
+            Grid.SetColumn(ring1, 0);
+            donutsGrid.Children.Add(ring1);
+
+            System.Windows.Shapes.Ellipse ring2 = new System.Windows.Shapes.Ellipse { Width = 88, Height = 88, Stroke = UiTheme.BrushFromHex("#1E293B"), StrokeThickness = 8 };
+            Grid.SetColumn(ring2, 1);
+            donutsGrid.Children.Add(ring2);
+
+            cardDonuts.Child = donutsGrid;
+            sp.Children.Add(cardDonuts);
+
+            for (int i = 0; i < 2; i++)
+            {
+                Border cardBar = new Border();
+                cardBar.Background = UiTheme.BrushFromHex("#0B0F19");
+                cardBar.BorderBrush = UiTheme.BorderSubtle;
+                cardBar.BorderThickness = new Thickness(1);
+                cardBar.CornerRadius = new CornerRadius(8);
+                cardBar.Padding = new Thickness(14, 12, 14, 14);
+                cardBar.Margin = new Thickness(0, 0, 0, 10);
+
+                StackPanel spCard = new StackPanel();
+                spCard.Children.Add(CriarSkeletonBar(100, 10, 3, UiTheme.BrushFromHex("#334155")));
+                Border track = CriarSkeletonBar(double.NaN, 8, 4, UiTheme.BrushFromHex("#1E293B"));
+                track.Margin = new Thickness(0, 8, 0, 8);
+                spCard.Children.Add(track);
+                spCard.Children.Add(CriarSkeletonBar(150, 9, 3, UiTheme.BrushFromHex("#1E293B")));
+
+                cardBar.Child = spCard;
+                sp.Children.Add(cardBar);
+            }
+
+            panel.Child = sp;
+            return panel;
+        }
+
+        private Border CriarSkeletonPainelLogs()
+        {
+            Border panel = new Border();
+            panel.Background = UiTheme.BgCard;
+            panel.BorderBrush = UiTheme.BorderSubtle;
+            panel.BorderThickness = new Thickness(1);
+            panel.CornerRadius = new CornerRadius(10);
+            panel.Padding = new Thickness(16, 14, 16, 14);
+
+            Grid g = new Grid();
+            g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+            DockPanel topDock = new DockPanel();
+            topDock.Margin = new Thickness(0, 0, 0, 10);
+            StackPanel titles = new StackPanel();
+            titles.Children.Add(CriarSkeletonBar(160, 13, 4, UiTheme.BrushFromHex("#334155")));
+            Border pathSkel = CriarSkeletonBar(240, 9, 3, UiTheme.BrushFromHex("#1E293B"));
+            pathSkel.Margin = new Thickness(0, 4, 0, 0);
+            titles.Children.Add(pathSkel);
+            topDock.Children.Add(titles);
+            Grid.SetRow(topDock, 0);
+            g.Children.Add(topDock);
+
+            Border searchSkel = CriarSkeletonBar(double.NaN, 28, 6, UiTheme.BrushFromHex("#0B0F19"));
+            searchSkel.Margin = new Thickness(0, 0, 0, 10);
+            Grid.SetRow(searchSkel, 1);
+            g.Children.Add(searchSkel);
+
+            Border consoleBg = new Border();
+            consoleBg.Background = UiTheme.BrushFromHex("#050811");
+            consoleBg.BorderBrush = UiTheme.BorderSubtle;
+            consoleBg.BorderThickness = new Thickness(1);
+            consoleBg.CornerRadius = new CornerRadius(8);
+
+            StackPanel centerInfo = new StackPanel();
+            centerInfo.HorizontalAlignment = HorizontalAlignment.Center;
+            centerInfo.VerticalAlignment = VerticalAlignment.Center;
+
+            Grid spinnerBox = new Grid();
+            spinnerBox.Width = 44;
+            spinnerBox.Height = 44;
+            spinnerBox.HorizontalAlignment = HorizontalAlignment.Center;
+            spinnerBox.Margin = new Thickness(0, 0, 0, 14);
+
+            System.Windows.Shapes.Ellipse spinTrack = new System.Windows.Shapes.Ellipse();
+            spinTrack.Width = 38;
+            spinTrack.Height = 38;
+            spinTrack.Stroke = UiTheme.BrushFromHex("#1E293B");
+            spinTrack.StrokeThickness = 3;
+            spinTrack.HorizontalAlignment = HorizontalAlignment.Center;
+            spinTrack.VerticalAlignment = VerticalAlignment.Center;
+            spinnerBox.Children.Add(spinTrack);
+
+            System.Windows.Shapes.Path spinHead = new System.Windows.Shapes.Path();
+            spinHead.Width = 38;
+            spinHead.Height = 38;
+            spinHead.Stroke = UiTheme.AccentLightBlue;
+            spinHead.StrokeThickness = 3;
+            spinHead.StrokeStartLineCap = PenLineCap.Round;
+            spinHead.StrokeEndLineCap = PenLineCap.Round;
+
+            PathFigure sfig = new PathFigure();
+            sfig.StartPoint = new Point(19, 0);
+            sfig.Segments.Add(new ArcSegment(new Point(38, 19), new Size(19, 19), 0, false, SweepDirection.Clockwise, true));
+            PathGeometry sgeom = new PathGeometry();
+            sgeom.Figures.Add(sfig);
+            spinHead.Data = sgeom;
+
+            RotateTransform spinRt = new RotateTransform(0, 19, 19);
+            spinHead.RenderTransform = spinRt;
+            DoubleAnimation spinAnim = new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(850));
+            spinAnim.RepeatBehavior = RepeatBehavior.Forever;
+            spinRt.BeginAnimation(RotateTransform.AngleProperty, spinAnim);
+            spinnerBox.Children.Add(spinHead);
+
+            centerInfo.Children.Add(spinnerBox);
+
+            TextBlock msgTitle = new TextBlock();
+            msgTitle.Text = "Verificando ambiente e serviços...";
+            msgTitle.FontSize = 13.5;
+            msgTitle.FontWeight = FontWeights.Bold;
+            msgTitle.Foreground = UiTheme.TextPrimary;
+            msgTitle.HorizontalAlignment = HorizontalAlignment.Center;
+            centerInfo.Children.Add(msgTitle);
+
+            TextBlock msgDesc = new TextBlock();
+            msgDesc.Text = "Escaneando diretórios configurados, portas TCP e processos em segundo plano";
+            msgDesc.FontSize = 11;
+            msgDesc.Foreground = UiTheme.TextMuted;
+            msgDesc.Margin = new Thickness(0, 4, 0, 0);
+            msgDesc.HorizontalAlignment = HorizontalAlignment.Center;
+            centerInfo.Children.Add(msgDesc);
+
+            consoleBg.Child = centerInfo;
+            Grid.SetRow(consoleBg, 2);
+            g.Children.Add(consoleBg);
+
+            panel.Child = g;
+            return panel;
+        }
+
+        private UIElement CriarDonutChart(Brush strokeBrush, out System.Windows.Shapes.Path arcPath, out TextBlock centerValText, string label, double size = 100)
+        {
+            Grid container = new Grid();
+            container.Width = size;
+            container.Height = size;
+            container.HorizontalAlignment = HorizontalAlignment.Center;
+
+            double strokeThickness = 8;
+            double circleSize = size - strokeThickness;
+
+            System.Windows.Shapes.Ellipse bgCircle = new System.Windows.Shapes.Ellipse();
+            bgCircle.Width = circleSize;
+            bgCircle.Height = circleSize;
+            bgCircle.Stroke = UiTheme.BrushFromHex("#1E293B");
+            bgCircle.StrokeThickness = strokeThickness;
+            bgCircle.HorizontalAlignment = HorizontalAlignment.Center;
+            bgCircle.VerticalAlignment = VerticalAlignment.Center;
+            container.Children.Add(bgCircle);
+
+            System.Windows.Shapes.Path arc = new System.Windows.Shapes.Path();
+            arc.Width = size;
+            arc.Height = size;
+            arc.Stroke = strokeBrush;
+            arc.StrokeThickness = strokeThickness;
+            arc.StrokeStartLineCap = PenLineCap.Round;
+            arc.StrokeEndLineCap = PenLineCap.Round;
+            arc.HorizontalAlignment = HorizontalAlignment.Left;
+            arc.VerticalAlignment = VerticalAlignment.Top;
+            container.Children.Add(arc);
+            arcPath = arc;
+
+            StackPanel centerStack = new StackPanel();
+            centerStack.HorizontalAlignment = HorizontalAlignment.Center;
+            centerStack.VerticalAlignment = VerticalAlignment.Center;
+
+            TextBlock val = new TextBlock();
+            val.Text = "0%";
+            val.FontSize = 13.5;
+            val.FontWeight = FontWeights.Bold;
+            val.Foreground = UiTheme.TextPrimary;
+            val.HorizontalAlignment = HorizontalAlignment.Center;
+            centerStack.Children.Add(val);
+            centerValText = val;
+
+            TextBlock lbl = new TextBlock();
+            lbl.Text = label;
+            lbl.FontSize = 9;
+            lbl.FontWeight = FontWeights.SemiBold;
+            lbl.Foreground = UiTheme.TextMuted;
+            lbl.Margin = new Thickness(0, 1, 0, 0);
+            lbl.HorizontalAlignment = HorizontalAlignment.Center;
+            centerStack.Children.Add(lbl);
+
+            container.Children.Add(centerStack);
+            return container;
         }
     }
 }

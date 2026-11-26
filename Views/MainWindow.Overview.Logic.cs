@@ -31,6 +31,10 @@ namespace TOTVSHub
         private TextBox _overviewLogConsole;
         private TextBox _overviewSearchBox;
         private Button _overviewAutoScrollBtn;
+        private System.Windows.Shapes.Path _overviewTotalCpuArc;
+        private TextBlock _overviewTotalCpuCenterText;
+        private System.Windows.Shapes.Path _overviewTotalRamArc;
+        private TextBlock _overviewTotalRamCenterText;
         private TextBlock _overviewTotalCpuSummaryText;
         private TextBlock _overviewTotalRamSummaryText;
         private TextBlock _overviewTotalCpuDetailsText;
@@ -201,6 +205,8 @@ namespace TOTVSHub
                 _overviewTotalCpuColEmpty.Width = new GridLength(Math.Max(0.01, 100.0 - cpuPct), GridUnitType.Star);
             }
 
+            AtualizarGraficoCircular(_overviewTotalCpuArc, _overviewTotalCpuCenterText, cpuPct, string.Format("{0:0.0}%", totalCpu), 100);
+
             int appCount = ativos.Count(a => string.Equals(a.TypeHint, "appserver", StringComparison.OrdinalIgnoreCase));
             int dbCount = ativos.Count(a => string.Equals(a.TypeHint, "dbaccess", StringComparison.OrdinalIgnoreCase));
             int svCount = ativos.Count(a => string.Equals(a.TypeHint, "smartview", StringComparison.OrdinalIgnoreCase));
@@ -225,6 +231,8 @@ namespace TOTVSHub
                 _overviewTotalRamColEmpty.Width = new GridLength(Math.Max(0.01, 100.0 - ramPct), GridUnitType.Star);
             }
 
+            AtualizarGraficoCircular(_overviewTotalRamArc, _overviewTotalRamCenterText, ramPct, ramStr, 100);
+
             if (_overviewTotalRamDetailsText != null)
             {
                 _overviewTotalRamDetailsText.Text = string.Format("{0} alocado{1} entre os serviços em execução",
@@ -248,6 +256,28 @@ namespace TOTVSHub
                 _overviewSummarySvText.Text = svCount > 0 ? string.Format("{0} porta{1}", svCount, svCount == 1 ? "" : "s") : "Inativo";
                 _overviewSummarySvText.Foreground = svCount > 0 ? UiTheme.BrushFromHex("#A855F7") : UiTheme.TextSecondary;
             }
+        }
+
+        private void AtualizarGraficoCircular(System.Windows.Shapes.Path path, TextBlock textBlock, double percent, string textValue, double size = 100)
+        {
+            if (textBlock != null) textBlock.Text = textValue;
+            if (path == null) return;
+
+            double p = Math.Max(0.01, Math.Min(99.99, percent));
+            double angle = p * 3.6;
+            double rad = (angle - 90.0) * (Math.PI / 180.0);
+            double cx = size / 2.0;
+            double cy = size / 2.0;
+            double r = (size - 8) / 2.0;
+            double ex = cx + r * Math.Cos(rad);
+            double ey = cy + r * Math.Sin(rad);
+
+            PathFigure fig = new PathFigure();
+            fig.StartPoint = new Point(cx, cy - r);
+            fig.Segments.Add(new ArcSegment(new Point(ex, ey), new Size(r, r), 0, angle > 180.0, SweepDirection.Clockwise, true));
+            PathGeometry geom = new PathGeometry();
+            geom.Figures.Add(fig);
+            path.Data = geom;
         }
 
         private void CarregarLogOverviewAsync(bool forceReload)

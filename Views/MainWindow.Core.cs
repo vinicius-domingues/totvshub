@@ -594,7 +594,7 @@ namespace TOTVSHub
             }
             else
             {
-                ShowHomeOverviewView();
+                ShowSkeletonLoadingView();
                 CarregarAmbientesAsync(false);
             }
         }
