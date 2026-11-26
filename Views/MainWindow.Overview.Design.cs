@@ -294,8 +294,22 @@ namespace TOTVSHub
             searchBorder.BorderBrush = UiTheme.BorderSubtle;
             searchBorder.BorderThickness = new Thickness(1);
             searchBorder.CornerRadius = new CornerRadius(6);
-            searchBorder.Padding = new Thickness(8, 4, 8, 4);
+            searchBorder.Padding = new Thickness(10, 4, 10, 4);
+            searchBorder.Height = 30;
             searchBorder.Margin = new Thickness(0, 0, 0, 10);
+
+            DockPanel searchDock = new DockPanel();
+            UIElement searchIcon = UiTheme.CreateSearchIcon();
+            DockPanel.SetDock(searchIcon, Dock.Left);
+            searchDock.Children.Add(searchIcon);
+
+            Grid searchInner = new Grid();
+            TextBlock searchPlaceholder = new TextBlock();
+            searchPlaceholder.Text = "Digite aqui o trecho do log para procurar...";
+            searchPlaceholder.Foreground = UiTheme.TextMuted;
+            searchPlaceholder.FontSize = 12;
+            searchPlaceholder.VerticalAlignment = VerticalAlignment.Center;
+            searchPlaceholder.IsHitTestVisible = false;
 
             _overviewSearchBox = new TextBox();
             _overviewSearchBox.Background = Brushes.Transparent;
@@ -303,13 +317,19 @@ namespace TOTVSHub
             _overviewSearchBox.CaretBrush = UiTheme.TextPrimary;
             _overviewSearchBox.BorderThickness = new Thickness(0);
             _overviewSearchBox.FontSize = 12;
-            _overviewSearchBox.ToolTip = "Filtrar linhas do log atual";
+            _overviewSearchBox.VerticalAlignment = VerticalAlignment.Center;
+            _overviewSearchBox.ToolTip = "Digite aqui o trecho do log para procurar";
             _overviewSearchBox.TextChanged += delegate
             {
+                searchPlaceholder.Visibility = string.IsNullOrEmpty(_overviewSearchBox.Text) ? Visibility.Visible : Visibility.Collapsed;
                 _overviewFilterText = _overviewSearchBox.Text;
                 FiltrarLinhasLogOverview();
             };
-            searchBorder.Child = _overviewSearchBox;
+
+            searchInner.Children.Add(searchPlaceholder);
+            searchInner.Children.Add(_overviewSearchBox);
+            searchDock.Children.Add(searchInner);
+            searchBorder.Child = searchDock;
 
             Grid.SetRow(searchBorder, 1);
             g.Children.Add(searchBorder);

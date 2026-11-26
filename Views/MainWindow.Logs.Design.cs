@@ -227,7 +227,7 @@ namespace TOTVSHub
 
             Grid searchInner = new Grid();
             TextBlock searchPlaceholder = new TextBlock();
-            searchPlaceholder.Text = "Filtrar conteúdo do log...";
+            searchPlaceholder.Text = "Digite aqui o trecho do log para procurar...";
             searchPlaceholder.Foreground = UiTheme.TextMuted;
             searchPlaceholder.FontSize = 12;
             searchPlaceholder.VerticalAlignment = VerticalAlignment.Center;
