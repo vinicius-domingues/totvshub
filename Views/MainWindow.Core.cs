@@ -66,7 +66,7 @@ namespace TOTVSHub
         private bool _isLoadingBases = false;
         private bool _isInitialScanCompleted = false;
         private bool _isRealExit = false;
-        private bool _isInDashboardView = true;
+        private bool _isInDashboardView = false;
         private DateTime _lastUpdatedTime = DateTime.Now;
 
         // Estado para arraste fluido em tela cheia entre monitores
@@ -594,7 +594,7 @@ namespace TOTVSHub
             }
             else
             {
-                ShowDashboardView();
+                ShowHomeOverviewView();
                 CarregarAmbientesAsync(false);
             }
         }

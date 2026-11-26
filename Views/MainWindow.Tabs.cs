@@ -9,7 +9,7 @@ namespace TOTVSHub
 {
     public partial class MainWindow : Window
     {
-        private HubActiveTab _currentTab = HubActiveTab.Ambientes;
+        private HubActiveTab _currentTab = HubActiveTab.HomeOverview;
 
         public HubActiveTab CurrentTab
         {

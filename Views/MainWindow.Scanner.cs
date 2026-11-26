@@ -103,6 +103,10 @@ namespace TOTVSHub
 
                         RecalcularAlertas();
                         RenderizarCards();
+                        if (_currentTab == HubActiveTab.HomeOverview)
+                        {
+                            AtualizarListaOverview();
+                        }
                     }
                     finally
                     {

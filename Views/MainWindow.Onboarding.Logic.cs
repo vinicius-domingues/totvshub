@@ -50,7 +50,7 @@ namespace TOTVSHub
                 SalvarSmartViewPrefFolder(svDir);
             }
 
-            ShowDashboardView();
+            ShowHomeOverviewView();
             CarregarAmbientesAsync(false);
         }
 
@@ -82,7 +82,7 @@ namespace TOTVSHub
             }
             catch { }
 
-            ShowDashboardView();
+            ShowHomeOverviewView();
             CarregarAmbientesAsync(false);
         }
     }
