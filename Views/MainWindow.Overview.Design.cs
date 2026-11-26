@@ -379,21 +379,29 @@ namespace TOTVSHub
             DockPanel.SetDock(badgeRunning, Dock.Left);
             topDock.Children.Add(badgeRunning);
 
-            Border typeBadge = new Border();
-            typeBadge.Background = UiTheme.TagBg;
-            typeBadge.BorderBrush = UiTheme.BorderSubtle;
-            typeBadge.BorderThickness = new Thickness(1);
-            typeBadge.CornerRadius = new CornerRadius(8);
-            typeBadge.Padding = new Thickness(6, 2, 6, 2);
+            if (!string.Equals(item.Name, item.TypeLabel, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(item.Name, item.TypeHint, StringComparison.OrdinalIgnoreCase))
+            {
+                Border typeBadge = new Border();
+                typeBadge.Background = UiTheme.TagBg;
+                typeBadge.BorderBrush = UiTheme.BorderSubtle;
+                typeBadge.BorderThickness = new Thickness(1);
+                typeBadge.CornerRadius = new CornerRadius(8);
+                typeBadge.Padding = new Thickness(6, 2, 6, 2);
 
-            TextBlock typeTxt = new TextBlock();
-            typeTxt.Text = item.TypeLabel;
-            typeTxt.FontSize = 10;
-            typeTxt.FontWeight = FontWeights.SemiBold;
-            typeTxt.Foreground = UiTheme.AccentLightBlue;
-            typeBadge.Child = typeTxt;
-            DockPanel.SetDock(typeBadge, Dock.Right);
-            topDock.Children.Add(typeBadge);
+                TextBlock typeTxt = new TextBlock();
+                typeTxt.Text = item.TypeLabel;
+                typeTxt.FontSize = 10;
+                typeTxt.FontWeight = FontWeights.SemiBold;
+                typeTxt.Foreground = string.Equals(item.TypeHint, "dbaccess", StringComparison.OrdinalIgnoreCase)
+                    ? UiTheme.AccentAmber
+                    : string.Equals(item.TypeHint, "smartview", StringComparison.OrdinalIgnoreCase)
+                        ? UiTheme.BrushFromHex("#A855F7")
+                        : UiTheme.AccentLightBlue;
+                typeBadge.Child = typeTxt;
+                DockPanel.SetDock(typeBadge, Dock.Right);
+                topDock.Children.Add(typeBadge);
+            }
 
             TextBlock title = new TextBlock();
             title.Text = item.Name;

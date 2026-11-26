@@ -235,25 +235,33 @@ namespace TOTVSHub
                 DockPanel headerDock = new DockPanel();
                 headerDock.Margin = new Thickness(0, 0, 0, 8);
 
-                Border typeBadge = new Border();
-                typeBadge.Background = UiTheme.TagBg;
-                typeBadge.BorderBrush = UiTheme.BorderSubtle;
-                typeBadge.BorderThickness = new Thickness(1);
-                typeBadge.CornerRadius = new CornerRadius(6);
-                typeBadge.Padding = new Thickness(6, 2, 6, 2);
+                bool isDuplicateBadge = string.Equals(item.Name, item.TypeLabel, StringComparison.OrdinalIgnoreCase) ||
+                                        string.Equals(item.Name, item.TypeHint, StringComparison.OrdinalIgnoreCase);
 
-                TextBlock typeTxt = new TextBlock();
-                typeTxt.Text = item.TypeLabel ?? item.TypeHint;
-                typeTxt.FontSize = 10;
-                typeTxt.FontWeight = FontWeights.SemiBold;
-                typeTxt.Foreground = string.Equals(item.TypeHint, "dbaccess", StringComparison.OrdinalIgnoreCase)
+                Brush itemColor = string.Equals(item.TypeHint, "dbaccess", StringComparison.OrdinalIgnoreCase)
                     ? UiTheme.AccentAmber
                     : string.Equals(item.TypeHint, "smartview", StringComparison.OrdinalIgnoreCase)
                         ? UiTheme.BrushFromHex("#A855F7")
                         : UiTheme.AccentLightBlue;
-                typeBadge.Child = typeTxt;
-                DockPanel.SetDock(typeBadge, Dock.Right);
-                headerDock.Children.Add(typeBadge);
+
+                if (!isDuplicateBadge)
+                {
+                    Border typeBadge = new Border();
+                    typeBadge.Background = UiTheme.TagBg;
+                    typeBadge.BorderBrush = UiTheme.BorderSubtle;
+                    typeBadge.BorderThickness = new Thickness(1);
+                    typeBadge.CornerRadius = new CornerRadius(6);
+                    typeBadge.Padding = new Thickness(6, 2, 6, 2);
+
+                    TextBlock typeTxt = new TextBlock();
+                    typeTxt.Text = item.TypeLabel ?? item.TypeHint;
+                    typeTxt.FontSize = 10;
+                    typeTxt.FontWeight = FontWeights.SemiBold;
+                    typeTxt.Foreground = itemColor;
+                    typeBadge.Child = typeTxt;
+                    DockPanel.SetDock(typeBadge, Dock.Right);
+                    headerDock.Children.Add(typeBadge);
+                }
 
                 StackPanel titleStack = new StackPanel();
                 titleStack.Orientation = Orientation.Horizontal;
@@ -263,7 +271,7 @@ namespace TOTVSHub
                 dot.Width = 8;
                 dot.Height = 8;
                 dot.CornerRadius = new CornerRadius(4);
-                dot.Background = typeTxt.Foreground;
+                dot.Background = itemColor;
                 dot.Margin = new Thickness(0, 0, 7, 0);
                 dot.VerticalAlignment = VerticalAlignment.Center;
                 titleStack.Children.Add(dot);
